@@ -82,15 +82,17 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 ## 5. Feature Specifications
 
 ### 5.1 Accounts & Authentication — P0
-**Description.** Donors register with full name, phone (+221) and password — **no OTP** (dropped to avoid SMS cost). Structures/hospitals register with organization name, type, region, commune, responsible's phone, professional email, password, a récépissé/agrément upload, and a **payout account** (Orange Money or Wave); they log in with email + password + a **one-time code** (sent by email until SMS is approved, then by SMS). Moderators use a separate platform, email + password, no role selector.
+**Description.** Donors register with full name, phone (+221) and password; **the phone is verified by an SMS code** before the account is created, and donor activity is logged. Structures/hospitals register with organization name, type, region, commune, responsible's phone, professional email, password, a récépissé/agrément upload, and a **payout account** (the responsible chooses Orange Money or Wave and gives their number and name); they log in with email + password + an **SMS code**. A second onboarding phase later collects the structure's full information. Sessions last at most one week for every role. Moderators use a separate platform, email + password, no role selector.
 **Acceptance criteria**
-- [ ] Donor signup requires name, phone, password; login is phone + password with no OTP step.
+- [ ] Donor signup requires name, phone, password and a valid SMS code sent to that phone; login is phone + password (no code at login).
+- [ ] Donor activity (signup, logins, donations, profile changes, refund requests) is recorded in the activity log.
 - [ ] A donor must be logged in to view and donate to causes.
 - [ ] Structure/hospital signup collects org name, type, region→commune, responsible phone, email, password (≥ 12 chars), and a document upload (PDF/JPG/PNG, ≤ 5 MB).
 - [ ] New structures/hospitals start in **pending validation** and cannot publish until approved.
 - [ ] Structure/hospital signup collects a payout account (method, number, holder name); the moderator verifies it with the documents, and changing it later sends it back to review.
-- [ ] Structure/hospital/moderator login enforces a one-time code (channel set by `OTP_CHANNEL`: email now, SMS once approved).
-- [ ] "Mot de passe oublié ?" works: email link for organizations; WhatsApp-assisted reset by a moderator for donors until SMS is approved.
+- [ ] Structure/hospital/moderator login enforces an SMS one-time code at every login.
+- [ ] Sessions expire after at most 7 days.
+- [ ] "Mot de passe oublié ?" works: SMS code for donors; email link for organizations.
 - [ ] Moderation platform is on its own URL and is unreachable with a donor/structure session.
 
 ### 5.2 Causes Feed & Discovery — P0
@@ -112,7 +114,7 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 **Description.** Donation modal (itch.io-style): preset amounts (500 / 1 000 / 5 000 FCFA) plus a free custom amount; payment method Orange Money or Wave (no card); a **live fee line** showing the provider rate and the **net amount the structure receives**; a provider note; confirm. On success: thank-you state, incremented progress bar, options to donate again or browse. Donations are tied to the donor's account.
 **Acceptance criteria**
 - [ ] Fee and net recompute live as the amount changes (3% NabooPay fee; platform-fee line present but 0 until the revenue model is decided).
-- [ ] Amounts below the minimum donation (`MIN_DONATION`, 500 FCFA interim) are rejected.
+- [ ] Amounts below the minimum donation (500 FCFA, to be reviewed with the board) are rejected.
 - [ ] Only Orange Money and Wave are offered; no card option exists.
 - [ ] Success state increments the cause progress and records the donation in the donor's history.
 - [ ] The provider note states that funds are held until the cause ends.
@@ -120,8 +122,9 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 ### 5.5 Organization Dashboard & Cause Management — P0
 **Description.** Stats (total received this month, active/pending causes, donations received); a list of causes each with a status timeline (Soumise → En modération → Approuvée/Refusée → Active → Clôturée); create/edit/withdraw; refusal reason displayed when refused.
 **Acceptance criteria**
-- [ ] Create-cause wizard captures banner, title, description, category, end condition (date **or** goal), a **mandatory deadline** (at most `MAX_CAUSE_DURATION_DAYS`, 90 interim), target amount, urgency, and shows the estimated net the structure will receive.
+- [ ] Create-cause wizard captures banner, title, description, category, end condition (date **or** goal), a **mandatory deadline** (at most **30 days**), target amount, urgency, and shows the estimated net the structure will receive.
 - [ ] A cause in moderation (no donations yet) can be withdrawn by the structure itself.
+- [ ] A structure can request a deadline extension with a reason; it applies only once a moderator approves it, and donors of the cause are notified.
 - [ ] A published cause cannot be deleted without moderator approval; the structure sends a motivated request.
 - [ ] Refusal reasons are visible to the structure.
 
@@ -132,16 +135,16 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 - [ ] Auto-flagged items are marked and routed to the moderator.
 - [ ] Validated dossiers appear in donor dashboards and the public proofs feed.
 - [ ] If a deleted cause's funds went to the structure, a proof dossier is due within **7 days**; missing it auto-suspends the account until a moderator lifts it.
-- [ ] Every released cause gets a proof due date; auto-suspension for normally funded causes is behind `ENFORCE_PROOF_DEADLINE_ON_RELEASE` until the board decides.
+- [ ] **Every funded cause** owes a proof dossier within 7 days of the payout; the structure can request a delay (sursis) that a moderator approves; a missed deadline auto-suspends the account.
 - [ ] Upload limits: images and PDFs ≤ 5 MB (images resized client-side), videos ≤ 50 MB and ≤ 90 s.
 
 ### 5.7 Moderation Platform — P0
-**Description.** Separate app with queues: **Structures à valider** (rendered récépissé + declared info; Valider/Refuser with reason), **Causes à modérer**, **Preuves à valider** (including auto-flagged), **Demandes de suppression**, **Demandes de remboursement**, plus the **Coup de cœur** selector. Refusals always require a reason visible to the affected party.
+**Description.** Separate app with queues: **Structures à valider** (rendered récépissé + declared info; Valider/Refuser with reason), **Causes à modérer**, **Preuves à valider** (including auto-flagged), **Demandes de suppression**, **Demandes de remboursement**, **Demandes de prolongation** (cause deadlines and proof delays), plus the **Coup de cœur** selector. Refusals always require a reason visible to the affected party.
 **Acceptance criteria**
 - [ ] Each queue shows counts and lets the moderator approve/refuse with a mandatory reason on refusal.
 - [ ] Structure validation checks both the documents and the payout account (document-only verification — no physical visit).
 - [ ] Deletion arbitration lets the moderator choose refund donors vs. pay out to structure, with a reason, and tracks the resulting proof deadline.
-- [ ] Refund arbitration is final; the screen shows the exact amount refunded (per `REFUND_FEE_POLICY`).
+- [ ] Refund arbitration is final; an approved refund returns the **net amount** (donation minus the NabooPay fee) to the donor's verified phone, and the screen shows that amount.
 - [ ] Every decision is written to the audit log.
 
 ### 5.8 Blood-Donation Module — P1
@@ -149,7 +152,7 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 **Acceptance criteria**
 - [ ] Donor blood profile is **opt-in**, off by default, editable later, with a short explanation; captures blood type (or "Je ne sais pas") and region→commune from fixed lists (no free text).
 - [ ] Alerts target only the chosen blood types and the chosen communes within the hospital's region; donor addresses are never shared.
-- [ ] **The moderator creates alerts**; hospital self-serve is built but behind `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` until the board decides. The alert preview shows "X donneurs compatibles seront notifiés".
+- [ ] **Hospitals create and send their own alerts** (moderators can see, close or disable any alert). The alert preview shows "X donneurs compatibles seront notifiés".
 - [ ] Donors receive alerts only when their blood type is requested; a donor can confirm a slot.
 - [ ] Hospitals can update stock, confirm attendees (stock +1 per confirmed donation), close an alert, and send a thank-you message.
 
@@ -163,7 +166,7 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 - Native mobile apps (Android/iOS) — deferred to Phase 2 with a separate quote.
 - Credit-card payments — removed for both providers; mobile money only.
 - In-kind / logistics donations (physical food, materials) — redirected to WhatsApp.
-- A SUNUSOCIAL-held central account — funds are held by NabooPay and paid out to the structure's verified account.
+- Card payments and bank transfers — funds are collected in SUNUSOCIAL's NabooPay merchant account, held there, and paid out to the structure's verified mobile-money account.
 - Real-time geolocation for blood alerts — targeting is by commune only.
 - Public third-party API — the API is internal to the platform's own clients. <!-- assumed: context.md names no external API consumers -->
 
@@ -196,17 +199,14 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 
 ## 9. Decisions & Open Questions
 
-**Decided** (see `DECISIONS.md`): NabooPay; funds held until release; document-only verification by the moderator; lump-sum payout; every cause has a deadline (release at goal or deadline); "Coup de cœur" curated by the moderator.
+**Decided** (see `DECISIONS.md` DB-1…DB-15): NabooPay; funds held until release; document-only verification by the moderator; lump-sum payout; every cause has a deadline of at most 30 days (extensions with moderator approval); "Coup de cœur" curated by the moderator; hospitals send their own alerts; proof mandatory for every funded cause (delay with moderator approval); net refunds; 500 FCFA minimum (to review); payout account = the responsible's OM/Wave number and name, plus a phase-2 onboarding; SMS required (2FA, donor signup verification, donor password recovery, alerts, notifications); sessions ≤ 7 days; donor activity logged.
 
 **Open — waiting on the board** (see `BOARD_QUESTIONS.md`):
-- [ ] Q1 SMS: approval, provider, budget, dedicated sender ID.
-- [ ] Q2 Who sends blood alerts: hospitals, moderators, or hospital-draft + moderator approval.
-- [ ] Q3 Revenue model: percentage on donations vs. organization subscription vs. none at launch.
-- [ ] Q4 Official list of the 14 regions and their communes.
-- [ ] Q5 Maximum cause duration; whether a cause can be extended.
-- [ ] Q6 7-day proof deadline for every funded cause, not only deleted ones.
-- [ ] Q7 Who absorbs the provider fee on refunds.
-- [ ] Q8 Minimum donation amount.
-- [ ] Q9 Payout account in the structure's name vs. the responsible's name.
-- [ ] Q10–Q12 CDP declaration (health data, hosting abroad), SUNUSOCIAL's legal status, legal documents.
-- [ ] Q13 Domain, WhatsApp number, account ownership, first moderator.
+- [ ] Q1 SMS provider, budget, sender ID.
+- [ ] Q2 Revenue model.
+- [ ] Q3 Official list of the 14 regions and their communes.
+- [ ] Q4 Acknowledge the NabooPay money flow (funds transit through SUNUSOCIAL's merchant account) and start NabooPay KYB.
+- [ ] Q5 Content and timing of the structure onboarding phase 2.
+- [ ] Q6 Review of the 500 FCFA minimum.
+- [ ] Q7–Q9 Legal status, CDP declaration, legal documents.
+- [ ] Q10 Domain, WhatsApp number, account ownership, first moderator.

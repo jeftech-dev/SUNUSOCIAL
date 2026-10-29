@@ -25,7 +25,7 @@ _Goal: first meaningful action = create an account and reach the causes feed._
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
 | 1 | 01 Accueil public (`/`) | Reads value prop, "Comment ça marche", proof feed | Clicks "Je suis Donateur" | Proof feed visible without login |
-| 2 | 02 Authentification (`/inscription`) | Enters name, phone (+221), password; optionally opts into blood alerts (type + commune) | Account created, logged in | **No OTP**; blood opt-in off by default |
+| 2 | 02 Authentification (`/inscription`) | Enters name, phone (+221), password; optionally opts into blood alerts (type + commune) | SMS code verified → account created, logged in | **Phone verified by SMS code**; blood opt-in off by default |
 | 3 | 03 Accueil donateur (`/causes`) | Sees greeting + verified causes | Browses | Must be logged in to view causes |
 
 ### Phase 2 — Core Usage
@@ -43,7 +43,7 @@ _Goal: user comes back on their own = sees proof their gift was used._
 
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
-| 1 | Notification (in-app; SMS once approved) | Learns a supported cause published a proof | Opens dashboard | SMS pending board approval |
+| 1 | Notification (in-app + SMS) | Learns a supported cause published a proof | Opens dashboard | SMS provider to be chosen |
 | 2 | 06 Profil donateur (`/profil`) | Sees history, cumulative impact, proof availability | Opens a dossier | "Vous avez contribué à N causes pour X FCFA" |
 | 3 | 06b Dossier de preuve | Views gallery, report, fund-use breakdown | Trust reinforced; may donate again | Same dossier the moderator validated |
 | 4 | 06 Profil (if held funds) | May request a refund with a reason | Moderator decides (final) | Only while funds are held |
@@ -118,7 +118,7 @@ _Goal: first meaningful action = reach the queues securely._
 
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
-| 1 | Mod 01 Connexion (`moderation.<domain>`) | Email + password + one-time code | Enters moderation platform | Separate subdomain; no role selector |
+| 1 | Mod 01 Connexion (`moderation.<domain>`) | Email + password + SMS code | Enters moderation platform | Separate subdomain; no role selector |
 | 2 | Mod 02 Files d'attente | Sees counts for all queues | Picks an item | |
 
 ### Phase 2 — Core Usage
@@ -160,7 +160,7 @@ _Goal: recurring arbitration keeps money fair._
 | Tableau de bord hôpital | `/hopital` | Stock + alerts + responders | Hospital P2/P3 |
 | Émettre une alerte | `/hopital/alerte` | Create alert + thank donors | Hospital P2/P3 |
 | Modération | `moderation.<domain>` + queues | Login + all review screens, Coup de cœur, alerts | Moderator all |
-| Mot de passe oublié | `/mot-de-passe` | Email reset (orgs) / WhatsApp-assisted reset (donors) | All |
+| Mot de passe oublié | `/mot-de-passe` | SMS code (donors) / email link (orgs) | All |
 
 ## Edge Cases & Alternate Flows
 
@@ -173,7 +173,9 @@ _Goal: recurring arbitration keeps money fair._
 | Structure deletes published cause | Deletion request approved | Donor dashboard notice | Reason + funds refunded or paid out shown |
 | Refund requested after release | Donor opens profil | Refund action absent | Impossible — funds already paid out to the structure |
 | Structure changes payout account | Structure edits profile | Structure dashboard | Payouts blocked until a moderator re-approves the account |
-| Donor forgot password | "Mot de passe oublié ?" | WhatsApp | Moderator verifies identity, sends a 30-min reset link (until SMS is approved) |
+| Donor forgot password | "Mot de passe oublié ?" | `/mot-de-passe` | SMS code to the verified phone, then a new password |
+| Structure needs more time | Deadline or proof due date approaching | Structure dashboard | Requests an extension / delay; applies only once a moderator approves |
+| Donor never receives the SMS code | Signup | `/inscription` | "Renvoyer le code" after 60 s (max 3 per 10 min); WhatsApp link for help |
 | Goal reached before deadline | Donation pushes raised ≥ goal | Cause detail shows "Objectif atteint" | Cause closes, funds released at once, no more donations |
 | Proof missing after payout | 7-day deadline passes | Structure dashboard | Account auto-suspended until moderator lifts |
 | Monetary cause never reaches goal | Deadline passes | — | Releases everything collected at the deadline (decided — DB-5) |
@@ -195,4 +197,4 @@ _Goal: recurring arbitration keeps money fair._
 | Account suspended | Missed proof deadline | In-app + email | `/structure` |
 | Thank-you from hospital | Alert closed | In-app + SMS | `/sang` |
 
-SMS rows only send once the board approves SMS (`SMS_ENABLED`); until then show in-app + an "en attente de validation" SMS preview (DT-29). Email rows go through Resend.
+SMS rows go through the SMS provider (to be chosen; development uses a console provider). Email rows go through Resend. Also: "Extension decision" (in-app + SMS → `/structure`), "Cause extended" (in-app → donors of the cause), "Payout sent" (in-app + SMS → `/structure`).

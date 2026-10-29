@@ -55,13 +55,16 @@ There are **three** distinct user types, each with a separate experience:
 
 ## 4. Authentication
 
-- **Donor:** phone number + password. Signup adds a name. **No OTP** (dropped to avoid SMS
-  cost and infrastructure dependency).
+- **Donor:** phone number + password. Signup adds a name and **verifies the phone number with an
+  SMS code** (board decision, 29/10/2026 — so donors are who they say they are and their
+  activity is traceable). Login itself is phone + password; password recovery is by SMS code.
 - **Organization / hospital:** professional email + password (≥ 12 characters) + two-factor code
   (validated 12/10/2026). Signup also collects organization name, type, region → commune,
   responsible's phone, a récépissé ministériel / agrément upload, and a payout account
-  (Orange Money or Wave). The code is sent by email until SMS is approved, then by SMS.
-- **Moderator:** separate platform (own subdomain), email + password + two-factor code, no role selector.
+  (Orange Money or Wave: the responsible's number and name). The code is sent by SMS.
+  A second onboarding phase later collects the structure's full information.
+- **Moderator:** separate platform (own subdomain), email + password + SMS two-factor code, no role selector.
+- **Sessions** last at most one week for every role.
 
 Note: donors must be logged in to see and donate to causes — the account exists so each
 donation can be tied to a known phone number.
@@ -138,14 +141,16 @@ Orange Money, Allianz.
 - Release happens at the goal **or** the deadline, whichever comes first. At the deadline,
   **everything collected is released**, even if only 1% of the goal was reached.
 - Release is **automatic** (no moderator action) and paid in **one lump sum** per cause.
-- Open: the maximum allowed duration of a cause (`docs/BOARD_QUESTIONS.md` Q5).
+- **Maximum duration: 30 days.** A structure can request an extension, which a moderator approves or refuses.
 
 ---
 
 ## 9. Money flow (agreed)
 
-- Funds go **directly to the structure's verified payout account** (there is no SUNUSOCIAL-held
-  central account); NabooPay holds them until release, then pays them out in one transfer.
+- **Correction (NabooPay API review, 29/10/2026):** donations are credited to **SUNUSOCIAL's NabooPay
+  merchant account**, where they are held until release; the platform then pays the structure's
+  verified mobile-money account in one payout. So SUNUSOCIAL does temporarily hold donor funds —
+  submitted to the board for acknowledgement (`docs/BOARD_QUESTIONS.md` Q4).
 - **Only monetary donations** for the MVP. There is **no logistics for in-kind donations**
   (food, materials delivered physically) yet.
 - SUNUSOCIAL takes a **percentage** to cover maintenance (not profit). **[OPEN]** Whether to
@@ -163,14 +168,14 @@ A secondary module. Hospitals act like structures but, instead of financial caus
   sang" (off by default). If on, the donor provides **residency** (Pikine, Mbour, Plateau,
   Autre) and **blood type** (A+, A−, B+, B−, AB+, AB−, O+, O−, or "Je ne connais pas mon groupe").
   Blood type is health data — hence opt-in, editable later, with a short explanation.
-- **Alert creation:** for now the **moderator** creates alerts; whether hospitals can send
-  alerts themselves is a board question (`docs/BOARD_QUESTIONS.md` Q2). Both screens are
-  built; hospital self-serve sits behind a flag. The form takes hospital name, hospital
+- **Alert creation (decided):** **hospitals create and send their own alerts.** Moderators can
+  see, close or disable any alert. The form takes hospital name, hospital
   city, blood type needed, urgency level. Shows "X donneurs compatibles seront notifiés" before
   sending; active-alerts list with a "Clôturer l'alerte" action.
 - **Donor receives:** informational only, no in-app action. In-app notification + SMS.
 - **[OPEN]** Notification channel: SUNUSOCIAL must validate SMS (cost + a dedicated service
-  number). For now show both in-app and an SMS preview labeled "en attente de validation".
+  number). **Decided:** SMS is required (alerts, 2FA, donor signup verification, donor password
+  recovery, important notifications); provider, budget and sender ID still to choose.
 
 ---
 
@@ -207,13 +212,17 @@ For accessibility, white text on orange uses the darker `#a9561a` (see `docs/DEC
 ## 14. Decisions and open items
 
 **Decided by the board (29/10/2026):** NabooPay; funds held until release; document-only
-structure verification by the moderator; lump-sum payout; every cause has a deadline (release
-at goal or deadline); "Coup de cœur" curated by the moderator.
+structure verification by the moderator; lump-sum payout; every cause has a deadline (max 30
+days, extensions with moderator approval; release at goal or deadline); "Coup de cœur" curated by
+the moderator; hospitals send their own blood alerts; proof mandatory for every funded cause
+within 7 days (delay with moderator approval); refunds return the net amount; minimum donation
+500 FCFA (to study); payout account = the responsible's OM/Wave number and name, with a second
+onboarding phase; SMS required (2FA, donor signup verification, donor password recovery, blood
+alerts, notifications); sessions last at most one week; donor activity is logged.
 
-**Still open** — see `docs/BOARD_QUESTIONS.md`: SMS (provider, budget, sender ID), who sends
-blood alerts, revenue model, official commune list, maximum cause duration, proof deadline for
-all funded causes, refund fees, minimum donation, payout-account holder, CDP declaration,
-legal status, legal documents, domain/WhatsApp/accounts.
+**Still open** — see `docs/BOARD_QUESTIONS.md`: SMS provider/budget/sender ID, revenue model,
+official commune list, NabooPay money flow + KYB, phase-2 onboarding content, minimum donation
+review, legal status, CDP declaration, legal documents, domain/WhatsApp/accounts.
 
 ---
 
