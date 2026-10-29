@@ -111,7 +111,7 @@ export type EndType = "date" | "goal";
 // Entities (one per DB table; Id<T> is Convex's branded id)
 export interface User { _id: Id<"users">; role: Role; name: string; phone?: string; email?: string; structureId?: Id<"structures">; phoneVerifiedAt?: number; disabled: boolean; createdAt: number; }
 export interface DonorProfile { _id: Id<"donorProfiles">; userId: Id<"users">; bloodOptIn: boolean; bloodType?: BloodType; region?: string; commune?: string; smsOptIn: boolean; updatedAt: number; }
-export interface PayoutAccount { method: Method; accountNumber: string; holderName: string; naboopayRecipientId?: string; verifiedAt?: number; verifiedBy?: Id<"users">; }
+export interface PayoutAccount { method: Method; accountNumber: string; holderName: string; phoneVerifiedAt: number; verifiedAt?: number; verifiedBy?: Id<"users">; }
 export interface Structure { _id: Id<"structures">; name: string; type: string; region: string; commune: string; contactName: string; phone: string; email: string; receiptNo?: string; receiptFileId: Id<"_storage">; payout: PayoutAccount; payoutPending?: PayoutAccount; status: "pending" | "approved" | "refused"; refusalReason?: string; suspendedAt?: number; onboardingPhase: 1 | 2; profileCompletedAt?: number; createdAt: number; }
 export interface Cause { _id: Id<"causes">; structureId: Id<"structures">; title: string; description: string; category: Category; bannerFileId: Id<"_storage">; endType: EndType; goalAmount: number; deadline: number; urgency: Urgency; raised: number; donorCount: number; status: CauseStatus; refusalReason?: string; featuredAt?: number; submittedAt: number; approvedAt?: number; closedAt?: number; fundsReleasedAt?: number; payoutTxnId?: string; }
 export interface Donation { _id: Id<"donations">; causeId: Id<"causes">; donorId: Id<"users">; amount: number; fee: number; platformFee: number; net: number; method: Method; provider: Provider; providerTxnId: string; status: DonationStatus; createdAt: number; }
@@ -222,12 +222,12 @@ export const closeAlert: Mutation<{ alertId: Id<"bloodAlerts">; reason: string }
 // these are the app-specific mutations around it.
 export const { auth, signIn, signOut, store } = convexAuth({ providers: [Password({ profile: /* phone for donors, email for orgs */ })] });
 export const registerDonor: Mutation<{ name: string; phone: string; password: string; otpCode: string; bloodProfile?: Partial<DonorProfile> }, { userId: Id<"users"> }>; // phone verified by SMS code
-export const registerOrganization: Mutation<{ organizationName: string; type: string; region: string; commune: string; responsiblePhone: string; email: string; password: string; receiptFileId: Id<"_storage">; payout: Omit<PayoutAccount, "naboopayRecipientId" | "verifiedAt" | "verifiedBy"> }, { structureId: Id<"structures">; status: "pending" }>;
+export const registerOrganization: Mutation<{ organizationName: string; type: string; region: string; commune: string; responsiblePhone: string; email: string; password: string; receiptFileId: Id<"_storage">; payout: { method: Method; accountNumber: string; holderName: string; otpCode: string } }, { structureId: Id<"structures">; status: "pending" }>;
 export const me: Query<{}, { user: User; profile?: DonorProfile; mfaRequired: boolean } | null>;
 export const updateBloodProfile: Mutation<Partial<DonorProfile>, { ok: true }>;
 
 // convex/otp.ts (DT-2) — always SMS
-export const send: Action<{ purpose: "donor_signup" | "login_2fa" | "password_reset"; phone?: string }, { expiresAt: number }>;
+export const send: Action<{ purpose: "donor_signup" | "login_2fa" | "password_reset" | "payout_number"; phone?: string }, { expiresAt: number }>;
 export const verifyLogin: Mutation<{ code: string }, { ok: true }>;   // sets authSessions.mfaVerifiedAt
 
 // convex/passwordReset.ts (DT-15)
@@ -236,7 +236,7 @@ export const requestEmailReset: Action<{ email: string }, { ok: true }>;  // org
 export const resetWithToken: Mutation<{ token: string; newPassword: string }, { ok: true }>;
 
 // convex/structures.ts
-export const requestPayoutChange: Mutation<{ payout: Omit<PayoutAccount, "naboopayRecipientId" | "verifiedAt" | "verifiedBy"> }, { ok: true }>; // → payoutPending, payouts blocked
+export const requestPayoutChange: Mutation<{ payout: { method: Method; accountNumber: string; holderName: string; otpCode: string } }, { ok: true }>; // → payoutPending, payouts blocked
 
 // convex/lib/guards.ts (server helpers used inside functions)
 export async function requireRole(ctx: Ctx, ...roles: Role[]): Promise<AuthedUser>;   // also checks disabled and MFA for org/hospital/moderator; sessions ≤ 7 days via Convex Auth

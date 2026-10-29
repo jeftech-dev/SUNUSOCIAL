@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Date** | 29 October 2026 (rev. 3: second round of board answers, skills installed, NabooPay API reviewed) |
+| **Date** | 29 October 2026 (rev. 4: Convex sub-skills added, SUNUSOCIAL's setup checklist, payout-number verification) |
 | **Scope** | Whole repository: docs, design, prototype, `.claude/skills` |
 | **Audience** | Developers joining the build, and the project owner |
 | **Companion docs** | `DECISIONS.md` (authoritative) · `BOARD_QUESTIONS.md` (open questions, in French) · root `CLAUDE.md` (entry point for agents) |
@@ -17,9 +17,9 @@
 | Decisions | ✅ Logged | `DECISIONS.md`: 15 board decisions, 31 technical decisions, all config values |
 | Architecture, schema, API, security | ✅ Aligned | NabooPay API v2 (checked against the `naboopay` skill), SMS codes, payout worker, extension requests, activity log |
 | Plan | ✅ Updated | `IMPLEMENTATION_ROADMAP.md`: 8 one-week sprints, all 📋 Planned |
-| Agent setup | ✅ Done | Root `CLAUDE.md` + 10 skills in `.claude/skills/` |
+| Agent setup | ✅ Done | Root `CLAUDE.md` + 15 skills in `.claude/skills/` |
 | Design | ✅ Delivered | Charte PDF + logo + prototype. ⚠️ The prototype is now **out of date** (§5) |
-| Open board questions | 🟠 10 | `BOARD_QUESTIONS.md`, ready to send |
+| Open board questions | 🟠 9 + setup checklist | `BOARD_QUESTIONS.md`: questions Q1–Q9 + part E (what SUNUSOCIAL creates and sends us), ready to send |
 | Code, CI, tests | ❌ Not started | |
 
 ---
@@ -49,13 +49,24 @@ Its `scripts/deploy.sh` packs the **whole project folder** and uploads it to a t
 - It excludes only `node_modules` and `.git`, so a local `.env.local` with the NabooPay and SMS keys **would be uploaded too**.
 - Deployments should go through the SUNUSOCIAL Vercel project's Git integration instead.
 
-### ➕ Worth adding later
+### ➕ Convex sub-skills (added in rev. 4)
 
-The `convex` index points to these sub-skills, which are missing:
-- **High value:** `convex-http-actions`, `convex-file-storage`, `convex-cron-jobs`, `convex-schema-validator`, `convex-security-check`, `convex-best-practices`.
-- **Useful:** `convex-migrations`.
+Source: `github.com/waynesutton/builder-skills` (commit `82d1ce2`, 27/09/2026). All five were read before adding:
 
-If they're available from the same source, drop them into `.claude/skills/`. There's no skill for Convex Auth; its documentation is enough.
+| Skill | Notes |
+|---|---|
+| `convex-http-actions` | Webhook pattern (raw body, HMAC, constant-time compare) matches the NabooPay webhook design |
+| `convex-file-storage` | Store `Id<"_storage">`, resolve URLs in queries. Matches DT-12 |
+| `convex-cron-jobs` | Release, pending re-check, reconciliation and suspension crons |
+| `convex-schema-validator` | |
+| `convex-security-check` | Its example looks users up by `tokenIdentifier` (the Clerk style). With Convex Auth, use `getAuthUserId(ctx)` inside our `requireRole` helper |
+
+**Install notes:**
+- `npx skills add … -s a -s b` only installs the **last** `-s`.
+- Four of the upstream `SKILL.md` files have invalid YAML front matter: an unquoted `: ` in `description`. The CLI skips them, and Claude Code may fail to load them.
+- So those four were copied straight from the repo with the description quoted. Nothing else was changed.
+- `skills-lock.json` was removed, because it could only track one of the five. If you update these skills from upstream, re-apply the quoting.
+- Not added (not needed yet): `convex-best-practices`, `convex-migrations`, `convex-realtime`, `convex-security-audit`.
 
 ---
 
@@ -105,27 +116,27 @@ All of this is reflected across the docs. The rev. 1 interim measures that no lo
 | Q1 | SMS provider, budget, sender ID | **Launch**: donor signup needs SMS |
 | Q2 | Revenue model | The fee line shown to donors |
 | Q3 | List of the 14 regions and their communes | Signups, alerts |
-| Q4 | Acknowledge the NabooPay money flow + start KYB | Collecting more than 200k XOF/month |
+| Q4 | Acknowledge the money flow through SUNUSOCIAL's NabooPay account | Payouts |
 | Q5 | Content and gating of onboarding phase 2 | Payouts, if phase 2 becomes mandatory |
 | Q6 | Review the 500 FCFA minimum | Nothing |
 | Q7–Q9 | Legal status, CDP declaration, legal documents | NabooPay KYB, blood module, go-live |
-| Q10 | Domain, WhatsApp, accounts, first moderator | Go-live |
+| Part E | **SUNUSOCIAL's setup checklist:** NabooPay account + KYB (lifts the 200k XOF/month cap) + scoped API keys + webhook; SMS account + sender ID; domain + DNS; WhatsApp; first moderator; billing card | Collecting donations, go-live |
 
 ### Waiting on JefTech / the project owner
-1. **NabooPay:** create the SUNUSOCIAL organisation and get sandbox keys (`checkout` scope + `payout` scope). Ask them:
+1. **Create the Vercel, Convex and Resend accounts** (JefTech administers them; SUNUSOCIAL's card pays, DT-32).
+2. **Help SUNUSOCIAL with the NabooPay setup** (part E1). Ask NabooPay:
    - whether escrow has a release API;
    - whether payouts have any fees;
-   - what the transaction limits are.
-2. **Accounts:** Vercel, Convex and Resend in SUNUSOCIAL's name.
-3. **Optional:** add the missing Convex sub-skills (§2).
+   - whether the 2,000,000 XOF manual-review threshold can be raised for a verified account, and how long the review takes.
+3. Pick a **secrets-sharing tool** for the API keys (e.g. Bitwarden Send or 1Password).
 4. **Update the prototype** before showing it to the client again. It still has:
    - the NabooPay/SycaPay toggle;
    - the moderator creating blood alerts;
-   - no SMS code step at donor signup;
+   - no SMS step at donor signup or on the payout number;
    - no extension or delay requests;
-   - a Specifications register that lists decisions as "À valider" when they are now decided.
+   - a Specifications register that lists decided items as "À valider".
 
 ### Ready to build now
 **Sprints 1 to 5 can start immediately.** Development uses `PAYMENT_PROVIDER=mock` and `SMS_PROVIDER=console`, so nothing waits on the board until go-live.
 
-To go live with real money, these still have to be in place: Q1, Q2, Q4/Q7 (KYB), the NabooPay live keys, the domain, and the first moderator.
+To go live with real money, these still have to be in place: Q1, Q2, Q4, Q7 and part E1 (NabooPay KYB + live keys), plus E3 (domain) and E4 (first moderator).
