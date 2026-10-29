@@ -43,7 +43,7 @@ Everything else requires a session. **Donors must be logged in to view and donat
 |------|----------|-------------|------|
 | action | `otp.send` | Send an SMS code (purpose: `donor_signup` \| `login_2fa` \| `password_reset` \| `payout_number`) | Public / pre-MFA session |
 | mutation | `auth.registerDonor` | Create donor (name, phone, password, SMS code) — phone verified | Public |
-| mutation | `auth.registerOrganization` | Create structure/hospital + upload récépissé + payout account (number verified by SMS code); pending validation | Public |
+| mutation | `auth.registerOrganization` | Create structure/hospital + upload récépissé/agrément + payout account for structures only (number verified by SMS code); pending validation | Public |
 | action | `signIn("password")` / `signOut` | Convex Auth: phone+password (donor) or email+password (org/hospital/mod) | Public |
 | mutation | `otp.verifyLogin` | Verify the SMS code; marks the session MFA-verified | Org/hospital/mod session, pre-MFA |
 | mutation | `passwordReset.resetWithSmsCode` | Donor: new password with a valid SMS code | Public (code) |

@@ -80,7 +80,7 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `email` | string | required | Professional email |
 | `receiptNo` | string | optional | Récépissé or agrément number |
 | `receiptFileId` | Id<"_storage"> | required | Uploaded document. **Moderators only** |
-| `payout` | object | required | `{ method: "orange_money"\|"wave", accountNumber (E.164), holderName (the responsible), phoneVerifiedAt, verifiedAt?, verifiedBy? }`. The number is verified by SMS code (DT-5) |
+| `payout` | object | required for structures; absent for hospitals | `{ method: "orange_money"\|"wave", accountNumber (E.164), holderName (the responsible), phoneVerifiedAt, verifiedAt?, verifiedBy? }`. The number is verified by SMS code (DT-5) |
 | `payoutPending` | object | optional | A requested change to the payout account, waiting for moderator review. While it is set, payouts are blocked |
 | `status` | string | `pending`\|`approved`\|`refused` | Validation state (documents + payout account, DB-3) |
 | `refusalReason` | string | optional | Shown to the structure if refused |

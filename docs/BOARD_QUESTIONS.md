@@ -16,7 +16,7 @@ Merci pour vos réponses. Voici ce que nous avons retenu, pour validation finale
 | Gestion des fonds | Les fonds sont **bloqués** jusqu'à la fin de la cause, puis versés **en une seule fois** |
 | Durée des causes | **Toute cause a une date limite**, de **30 jours au maximum**. Les fonds sont versés à l'objectif atteint ou à la date limite, au premier des deux. Une structure peut demander une **prolongation**, que le modérateur accepte ou refuse |
 | Vérification des structures | **Sur documents uniquement**, validée ou refusée par le modérateur |
-| Compte de réception | Le **responsable** choisit Orange Money ou Wave et indique **son numéro et son nom**. Le numéro est **vérifié par un code SMS** à l'inscription, pour éviter toute erreur : un versement envoyé au mauvais numéro ne peut pas être récupéré |
+| Compte de réception (structures) | Le **responsable** choisit Orange Money ou Wave et indique **son numéro et son nom**. Le numéro est **vérifié par un code SMS** à l'inscription, pour éviter toute erreur : un versement envoyé au mauvais numéro ne peut pas être récupéré |
 | Coup de cœur de la semaine | Choisi par le **modérateur** |
 | Alertes de don de sang | **Les hôpitaux les envoient eux-mêmes** |
 | Preuve d'utilisation | **Obligatoire pour toute cause financée**, dans les 7 jours suivant le versement. La structure peut demander un **sursis** au modérateur. Sans preuve, le compte est suspendu automatiquement |
@@ -26,7 +26,7 @@ Merci pour vos réponses. Voici ce que nous avons retenu, pour validation finale
 | Durée des sessions | **1 semaine au maximum**, puis il faut se reconnecter |
 | Historique d'activité | Les actions des donateurs sont enregistrées : inscription, connexions, dons, modifications du profil |
 
-Il reste les questions ci-dessous (parties A à C), et la liste de ce que SUNUSOCIAL doit créer et nous transmettre (partie E). Le développement peut avancer sans attendre, mais **le lancement en dépend**.
+Il reste les questions ci-dessous (parties A à C), la liste de ce que SUNUSOCIAL doit créer et nous transmettre (partie E), et l'organisation du lancement (partie F). Le développement peut avancer sans attendre, mais **le lancement en dépend**.
 
 ---
 
@@ -37,7 +37,19 @@ Les SMS sont désormais **indispensables** : un donateur ne pourra pas s'inscrir
 
 **À décider :**
 - **a.** Quel fournisseur ? Nous pouvons vous présenter 2 ou 3 devis (Orange, agrégateurs…).
-- **b.** Quel budget mensuel maximum ? À titre d'ordre de grandeur, chaque inscription, chaque connexion d'une structure et chaque alerte de sang envoyée à un donneur coûte un SMS.
+- **b.** Quel budget mensuel maximum ? Pour vous aider, voici une **estimation du volume** pour un mois type au lancement. Les hypothèses sont à ajuster : 500 nouveaux donateurs, 25 structures et 5 hôpitaux actifs, 4 alertes de sang.
+
+  | Usage | Calcul | SMS / mois |
+  |---|---|---|
+  | Vérification du numéro à l'inscription des donateurs | 500 inscriptions + 10 % de renvois | ≈ 550 |
+  | Code de connexion des structures, hôpitaux et modérateurs | 30 comptes × ~20 connexions | ≈ 600 |
+  | Récupération de mot de passe des donateurs | | ≈ 50 |
+  | Vérification des numéros de versement | nouvelles structures et changements | ≈ 10 |
+  | Alertes de don de sang | 4 alertes × ~300 donneurs compatibles | ≈ 1 200 |
+  | Notifications importantes (preuve publiée, remboursement, versement…) | | ≈ 1 000 |
+  | **Total** | | **≈ 3 400 SMS / mois** |
+
+  Le budget est ce total multiplié par le **prix unitaire** indiqué dans le devis du fournisseur. Les alertes de sang sont le poste le plus variable : il dépend du nombre de donneurs inscrits.
 - **c.** Quel nom ou numéro d'expéditeur dédié (par ex. « SUNUSOCIAL ») ?
 
 **En attendant :** l'équipe de développement utilise un simulateur, qui n'envoie aucun vrai SMS.
@@ -112,6 +124,34 @@ Il faut, en français : des **conditions générales d'utilisation**, une **poli
 
 ---
 
+## F. Organisation du lancement
+
+Ces points ne bloquent pas le développement, mais il faut les décider avant l'ouverture au public.
+
+### F1 — Date de lancement et structures pilotes
+- Quelle **date de lancement** visez-vous ?
+- Quelles **premières structures et hôpitaux** seront accompagnés pour s'inscrire avant l'ouverture, afin que les donateurs trouvent des causes dès le premier jour ?
+- Qui s'occupe de les recruter ? Nous suggérons Ndeye Mareme, responsable marketing.
+
+### F2 — La modération au quotidien
+- **Qui modère** la plateforme au lancement, et qui le remplace en cas d'absence ?
+- **En combien de temps** une demande doit-elle être traitée (inscription d'une structure, cause, preuve, prolongation, remboursement) ? Nous proposons **48 heures au maximum**.
+- Faut-il qu'un modérateur puisse **ajouter d'autres modérateurs** lui-même ? Aujourd'hui, c'est JËFTECH qui crée ces comptes.
+
+### F3 — Objectifs de réussite
+Nous avons proposé ces objectifs pour les 3 premiers mois. Merci de les confirmer ou de les ajuster :
+
+| Objectif | Proposition |
+|---|---|
+| Structures vérifiées | 25 |
+| Causes financées (objectif ou date limite atteint) | 60 % des causes publiées |
+| Preuves publiées dans les 7 jours | 100 % des causes financées |
+| Donateurs qui donnent plus d'une fois | 30 % |
+| Dons commencés puis confirmés | 85 % |
+| Alertes de sang qui atteignent leur objectif | 70 % |
+
+---
+
 ## D. Ce que JËFTECH prend en charge
 
 **Vercel, Convex et Resend** (hébergement, base de données, e-mails) sont créés et administrés par JËFTECH. SUNUSOCIAL n'a rien à configurer. Comme prévu au contrat, les frais d'hébergement (environ 45 000 FCFA/mois) sont payés par SUNUSOCIAL : il suffit d'enregistrer **la carte de paiement de SUNUSOCIAL** sur ces comptes (voir E5).
@@ -128,11 +168,12 @@ Le compte doit être **au nom de SUNUSOCIAL** : JËFTECH ne peut pas le créer �
 1. **Créer le compte** de SUNUSOCIAL sur `platform.naboopay.com`, et **remplir le profil de l'entreprise** (secteur d'activité). Sans ce profil, NabooPay refuse toute opération.
 2. **Faire vérifier l'entreprise (KYB)** avec les documents juridiques de SUNUSOCIAL (voir Q7). **Tant que ce n'est pas fait, le compte est limité à 200 000 FCFA de dons par mois**, ce qui est insuffisant dès les premières causes.
 3. **Activer** sur le compte : **Wave**, **Orange Money** et les **versements (payouts)**.
-4. **Créer deux clés d'API**, d'abord en test puis en production, et nous les transmettre **de façon sécurisée** (jamais par WhatsApp ni par e-mail en clair ; nous proposerons un outil de partage) :
+4. **Demander à NabooPay s'il existe un mode test** (sandbox). Sinon, nous ferons les essais avec de petits montants réels (quelques centaines de FCFA), remboursés ensuite.
+5. **Créer deux clés d'API** (en test si NabooPay le propose, puis en production) et nous les transmettre **de façon sécurisée** (jamais par WhatsApp ni par e-mail en clair ; nous proposerons un outil de partage) :
    - une clé avec la permission **« checkout »**, pour encaisser les dons ;
    - une clé avec la permission **« payout »**, pour verser l'argent aux structures et rembourser les donateurs.
-5. **Enregistrer l'adresse de notification (webhook)** que nous vous fournirons, et nous transmettre la **clé secrète** associée.
-6. **Cagnottes de plus de 2 000 000 FCFA :** chez NabooPay, tout versement au-delà de ce montant est **vérifié manuellement** avant d'être envoyé, ce qui peut retarder le paiement de la structure de quelques jours. Lors de la vérification KYB, **demandez à NabooPay** si ce plafond peut être relevé pour un compte vérifié, et quel est leur délai de vérification. De notre côté, la plateforme préviendra la structure quand un versement est en cours de vérification.
+6. **Enregistrer l'adresse de notification (webhook)** que nous vous fournirons, et nous transmettre la **clé secrète** associée.
+7. **Cagnottes de plus de 2 000 000 FCFA :** chez NabooPay, tout versement au-delà de ce montant est **vérifié manuellement** avant d'être envoyé, ce qui peut retarder le paiement de la structure de quelques jours. Lors de la vérification KYB, **demandez à NabooPay** si ce plafond peut être relevé pour un compte vérifié, et quel est leur délai de vérification. De notre côté, la plateforme préviendra la structure quand un versement est en cours de vérification.
 
 ### E2 — SMS
 Une fois le fournisseur choisi (Q1) : ouvrir le compte au nom de SUNUSOCIAL, **faire enregistrer le nom d'expéditeur** (par ex. « SUNUSOCIAL »), et nous transmettre la clé d'API de façon sécurisée.
@@ -166,3 +207,4 @@ Une **carte de paiement au nom de SUNUSOCIAL**, à enregistrer sur Vercel et Con
 | Q9 | CGU et politiques | Mise en ligne | 🟠 Moyenne |
 | E1 | Compte NabooPay, vérification KYB, clés d'API, webhook | Encaissement des dons | 🔴 Haute |
 | E2–E6 | SMS, domaine, contacts, carte de paiement, contenus | Mise en ligne | 🟠 Moyenne |
+| F1–F3 | Date de lancement, structures pilotes, modération, objectifs | Ouverture au public | 🟠 Moyenne |
