@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SUNUSOCIAL — Donnez avec confiance</title>
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#faf7f2;color:#1e293b;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:Montserrat,sans-serif;margin:0}
+a{color:#174a7c}a:hover{color:#de7d28}
+input,select,button,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #de7d28;outline-offset:2px}
+</style>
+</helmet>
+
+<sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="01 Accueil public">
+  <header style="position:sticky;top:0;z-index:20;background:rgba(250,247,242,.92);backdrop-filter:blur(10px);border-bottom:1px solid #ece6dc">
+    <div style="max-width:1200px;margin:0 auto;padding:12px clamp(16px,4vw,32px);display:flex;align-items:center;gap:24px">
+      <img src="assets/logo.png" alt="SUNUSOCIAL" style="height:46px;width:auto;display:block">
+      <nav class="nav-anchors" style="display:flex;gap:22px;font-size:14px;font-weight:500;flex-wrap:wrap">
+        <a href="#comment" style="color:#1e293b;text-decoration:none">Comment ça marche</a>
+        <a href="#preuves" style="color:#1e293b;text-decoration:none">Preuves de réception</a>
+      </nav>
+      <div style="display:flex;gap:8px;flex:none;margin-left:auto">
+        <button onClick="{{ goLoginDonor }}" style="white-space:nowrap;flex:none;background:transparent;border:1.5px solid #174a7c;color:#174a7c;border-radius:999px;padding:9px 18px;font-weight:600;font-size:14px;cursor:pointer" style-hover="background:#eaf1f8">Se connecter</button>
+      </div>
+    </div>
+  </header>
+
+  <section style="position:relative;overflow:hidden">
+    <div style="position:absolute;right:-180px;top:-140px;width:560px;height:560px;border-radius:50%;border:56px solid #fdf0e3;pointer-events:none"></div>
+    <div style="position:absolute;left:-220px;bottom:-260px;width:520px;height:520px;border-radius:50%;border:48px solid #eaf1f8;pointer-events:none"></div>
+    <div style="position:relative;max-width:1200px;margin:0 auto;padding:clamp(40px,7vw,96px) clamp(16px,4vw,32px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:clamp(32px,5vw,72px);align-items:center">
+      <div style="display:flex;flex-direction:column;gap:24px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-family:Montserrat,sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#174a7c"><span style="width:28px;height:3px;border-radius:2px;background:#de7d28"></span>Plateforme digitale de solidarité — Sénégal</span>
+        <h1 style="font-size:clamp(38px,5.4vw,64px);line-height:1.04;font-weight:800;letter-spacing:-.02em;color:#1e293b;text-wrap:balance">Donnez avec <span style="color:#174a7c">confiance.</span> Aidez avec <span style="color:#de7d28">impact.</span></h1>
+        <p style="margin:0;font-size:18px;line-height:1.6;color:#4a5568;max-width:520px;text-wrap:pretty">SUNUSOCIAL relie les donateurs aux orphelinats, pouponnières, foyers et centres vérifiés du Sénégal. Chaque don est suivi, et chaque structure publie une preuve de réception.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button onClick="{{ goSignupDonor }}" style="display:inline-flex;align-items:center;gap:10px;background:#174a7c;color:#fff;border:0;border-radius:999px;padding:16px 26px;font-family:Montserrat,sans-serif;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px -10px rgba(23,74,124,.6)" style-hover="background:#0f3459">Je suis Donateur<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+          <button onClick="{{ goSignupOrg }}" style="display:inline-flex;align-items:center;gap:10px;background:#de7d28;color:#fff;border:0;border-radius:999px;padding:16px 26px;font-family:Montserrat,sans-serif;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 10px 24px -10px rgba(222,125,40,.7)" style-hover="background:#c86c1c">Je suis une Structure<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+        </div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:14px;color:#4a5568;padding-top:4px">
+          <span style="display:inline-flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>Structures vérifiées</span>
+          <span style="display:inline-flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#174a7c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"></rect><path d="M12 18h.01"></path></svg>Orange Money · Wave</span>
+          <span style="display:inline-flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#de7d28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>Preuve publiée pour chaque cause</span>
+        </div>
+      </div>
+      <div style="position:relative;padding:0 0 28px 28px">
+        <div style="position:relative;aspect-ratio:5/4;border-radius:36px 36px 36px 8px;overflow:hidden;background:#eaf1f8;box-shadow:0 30px 60px -30px rgba(23,74,124,.45)">
+          <img src="https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=1100&q=70&auto=format&fit=crop" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+        </div>
+        <div style="position:absolute;left:0;bottom:0;background:#fff;border-radius:20px;padding:14px 16px;box-shadow:0 18px 40px -18px rgba(30,41,59,.35);display:flex;gap:12px;align-items:center;max-width:300px">
+          <span style="flex:none;width:40px;height:40px;border-radius:50%;background:#ebf5e6;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:14px">Objectif atteint · 175 000 FCFA</span><span style="font-size:12px;color:#5b6678">Orphelinat Darou Salam, Kaolack</span></div>
+        </div>
+        <div style="position:absolute;right:16px;top:16px;background:#fff;border-radius:16px;padding:10px 14px;box-shadow:0 18px 40px -18px rgba(30,41,59,.35);display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#3b7a29"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>Structure vérifiée</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="comment" style="background:#fff;padding:clamp(56px,8vw,104px) clamp(16px,4vw,32px)">
+    <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:48px">
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:640px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-family:Montserrat,sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#174a7c"><span style="width:28px;height:3px;border-radius:2px;background:#de7d28"></span>Comment ça marche</span>
+        <h2 style="font-size:clamp(28px,3.6vw,42px);font-weight:800;line-height:1.12;letter-spacing:-.01em;text-wrap:balance">Un lien direct entre votre don et le besoin, du premier franc à la preuve.</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:20px">
+        <sc-for list="{{ steps }}" as="st" hint-placeholder-count="3">
+          <div style="position:relative;background:#faf7f2;border-radius:28px 28px 28px 8px;padding:28px;display:flex;flex-direction:column;gap:16px;min-height:260px;overflow:hidden">
+            <span style="position:absolute;right:-6px;top:-18px;font-family:Montserrat,sans-serif;font-weight:800;font-size:120px;line-height:1;color:{{ st.ghost }}">{{ st.n }}</span>
+            <span style="position:relative;width:56px;height:56px;border-radius:18px;display:grid;place-items:center;background:{{ st.color }};color:#fff">{{ st.icon }}</span>
+            <h3 style="position:relative;font-size:21px;font-weight:700;line-height:1.25">{{ st.title }}</h3>
+            <p style="position:relative;margin:0;color:#4a5568;line-height:1.6;font-size:15px">{{ st.text }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section id="preuves" style="padding:clamp(56px,8vw,104px) clamp(16px,4vw,32px)">
+    <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:36px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:620px">
+          <span style="display:inline-flex;align-items:center;gap:10px;font-family:Montserrat,sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#174a7c"><span style="width:28px;height:3px;border-radius:2px;background:#529e3b"></span>Preuves de réception</span>
+          <h2 style="font-size:clamp(28px,3.6vw,42px);font-weight:800;line-height:1.12;letter-spacing:-.01em">Ce que vos dons sont devenus</h2>
+          <p style="margin:0;color:#4a5568;line-height:1.6">Publiées par les structures, validées par notre équipe de modération. Visibles par tous, sans inscription.</p>
+        </div>
+        <button onClick="{{ goSignupDonor }}" style="display:inline-flex;align-items:center;gap:8px;background:transparent;border:1.5px solid #174a7c;color:#174a7c;border-radius:999px;padding:11px 20px;font-weight:600;font-size:14px;cursor:pointer" style-hover="background:#eaf1f8">Voir les causes en cours<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:20px">
+        <sc-for list="{{ feed }}" as="f" hint-placeholder-count="6">
+          <article style="background:#fff;border-radius:24px 24px 24px 6px;overflow:hidden;box-shadow:0 1px 0 #ece6dc,0 12px 30px -20px rgba(30,41,59,.3);display:flex;flex-direction:column">
+            <div style="position:relative;aspect-ratio:4/3;background:#eaf1f8">
+              <img src="{{ f.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+              <span style="position:absolute;left:12px;bottom:12px;display:inline-flex;align-items:center;gap:6px;background:#529e3b;color:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600">{{ f.tag }}</span>
+            </div>
+            <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#5b6678"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>{{ f.org }}</span>
+              <h3 style="font-size:17px;font-weight:700;line-height:1.3">{{ f.cause }}</h3>
+              <span style="font-size:12px;color:#8a94a6">{{ f.date }}</span>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding:0 clamp(16px,4vw,32px) clamp(56px,8vw,96px)">
+    <div style="position:relative;overflow:hidden;max-width:1200px;margin:0 auto;background:#174a7c;border-radius:40px 40px 40px 10px;padding:clamp(32px,5vw,64px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:32px;align-items:center">
+      <div style="position:absolute;right:-120px;bottom:-200px;width:420px;height:420px;border-radius:50%;border:44px solid rgba(222,125,40,.35);pointer-events:none"></div>
+      <div style="position:relative;display:flex;flex-direction:column;gap:14px">
+        <h2 style="color:#fff;font-size:clamp(26px,3.2vw,38px);font-weight:800;line-height:1.15;text-wrap:balance">Rejoignez la chaîne de solidarité.</h2>
+        <p style="margin:0;color:#d6e2ef;line-height:1.6;max-width:460px">Donateurs : un numéro de téléphone suffit. Structures et hôpitaux : un e-mail professionnel et votre récépissé ou agrément.</p>
+      </div>
+      <div style="position:relative;display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end">
+        <button onClick="{{ goSignupDonor }}" style="background:#fff;color:#174a7c;border:0;border-radius:999px;padding:15px 24px;font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;cursor:pointer" style-hover="background:#eaf1f8">Créer un compte donateur</button>
+        <button onClick="{{ goSignupOrg }}" style="background:#de7d28;color:#fff;border:0;border-radius:999px;padding:15px 24px;font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;cursor:pointer" style-hover="background:#c86c1c">Inscrire ma structure</button>
+      </div>
+    </div>
+  </section>
+
+  <footer style="background:#1e293b;color:#cbd5e1">
+    <div style="max-width:1200px;margin:0 auto;padding:44px clamp(16px,4vw,32px);display:flex;flex-wrap:wrap;gap:28px;align-items:center;justify-content:space-between">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <img src="assets/logo-white.png" alt="SUNUSOCIAL" style="height:52px;width:auto;align-self:flex-start">
+        <span style="font-size:13px">Dakar, Sénégal · © 2026 SUNUSOCIAL</span>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <a href="https://wa.me/221770000000?text=Bonjour%20SUNUSOCIAL" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#529e3b;color:#fff;border-radius:999px;padding:12px 18px;text-decoration:none;font-weight:600;font-size:14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>Nous contacter sur WhatsApp</a>
+        <a href="Moderateur-v2.dc.html" style="color:#94a3b8;font-size:13px">Espace modération</a>
+        <a href="Specifications.dc.html" style="color:#94a3b8;font-size:13px">Spécifications techniques</a>
+      </div>
+    </div>
+  </footer>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="02 Authentification" style="min-height:100vh;display:flex;flex-direction:column;background:{{ authBg }};transition:background .6s">
+  <header style="max-width:1200px;width:100%;margin:0 auto;padding:16px clamp(16px,4vw,32px);display:flex;align-items:center;justify-content:space-between">
+    <button onClick="{{ goLanding }}" style="background:none;border:0;padding:0;cursor:pointer"><img src="assets/logo.png" alt="SUNUSOCIAL" style="height:44px;display:block"></button>
+    <button onClick="{{ goLanding }}" style="background:none;border:0;color:#5b6678;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px" style-hover="color:#1e293b">← Retour à l'accueil</button>
+  </header>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:24px;padding:8px 16px 48px">
+    <div style="position:relative;display:grid;grid-template-columns:1fr 1fr;background:#fff;border-radius:999px;padding:5px;box-shadow:0 8px 24px -16px rgba(30,41,59,.4);width:min(100%,360px)">
+      <span style="position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 5px);border-radius:999px;background:{{ roleColor }};transform:translateX({{ pillX }});transition:transform .5s cubic-bezier(.7,0,.2,1),background .5s"></span>
+      <button onClick="{{ setDonor }}" style="position:relative;background:none;border:0;padding:12px;border-radius:999px;font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;cursor:pointer;color:{{ donorTabFg }};transition:color .4s">Donateur</button>
+      <button onClick="{{ setOrg }}" style="position:relative;background:none;border:0;padding:12px;border-radius:999px;font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;cursor:pointer;color:{{ orgTabFg }};transition:color .4s">Structure</button>
+    </div>
+
+    <div style="position:relative;width:100%;max-width:1000px;min-height:{{ cardH }};background:#fff;border-radius:36px 36px 36px 10px;overflow:hidden;box-shadow:0 40px 80px -40px rgba(30,41,59,.45)">
+      <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;top:0;bottom:0;left:0;width:50%;transform:translateX({{ brandX }});transition:transform .7s cubic-bezier(.7,0,.2,1),background .7s;background:{{ roleColor }};color:#fff;padding:44px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;z-index:2">
+          <div style="position:absolute;right:-140px;top:-140px;width:380px;height:380px;border-radius:50%;border:40px solid rgba(255,255,255,.1)"></div>
+          <div style="position:absolute;left:-100px;bottom:-160px;width:320px;height:320px;border-radius:50%;border:34px solid {{ ringColor }}"></div>
+          <img src="assets/logo-white.png" alt="" style="position:relative;height:56px;width:auto;align-self:flex-start">
+          <div style="position:relative;display:flex;flex-direction:column;gap:14px">
+            <span style="font-family:Montserrat,sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.85">{{ brandKicker }}</span>
+            <h2 style="font-size:34px;font-weight:800;line-height:1.12;color:#fff;text-wrap:balance">{{ brandTitle }}</h2>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:rgba(255,255,255,.88);max-width:340px">{{ brandText }}</p>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isNarrow }}" hint-placeholder-val="{{ false }}">
+        <div style="background:{{ roleColor }};padding:22px 24px;color:#fff;display:flex;flex-direction:column;gap:6px;transition:background .5s"><span style="font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.85">{{ brandKicker }}</span><h2 style="font-size:22px;font-weight:800;color:#fff">{{ brandTitle }}</h2></div>
+      </sc-if>
+      <div style="position:{{ formPos }};top:0;bottom:0;left:0;width:{{ formW }};transform:translateX({{ formX }});transition:transform .7s cubic-bezier(.7,0,.2,1);padding:clamp(24px,4vw,44px);display:flex;flex-direction:column;gap:18px;overflow:auto">
+        <div style="display:flex;gap:4px;background:#f3f4f7;border-radius:14px;padding:4px;align-self:flex-start">
+          <button onClick="{{ setLogin }}" style="border:0;border-radius:11px;padding:9px 16px;font-weight:600;font-size:14px;cursor:pointer;background:{{ loginBg }};color:{{ loginFg }};box-shadow:{{ loginSh }}">Se connecter</button>
+          <button onClick="{{ setSignup }}" style="border:0;border-radius:11px;padding:9px 16px;font-weight:600;font-size:14px;cursor:pointer;background:{{ signupBg }};color:{{ signupFg }};box-shadow:{{ signupSh }}">S'inscrire</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <h3 style="font-size:26px;font-weight:800;color:{{ roleColor }}">{{ formTitle }}</h3>
+          <p style="margin:0;font-size:14px;color:#5b6678">{{ formSub }}</p>
+        </div>
+
+        <sc-if value="{{ showName }}" hint-placeholder-val="{{ false }}">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Prénom et nom<input value="{{ name }}" onChange="{{ onName }}" placeholder="Aminata Diop" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#174a7c"></input></label>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155;grid-column:1/-1">Groupe sanguin<select value="{{ blood }}" onChange="{{ onBlood }}" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff;padding:13px 12px" style-focus="border-color:#174a7c"><option value="?">Je ne sais pas</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Région<select value="{{ region }}" onChange="{{ onRegion }}" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 12px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#174a7c"><sc-for list="{{ regions }}" as="r" hint-placeholder-count="8"><option value="{{ r }}">{{ r }}</option></sc-for></select></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Commune<select value="{{ commune }}" onChange="{{ onCommune }}" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 12px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#174a7c"><sc-for list="{{ communes }}" as="c" hint-placeholder-count="6"><option value="{{ c }}">{{ c }}</option></sc-for></select></label>
+          </div>
+          <span style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#5b6678;line-height:1.5;margin-top:-6px"><svg style="flex:none;margin-top:1px" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b8322a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></svg>Pour recevoir les alertes des hôpitaux proches quand votre groupe sanguin est recherché.</span>
+        </sc-if>
+        <sc-if value="{{ showOrgFields }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Nom de la structure<input placeholder="Pouponnière Keur Khadija" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none" style-focus="border-color:#de7d28"></input></label>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155;grid-column:1/-1">Type de structure<select value="{{ orgType }}" onChange="{{ onOrgType }}" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 12px;font-size:15px;background:#fff;outline:none" style-focus="border-color:#de7d28"><option>Hôpital (don de sang)</option><option>Orphelinat</option><option>Prison pour femmes</option><option>Centre pour handicapés</option><option>Pouponnière</option><option>Foyer</option><option>Autre</option></select></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Région<select value="{{ region }}" onChange="{{ onRegion }}" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 12px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#de7d28"><sc-for list="{{ regions }}" as="r" hint-placeholder-count="8"><option value="{{ r }}">{{ r }}</option></sc-for></select></label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Commune<select value="{{ commune }}" onChange="{{ onCommune }}" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 12px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#de7d28"><sc-for list="{{ communes }}" as="c" hint-placeholder-count="6"><option value="{{ c }}">{{ c }}</option></sc-for></select></label>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showEmail }}" hint-placeholder-val="{{ false }}">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">E-mail professionnel<input type="email" placeholder="contact@keurkhadija.sn" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#de7d28"></input></label>
+        </sc-if>
+        <sc-if value="{{ showPhone }}" hint-placeholder-val="{{ true }}">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">{{ phoneLabel }}
+          <div style="display:flex;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff"><span style="display:flex;align-items:center;gap:6px;padding:0 12px;background:#f6f7f9;border-right:1.5px solid #e2e8f0;font-size:14px;font-weight:600;color:#334155;white-space:nowrap">+221</span><input value="{{ phone }}" onChange="{{ onPhone }}" placeholder="77 123 45 67" style="flex:1;min-width:0;border:0;padding:13px 14px;font-size:15px;outline:none"></input></div>
+        </label>
+        </sc-if>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Mot de passe<input type="password" placeholder="••••••••" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none" style-focus="border-color:#174a7c"></input></label>
+        <sc-if value="{{ showSecure }}" hint-placeholder-val="{{ false }}"><span style="display:flex;gap:8px;align-items:center;font-size:12px;color:#5b6678;margin-top:-6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#de7d28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>{{ secureNote }}</span></sc-if>
+        <sc-if value="{{ showUpload }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:13px;font-weight:600;color:#334155">Récépissé ministériel (PDF ou image)</span>
+            <button onClick="{{ toggleFile }}" style="border:1.5px dashed {{ fileBorder }};background:{{ fileBg }};border-radius:16px;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left">
+              <span style="flex:none;width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#de7d28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span>
+              <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600;color:#1e293b">{{ fileLabel }}</span><span style="font-size:12px;color:#8a94a6">PDF, JPG ou PNG · 5 Mo max.</span></span>
+            </button>
+            <span style="align-self:flex-start;font-size:12px;font-weight:600;color:#b4601a;background:#fdf0e3;border-radius:999px;padding:4px 10px">Vérification en cours de définition</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showHospitalNote }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:10px;align-items:flex-start;background:#fbeceb;border-radius:14px;padding:12px 14px;font-size:13px;color:#7a1f19;line-height:1.5"><svg style="flex:none;margin-top:1px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b8322a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></svg><span>Les hôpitaux ne créent pas de cagnotte : ils publient des alertes quand un groupe sanguin manque, envoyées aux donneurs compatibles autour d'eux.</span></div>
+        </sc-if>
+        <sc-if value="{{ showHospitalLogin }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goHospital }}" style="align-self:flex-start;background:none;border:0;padding:0;font-size:13px;color:#b8322a;font-weight:600;cursor:pointer;margin-top:-6px">Vous êtes un hôpital ? Accéder à l'espace alertes →</button></sc-if>
+        <sc-if value="{{ isLoginMode }}" hint-placeholder-val="{{ true }}"><a href="#" style="font-size:13px;align-self:flex-end;margin-top:-8px">Mot de passe oublié ?</a></sc-if>
+        <button onClick="{{ submit }}" style="margin-top:4px;background:{{ roleColor }};color:#fff;border:0;border-radius:999px;padding:16px;font-family:Montserrat,sans-serif;font-weight:700;font-size:16px;cursor:pointer;transition:background .5s,filter .2s" style-hover="filter:brightness(.9)">{{ submitLabel }}</button>
+        <p style="margin:0;font-size:12px;color:#8a94a6;text-align:center">{{ legal }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ICON = (d) => React.createElement('svg', { width: 26, height: 26, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', dangerouslySetInnerHTML: { __html: d } });
+const U = id => `https://images.unsplash.com/${id}?w=800&q=70&auto=format&fit=crop`;
+const D = id => `https://unsplash.com/photos/${id}/download?w=800`;
+
+const GEO = {
+  'Dakar': ['Dakar-Plateau', 'Médina', 'Grand Dakar', 'Parcelles Assainies', 'Pikine', 'Guédiawaye', 'Keur Massar', 'Rufisque'],
+  'Thiès': ['Thiès', 'Mbour', 'Saly', 'Tivaouane', 'Joal-Fadiouth'],
+  'Diourbel': ['Diourbel', 'Touba', 'Mbacké', 'Bambey'],
+  'Saint-Louis': ['Saint-Louis', 'Richard-Toll', 'Dagana', 'Podor'],
+  'Kaolack': ['Kaolack', 'Nioro du Rip', 'Guinguinéo'],
+  'Louga': ['Louga', 'Kébémer', 'Linguère'],
+  'Ziguinchor': ['Ziguinchor', 'Bignona', 'Oussouye'],
+  'Fatick': ['Fatick', 'Foundiougne', 'Gossas']
+};
+
+class Component extends DCLogic {
+  state = { region: 'Dakar', commune: 'Dakar-Plateau', screen: 'landing', role: 'donor', mode: 'login', name: '', phone: '', file: false, w: 1200 };
+  componentDidMount() {
+    this._r = () => this.setState({ w: window.innerWidth });
+    window.addEventListener('resize', this._r); this._r();
+    if (window.ResizeObserver) { this._ro = new ResizeObserver(this._r); this._ro.observe(document.documentElement); }
+    requestAnimationFrame(this._r);
+    const h = location.hash;
+    if (h.startsWith('#auth')) this.setState({ screen: 'auth', role: h.includes('org') ? 'org' : 'donor', mode: h.includes('signup') ? 'signup' : 'login' });
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._r); if (this._ro) this._ro.disconnect(); }
+  auth(role, mode) { this.setState({ screen: 'auth', role, mode }); window.scrollTo(0, 0); }
+  renderVals() {
+    const s = this.state, donor = s.role === 'donor', signup = s.mode === 'signup', wide = s.w >= 820;
+    const B = '#174a7c', O = '#de7d28';
+    const roleColor = donor ? B : O;
+    const tab = on => ({ bg: on ? '#fff' : 'transparent', fg: on ? '#1e293b' : '#5b6678', sh: on ? '0 2px 8px -2px rgba(30,41,59,.2)' : 'none' });
+    const tl = tab(!signup), ts = tab(signup);
+    return {
+      isLanding: s.screen === 'landing', isAuth: s.screen === 'auth',
+      goLanding: () => { this.setState({ screen: 'landing' }); window.scrollTo(0, 0); },
+      goLoginDonor: () => this.auth('donor', 'login'),
+      goSignupDonor: () => this.auth('donor', 'signup'),
+      goSignupOrg: () => this.auth('org', 'signup'),
+      steps: [
+        { n: '01', title: 'Parcourez les causes', text: 'Des besoins précis et chiffrés, publiés par des structures dont les documents ont été vérifiés.', color: B, ghost: '#eaf1f8', icon: ICON('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>') },
+        { n: '02', title: 'Donnez en toute transparence', text: 'Orange Money ou Wave. Vous voyez les frais et le montant exact que recevra la structure avant de confirmer.', color: O, ghost: '#fdf0e3', icon: ICON('<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>') },
+        { n: '03', title: 'La structure reçoit et publie une preuve', text: 'Photo ou vidéo de la remise, validée par nos modérateurs, puis publiée ici pour tous.', color: '#529e3b', ghost: '#ebf5e6', icon: ICON('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>') }
+      ],
+      feed: [
+        { org: 'Orphelinat Darou Salam, Kaolack', cause: 'Riz, huile et sucre pour octobre', tag: '✓ Objectif atteint', date: 'Publiée le 8 oct. 2026', img: U('photo-1562557309-bf9e46b0670d') },
+        { org: 'Centre Espoir Ziguinchor', cause: 'Moustiquaires imprégnées', tag: '✓ Objectif atteint', date: 'Publiée le 5 oct. 2026', img: U('photo-1533633310920-cc9bf1e7f9b0') },
+        { org: 'Foyer Keur Yaay, Dakar', cause: 'Kits scolaires rentrée 2026', tag: '✓ Don reçu', date: 'Publiée le 2 oct. 2026', img: U('photo-1567057420215-0afa9aa9253a') },
+        { org: 'Centre Aw Handicap, Thiès', cause: 'Fauteuil roulant pour Moussa', tag: '✓ Objectif atteint', date: 'Publiée le 28 sept. 2026', img: U('photo-1619618691037-751d1e6c9ad1') },
+        { org: 'Pouponnière Keur Khadija, Mbour', cause: 'Lait infantile — septembre', tag: '✓ Don reçu', date: 'Publiée le 24 sept. 2026', img: U('photo-1584367368243-c0c59fd4a1f9') },
+        { org: 'Centre Aw Handicap, Thiès', cause: 'Séances de kinésithérapie', tag: '✓ Don reçu', date: 'Publiée le 19 sept. 2026', img: U('photo-1723433892471-62f113c8c9a0') }
+      ],
+      authBg: donor ? '#eef3f9' : '#fbf1e7',
+      roleColor, ringColor: donor ? 'rgba(222,125,40,.45)' : 'rgba(23,74,124,.35)',
+      pillX: donor ? '0%' : '100%',
+      donorTabFg: donor ? '#fff' : '#5b6678', orgTabFg: donor ? '#5b6678' : '#fff',
+      setDonor: () => this.setState({ role: 'donor' }), setOrg: () => this.setState({ role: 'org' }),
+      setLogin: () => this.setState({ mode: 'login' }), setSignup: () => this.setState({ mode: 'signup' }),
+      loginBg: tl.bg, loginFg: tl.fg, loginSh: tl.sh, signupBg: ts.bg, signupFg: ts.fg, signupSh: ts.sh,
+      isWide: wide, isNarrow: !wide,
+      cardH: wide ? (donor ? (signup ? '880px' : '540px') : (signup ? (s.orgType === 'Hôpital (don de sang)' ? '1010px' : '910px') : '570px')) : 'auto',
+      brandX: donor ? '100%' : '0%',
+      formPos: wide ? 'absolute' : 'relative', formW: wide ? '50%' : '100%', formX: wide ? (donor ? '0%' : '100%') : '0%',
+      brandKicker: donor ? 'Espace donateur' : 'Espace structure',
+      brandTitle: donor ? 'Chaque franc, suivi jusqu’à la preuve.' : 'Publiez vos besoins, recevez des dons traçables.',
+      brandText: donor ? 'Choisissez une cause vérifiée, donnez par Orange Money ou Wave, et recevez la preuve de réception publiée par la structure.' : 'Orphelinats, pouponnières, foyers, centres : soumettez vos causes, suivez leur modération et justifiez chaque réception auprès de vos donateurs.',
+      formTitle: donor ? (signup ? 'Créer mon compte donateur' : 'Bon retour parmi nous') : (signup ? 'Inscrire ma structure' : 'Connexion structure ou hôpital'),
+      formSub: donor ? (signup ? 'Trente secondes, sans carte bancaire.' : 'Connectez-vous avec votre numéro et votre mot de passe.') : (signup ? 'Votre dossier sera vérifié par notre équipe avant la publication de vos causes.' : 'Connectez-vous avec votre e-mail professionnel et votre mot de passe.'),
+      showEmail: !donor, showPhone: donor || signup, phoneLabel: donor ? 'Numéro de téléphone' : 'Téléphone du responsable', showSecure: !donor, secureNote: signup ? '12 caractères minimum · double authentification par SMS à chaque connexion' : 'Un code de vérification sera envoyé au téléphone du responsable',
+      showName: donor && signup, showOrgFields: !donor && signup, showUpload: !donor && signup, isLoginMode: !signup,
+      name: s.name, phone: s.phone,
+      blood: s.blood || '?', addr: s.addr || '', onBlood: e => this.setState({ blood: e.target.value }), regions: Object.keys(GEO), communes: GEO[s.region || 'Dakar'], region: s.region, commune: s.commune,
+      onRegion: e => { const r = e.target.value; this.setState({ region: r, commune: GEO[r][0] }); }, onCommune: e => this.setState({ commune: e.target.value }),
+      orgType: s.orgType || 'Orphelinat', onOrgType: e => this.setState({ orgType: e.target.value }),
+      showHospitalNote: !donor && signup && s.orgType === 'Hôpital (don de sang)', showHospitalLogin: !donor && !signup,
+      goHospital: () => { location.href = 'Hopital-v2.dc.html'; },
+      onName: e => this.setState({ name: e.target.value }), onPhone: e => this.setState({ phone: e.target.value }),
+      toggleFile: () => this.setState({ file: !s.file }),
+      fileLabel: s.file ? 'recepisse_ministere_2026.pdf ✓' : 'Glissez votre fichier ou cliquez pour parcourir',
+      fileBorder: s.file ? '#529e3b' : '#e7b98f', fileBg: s.file ? '#ebf5e6' : '#fffaf5',
+      submitLabel: signup ? (donor ? 'Créer mon compte' : 'Envoyer mon dossier') : 'Se connecter',
+      legal: signup ? 'En continuant, vous acceptez les conditions d’utilisation de SUNUSOCIAL.' : 'Vos données sont chiffrées et ne sont jamais revendues.',
+      submit: () => {
+        if (donor) {
+          try { if (signup) { localStorage.setItem('sunu_blood', s.blood || '?'); localStorage.setItem('sunu_addr', s.commune + ', ' + s.region); } localStorage.setItem('sunu_name', (s.name || 'Aminata Diop').trim()); if (s.phone) localStorage.setItem('sunu_phone', '+221 ' + s.phone); } catch (e) {}
+          location.href = 'Donateur-v2.dc.html';
+        } else location.href = (signup && s.orgType === 'Hôpital (don de sang)') ? 'Hopital-v2.dc.html' : 'Structure-v2.dc.html';
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SUNUSOCIAL — Spécifications techniques</title>
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#faf7f2;color:#1e293b;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:Montserrat,sans-serif;margin:0}
+a{color:#174a7c}a:hover{color:#de7d28}
+input,select,button,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #de7d28;outline-offset:2px}
+</style>
+</helmet>
+
+<div style="min-height:100vh">
+  <header style="position:sticky;top:0;z-index:30;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid #ece6dc">
+    <div style="max-width:1080px;margin:0 auto;padding:10px clamp(14px,4vw,32px);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <a href="SUNUSOCIAL-v2.dc.html" style="display:block"><img src="assets/logo.png" alt="SUNUSOCIAL" style="height:42px;display:block"></a>
+      <span style="background:#eaf1f8;color:#174a7c;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;letter-spacing:.04em">SPÉCIFICATIONS TECHNIQUES</span>
+      <nav style="margin-left:auto;display:flex;gap:14px;flex-wrap:wrap;font-size:13px;font-weight:600">
+        <a href="SUNUSOCIAL-v2.dc.html" style="text-decoration:none">Accueil</a>
+        <a href="Donateur-v2.dc.html" style="text-decoration:none">Donateur</a>
+        <a href="Structure-v2.dc.html" style="text-decoration:none">Structure</a>
+        <a href="Hopital-v2.dc.html" style="text-decoration:none">Hôpital</a>
+        <a href="Moderateur-v2.dc.html" style="text-decoration:none">Modération</a>
+      </nav>
+    </div>
+  </header>
+
+  <main data-screen-label="Spécifications techniques" style="max-width:1080px;margin:0 auto;padding:32px clamp(14px,4vw,32px) 72px;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h1 style="font-size:clamp(28px,3.6vw,40px);font-weight:800;letter-spacing:-.01em">Règles et décisions du projet</h1>
+      <p style="margin:0;color:#5b6678;max-width:680px;line-height:1.6;text-wrap:pretty">Le registre de ce que SUNUSOCIAL et JËFTECH ont décidé, de ce qui reste à valider et des hypothèses posées par le prototype. Mis à jour à chaque réunion.</p>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+        <button onClick="{{ f.pick }}" style="display:flex;align-items:center;gap:8px;border:1.5px solid {{ f.bd }};background:{{ f.bg }};color:{{ f.fg }};border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer"><span style="width:8px;height:8px;border-radius:50%;background:{{ f.dot }}"></span>{{ f.label }}<span style="opacity:.7">{{ f.count }}</span></button>
+      </sc-for>
+    </div>
+
+    <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="5">
+      <section style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:13px;color:#de7d28">{{ sec.n }}</span><h2 style="font-size:22px;font-weight:800">{{ sec.name }}</h2></div>
+        <div style="background:#fff;border-radius:24px 24px 24px 6px;overflow:hidden;box-shadow:0 1px 0 #ece6dc">
+          <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;padding:16px 20px;border-top:1px solid {{ it.line }}">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <strong style="font-size:15px;line-height:1.4">{{ it.title }}</strong>
+                <span style="font-size:14px;color:#475569;line-height:1.6;text-wrap:pretty">{{ it.text }}</span>
+                <span style="font-size:12px;color:#8a94a6">{{ it.src }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                <span style="white-space:nowrap;background:{{ it.bg }};color:{{ it.fg }};border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em">{{ it.label }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const SECS = ['Paiement', 'Gestion des fonds', 'Causes', 'Don de sang', 'Notifications', 'Comptes et modération'];
+const BASE = [
+  ['Paiement', 'done', 'Mobile Money uniquement', "Orange Money et Wave. Pas de carte bancaire.", 'Prompt prototype final · 11/10/2026'],
+  ['Paiement', 'todo', 'Prestataire : NabooPay ou Sycapay', "NabooPay (3 %) conserve les fonds jusqu'à la condition de fin de la cause. Sycapay verse chaque don directement à la structure. Le choix change le parcours des fonds, la modération des suppressions et le développement backend (en pause en attendant).", 'CR réunion 10/10/2026 · précisé le 12/10/2026'],
+  ['Paiement', 'done', 'Frais Sycapay : 1,5 %', "Le prestataire noté « CKP » dans le compte rendu du 10/10 est Sycapay. Frais : 1,5 % contre 3 % pour NabooPay.", 'Confirmé le 12/10/2026'],
+  ['Paiement', 'done', 'Frais affichés avant le paiement', "La modale de don affiche en direct les frais du prestataire et le montant net reçu par la structure.", 'Prompt prototype final'],
+  ['Gestion des fonds', 'done', "Toute cause a une date limite", "Même avec un objectif financier : les fonds sont libérés à l'objectif atteint ou à la date limite, au premier des deux. Aucun don ne reste bloqué indéfiniment.", 'Validé le 12/10/2026'],
+  ['Gestion des fonds', 'todo', 'Blocage des fonds ou contrôle a posteriori', "JËFTECH propose de bloquer les fonds (transparence juridique). SUNUSOCIAL préfère laisser l'autonomie aux structures avec un contrôle a posteriori sur reçus.", 'CR réunion 10/10/2026'],
+  ['Gestion des fonds', 'todo', 'Versement en totalité ou fractionné', "SUNUSOCIAL doit analyser la proposition de verser les dons en une fois plutôt que par versements fractionnés.", 'CR réunion 10/10/2026'],
+  ['Causes', 'done', 'Cycle de vie', "Soumise → En modération → Approuvée / Refusée (avec raison) → Active → Clôturée.", 'Prompt prototype final'],
+  ['Causes', 'done', 'Suppression soumise au modérateur', "Une fois publiée, une cause ne peut pas être supprimée par la structure sans l'autorisation d'un modérateur. La structure envoie une demande motivée.", 'Validé le 12/10/2026'],
+  ['Causes', 'hyp', 'Retrait libre avant publication', "Tant qu'une cause est en modération (aucun don possible), la structure peut la retirer elle-même.", 'Prototype'],
+  ['Causes', 'done', 'Sort des fonds d’une cause supprimée', "Le modérateur qui autorise une suppression justifie sa décision et choisit : rembourser les donateurs, ou verser les fonds à la structure. Avec Sycapay les fonds sont déjà versés : seule la seconde option existe.", 'Validé le 12/10/2026'],
+  ['Causes', 'done', 'Preuve obligatoire après suppression', "Si les fonds d'une cause supprimée sont versés à la structure (ou déjà reçus via Sycapay), elle doit publier une preuve d'utilisation dans les 7 jours. Le modérateur suit l'échéance et peut relancer.", 'Validé le 12/10/2026'],
+  ['Causes', 'done', 'Suspension en cas de preuve manquante', "Si la preuve d'utilisation n'est pas validée dans les 7 jours, le compte de la structure est suspendu automatiquement : plus de nouvelle cause jusqu'à validation. Le modérateur peut lever la suspension.", 'Validé le 12/10/2026'],
+  ['Paiement', 'done', 'Remboursement à la demande du donateur', "Avec NabooPay uniquement, tant que les fonds n'ont pas été versés à la structure, le donateur peut demander un remboursement depuis son tableau de bord. Le modérateur tranche ; sa décision est définitive. Impossible avec Sycapay (fonds déjà versés).", 'Validé le 12/10/2026'],
+  ['Causes', 'done', 'Information des donateurs', "Dans son tableau de bord, le donateur voit qu'une cause soutenue a été supprimée, le motif du modérateur et si son don a été remboursé ou versé à la structure.", 'Validé le 12/10/2026'],
+  ['Causes', 'done', 'Dossier de preuve : 5 éléments minimum', "Après réception des fonds, la structure envoie au moins 5 fichiers (photos, vidéo, facture ou bon de livraison), un compte rendu et le détail de l'utilisation des fonds. Les éléments suspects sont signalés automatiquement.", 'Validé le 12/10/2026'],
+  ['Causes', 'done', 'Même dossier pour le modérateur et les donateurs', "Le modérateur examine le dossier exactement tel que les donateurs le verront (galerie, justificatifs, utilisation des fonds). Une fois validé, chaque donateur le consulte depuis son tableau de bord.", 'Validé le 12/10/2026'],
+  ['Don de sang', 'done', 'Hôpitaux : un rôle proche des structures', "Les hôpitaux publient des alertes de pénurie par groupe sanguin au lieu de créer des cagnottes.", 'CR réunion 10/10/2026'],
+  ['Don de sang', 'done', 'Groupe sanguin et localisation à l’inscription', "Le donneur indique son groupe sanguin (ou « je ne sais pas ») puis choisit sa région et sa commune dans des listes : aucune saisie libre.", 'CR réunion 10/10/2026 · précisé le 12/10/2026'],
+  ['Don de sang', 'done', 'Ciblage par commune, dans la région de l’hôpital', "Pas de géolocalisation en temps réel : l'hôpital choisit parmi les communes de sa région et l'alerte part aux donneurs compatibles inscrits dans ces communes.", 'Validé le 12/10/2026'],
+  ['Don de sang', 'done', 'Mise à jour des réserves', "L'hôpital modifie ses stocks à la main ; chaque don qu'il confirme ajoute automatiquement une poche au groupe concerné.", 'Validé le 12/10/2026'],
+  ['Don de sang', 'done', 'Remerciement des donneurs', "Quand l'objectif est atteint ou l'alerte clôturée, l'hôpital rédige et envoie lui-même un message aux donneurs dont le don a été confirmé (pas de message automatique SUNUSOCIAL).", 'Validé le 12/10/2026'],
+  ['Don de sang', 'done', 'Pas de blocage entre deux dons', "Le dernier don ne bloque pas la réception des alertes. L'aptitude est vérifiée sur place par le médecin de l'hôpital.", 'Validé le 12/10/2026'],
+  ['Don de sang', 'todo', 'Liste complète des communes', "Le prototype couvre 8 régions et leurs principales communes. La version finale doit intégrer les 14 régions et toutes leurs communes (liste officielle à fournir).", 'Validé le 12/10/2026'],
+  ['Notifications', 'todo', 'SMS prioritaire', "Recommandé par SUNUSOCIAL (e-mails peu consultés). Implique des frais d'envoi et un numéro de service dédié : à valider en interne.", 'CR réunion 10/10/2026'],
+  ['Comptes et modération', 'done', 'Connexion des donateurs', "Numéro de téléphone et mot de passe, sans code OTP, pour rester simple.", 'Prompt prototype final'],
+  ['Comptes et modération', 'done', 'Connexion renforcée : modérateurs, structures, hôpitaux', "E-mail professionnel, mot de passe de 12 caractères minimum et double authentification (code SMS au responsable).", 'Validé le 12/10/2026'],
+  ['Comptes et modération', 'todo', 'Vérification du récépissé ministériel', "Les structures téléversent leur récépissé à l'inscription ; la procédure de vérification reste à définir.", 'Prompt prototype final'],
+  ['Comptes et modération', 'done', 'Validation des comptes hôpitaux', "Les hôpitaux passent par la même file de validation que les structures, avec leur agrément du ministère de la Santé.", 'Validé le 12/10/2026'],
+  ['Comptes et modération', 'done', 'Localisation des structures', "Les structures et hôpitaux choisissent leur région puis leur commune à l'inscription.", 'Validé le 12/10/2026']
+];
+const ST = { done: ['Décidé', '#ebf5e6', '#3b7a29', '#529e3b'], todo: ['À valider', '#fdf0e3', '#b4601a', '#de7d28'], hyp: ['Hypothèse', '#eaf1f8', '#174a7c', '#174a7c'] };
+
+class Component extends DCLogic {
+  state = { filter: 'all' };
+  renderVals() {
+    const s = this.state;
+    const all = BASE.map(([sec, status, title, text, src]) => ({ sec, status, title, text, src }));
+    const shown = all.filter(x => s.filter === 'all' || x.status === s.filter);
+    const cnt = k => all.filter(x => k === 'all' || x.status === k).length;
+    return {
+      filters: [['all', 'Tout', '#1e293b'], ['done', 'Décidé', ST.done[3]], ['todo', 'À valider', ST.todo[3]], ['hyp', 'Hypothèse', ST.hyp[3]]].map(([k, l, dot]) => { const on = s.filter === k; return { label: l, count: String(cnt(k)), dot, bd: on ? '#1e293b' : '#e2e8f0', bg: on ? '#1e293b' : '#fff', fg: on ? '#fff' : '#334155', pick: () => this.setState({ filter: k }) }; }),
+      sections: SECS.map((name, i) => ({ name, n: String(i + 1).padStart(2, '0'), items: shown.filter(x => x.sec === name).map((x, j) => ({ ...x, label: ST[x.status][0], bg: ST[x.status][1], fg: ST[x.status][2], line: j ? '#f3f1ec' : 'transparent', src: x.src })) })).filter(x => x.items.length)
+    };
+  }
+}
+</script>
+</body>
+</html>

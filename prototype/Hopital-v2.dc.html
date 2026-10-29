@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SUNUSOCIAL — Espace hôpital</title>
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#faf7f2;color:#1e293b;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:Montserrat,sans-serif;margin:0}
+a{color:#174a7c}a:hover{color:#de7d28}
+input,select,button,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #de7d28;outline-offset:2px}
+@keyframes ssUp{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+</style>
+</helmet>
+
+<div style="min-height:100vh">
+  <header style="position:sticky;top:0;z-index:30;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid #ece6dc">
+    <div style="max-width:1200px;margin:0 auto;padding:10px clamp(14px,4vw,32px);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <img src="assets/logo.png" alt="SUNUSOCIAL" style="height:42px;display:block">
+      <span style="display:inline-flex;align-items:center;gap:6px;background:#fbeceb;color:#b8322a;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;letter-spacing:.04em">ESPACE HÔPITAL</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px"><strong style="font-size:14px">Hôpital Principal de Dakar</strong><span style="font-size:12px;color:#5b6678">Service de transfusion</span></div>
+        <button onClick="{{ logout }}" style="background:#f3f1ec;border:0;border-radius:999px;padding:10px 14px;font-weight:600;font-size:13px;cursor:pointer;color:#334155" style-hover="background:#ece6dc">Déconnexion</button>
+      </div>
+    </div>
+  </header>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;background:#1e293b;color:#fff;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;box-shadow:0 20px 40px -20px rgba(15,23,42,.6);animation:ssUp .3s ease-out">{{ toast }}</div>
+  </sc-if>
+
+  <main data-screen-label="09 Tableau de bord hôpital" style="max-width:1200px;margin:0 auto;padding:28px clamp(14px,4vw,32px) 64px;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 style="font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.01em">Alertes don de sang</h1>
+      <p style="margin:0;color:#5b6678;max-width:640px;text-wrap:pretty">Signalez un groupe sanguin en pénurie : seuls les donneurs compatibles inscrits dans les communes choisies de votre région sont prévenus.</p>
+    </div>
+
+    <section data-screen-label="09b Réserves de sang" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="font-size:20px;font-weight:800">Niveau des réserves</h2>
+        <span style="font-size:13px;color:#5b6678">{{ stockUpdated }}</span>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <sc-if value="{{ notEditing }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ startEdit }}" style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;padding:9px 16px;font-weight:600;font-size:13px;cursor:pointer;color:#1e293b" style-hover="border-color:#b8322a;color:#b8322a"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>Mettre à jour les stocks</button>
+          </sc-if>
+          <sc-if value="{{ editing }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ cancelEdit }}" style="background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;padding:9px 16px;font-weight:600;font-size:13px;cursor:pointer;color:#334155">Annuler</button>
+            <button onClick="{{ saveEdit }}" style="background:#b8322a;border:0;border-radius:999px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;color:#fff" style-hover="background:#9a2921">Enregistrer</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
+        <sc-for list="{{ stock }}" as="st" hint-placeholder-count="8">
+          <div style="background:#fff;border:1.5px solid {{ st.bd }};border-radius:20px 20px 20px 6px;padding:14px;display:flex;flex-direction:column;gap:8px;transition:border-color .3s">
+            <div style="display:flex;align-items:center;justify-content:space-between"><strong style="font-family:Montserrat,sans-serif;font-size:22px">{{ st.g }}</strong><span style="width:10px;height:10px;border-radius:50%;background:{{ st.dot }}"></span></div>
+            <sc-if value="{{ notEditing }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="height:6px;border-radius:999px;background:#f3f1ec;overflow:hidden"><div style="height:100%;width:{{ st.pct }};background:{{ st.dot }};border-radius:999px;transition:width .5s"></div></div>
+                <span style="font-size:12px;color:{{ st.fg }};font-weight:600">{{ st.label }} · {{ st.units }} poches</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ editing }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px">
+                <button onClick="{{ st.dec }}" style="flex:none;width:34px;height:34px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-size:18px;font-weight:700;cursor:pointer;color:#334155">−</button>
+                <input value="{{ st.draft }}" onChange="{{ st.onInput }}" inputMode="numeric" style="flex:1;min-width:0;width:100%;text-align:center;border:1.5px solid #e2e8f0;border-radius:10px;padding:7px 4px;font-family:Montserrat,sans-serif;font-weight:700;font-size:16px;outline:none" style-focus="border-color:#b8322a"></input>
+                <button onClick="{{ st.inc }}" style="flex:none;width:34px;height:34px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-size:18px;font-weight:700;cursor:pointer;color:#334155">+</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <span style="font-size:12px;color:#5b6678">Les stocks augmentent automatiquement quand vous confirmez qu'un donneur a bien donné. Mettez-les à jour vous-même après une transfusion ou une collecte hors SUNUSOCIAL.</span>
+    </section>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:24px;align-items:start">
+      <section data-screen-label="10 Émettre une alerte" style="background:#fff;border-radius:28px 28px 28px 8px;padding:24px;display:flex;flex-direction:column;gap:20px;box-shadow:0 1px 0 #ece6dc,0 24px 48px -36px rgba(30,41,59,.45)">
+        <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <h2 style="font-size:20px;font-weight:800">Émettre une alerte</h2>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:600;color:#334155">Groupes recherchés</span>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+              <sc-for list="{{ groupOpts }}" as="g" hint-placeholder-count="8">
+                <button onClick="{{ g.pick }}" style="border:1.5px solid {{ g.bd }};background:{{ g.bg }};color:{{ g.fg }};border-radius:12px;padding:11px 4px;font-family:Montserrat,sans-serif;font-weight:800;font-size:14px;cursor:pointer">{{ g.g }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:600;color:#334155">Niveau d'urgence</span>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <sc-for list="{{ levelOpts }}" as="l" hint-placeholder-count="3">
+                <button onClick="{{ l.pick }}" style="border:1.5px solid {{ l.bd }};background:{{ l.bg }};border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;gap:2px;cursor:pointer;text-align:left"><strong style="font-size:13px;color:{{ l.fg }}">{{ l.label }}</strong><span style="font-size:11px;color:#5b6678">{{ l.sub }}</span></button>
+              </sc-for>
+            </div>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Poches nécessaires<input value="{{ units }}" onChange="{{ onUnits }}" inputMode="numeric" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:12px 14px;font-size:15px;outline:none;max-width:200px" style-focus="border-color:#b8322a"></input></label>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:600;color:#334155">Communes ciblées · région de Dakar</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ townOpts }}" as="t" hint-placeholder-count="8">
+                <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;border:1.5px solid {{ t.bd }};background:{{ t.bg }};color:{{ t.fg }};border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer">{{ t.label }}<span style="font-size:11px;font-weight:500;opacity:.75">{{ t.count }}</span></button>
+              </sc-for>
+            </div>
+            <span style="font-size:12px;color:#5b6678">Seules les communes de votre région sont proposées. Les donneurs sont rattachés à la commune choisie à l'inscription, sans géolocalisation.</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:600;color:#334155">Canal d'envoi</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ channels }}" as="ch" hint-placeholder-count="2">
+                <button onClick="{{ ch.pick }}" style="display:flex;align-items:center;gap:8px;border:1.5px solid {{ ch.bd }};background:{{ ch.bg }};border-radius:999px;padding:9px 14px;font-size:13px;font-weight:600;color:#1e293b;cursor:pointer"><span style="width:16px;height:16px;border-radius:5px;border:2px solid {{ ch.bd }};background:{{ ch.dot }};color:#fff;font-size:11px;line-height:12px;text-align:center">{{ ch.check }}</span>{{ ch.label }}</button>
+              </sc-for>
+            </div>
+            <span style="align-self:flex-start;font-size:10px;font-weight:700;letter-spacing:.06em;color:#b4601a;background:#fdf0e3;border-radius:6px;padding:2px 6px">SMS : FRAIS D'ENVOI ET NUMÉRO DÉDIÉ À VALIDER PAR SUNUSOCIAL</span>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;background:#faf7f2;border-radius:16px;padding:14px">
+            <span style="flex:none;font-family:Montserrat,sans-serif;font-weight:800;font-size:26px;color:#b8322a">{{ reach }}</span>
+            <span style="font-size:13px;color:#334155;line-height:1.45">donneurs compatibles inscrits à {{ townList }} recevront l'alerte.</span>
+          </div>
+          <button onClick="{{ send }}" disabled="{{ cantSend }}" style="background:#b8322a;color:#fff;border:0;border-radius:999px;padding:16px;font-family:Montserrat,sans-serif;font-weight:800;font-size:16px;cursor:pointer;opacity:{{ sendOpacity }}" style-hover="background:#9a2921">Envoyer l'alerte</button>
+        </div>
+        </sc-if>
+        <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:24px 8px;animation:ssUp .35s ease-out">
+          <span style="width:72px;height:72px;border-radius:50%;background:#ebf5e6;display:grid;place-items:center"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+          <h2 style="font-size:22px;font-weight:800">Alerte envoyée</h2>
+          <p style="margin:0;color:#5b6678;font-size:14px;line-height:1.6;max-width:320px">{{ lastSentLine }} Les réponses apparaissent en temps réel à droite.</p>
+          <button onClick="{{ newAlert }}" style="background:transparent;color:#b8322a;border:1.5px solid #b8322a;border-radius:999px;padding:12px 20px;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:#fbeceb">Émettre une autre alerte</button>
+        </div>
+        </sc-if>
+      </section>
+
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:baseline;gap:10px"><h2 style="font-size:20px;font-weight:800">Alertes en cours</h2><span style="font-size:13px;color:#5b6678">{{ activeCount }}</span></div>
+        <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="2">
+          <article style="background:#fff;border-radius:24px 24px 24px 6px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 0 #ece6dc">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span style="background:{{ a.levelBg }};color:{{ a.levelFg }};border-radius:999px;padding:4px 10px;font-family:Montserrat,sans-serif;font-weight:800;font-size:11px;letter-spacing:.06em">{{ a.levelLabel }}</span>
+              <sc-for list="{{ a.groups }}" as="g" hint-placeholder-count="2"><span style="border-radius:999px;padding:3px 10px;background:#fbeceb;color:#b8322a;font-family:Montserrat,sans-serif;font-weight:800;font-size:13px">{{ g }}</span></sc-for>
+              <span style="margin-left:auto;font-size:12px;color:#5b6678">{{ a.sentAt }}</span>
+            </div>
+            <span style="font-size:12px;color:#5b6678">{{ a.townsStr }}</span>
+            <div style="display:flex;justify-content:space-between;font-size:13px;gap:8px;flex-wrap:wrap"><span><strong>{{ a.got }}</strong> / {{ a.units }} poches collectées</span><span style="color:#5b6678">{{ a.reached }} prévenus · {{ a.respCount }} réponses</span></div>
+            <div style="height:8px;border-radius:999px;background:#fbeceb;overflow:hidden"><div style="height:100%;width:{{ a.pct }};border-radius:999px;background:{{ a.barColor }};transition:width .5s"></div></div>
+            <sc-if value="{{ a.goalMet }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;background:#ebf5e6;color:#3b7a29;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700">✓ Objectif atteint</span></sc-if>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onClick="{{ a.toggle }}" style="background:#f3f1ec;border:0;border-radius:999px;padding:9px 14px;font-weight:600;font-size:13px;cursor:pointer;color:#334155" style-hover="background:#ece6dc">{{ a.toggleLabel }}</button>
+              <sc-if value="{{ a.isOpen }}" hint-placeholder-val="{{ true }}"><button onClick="{{ a.close }}" style="background:transparent;border:1.5px solid #e2e8f0;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;color:#5b6678" style-hover="border-color:#b8322a;color:#b8322a">Clôturer l'alerte</button></sc-if>
+              <sc-if value="{{ a.isClosed }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;font-weight:600;color:#3b7a29;padding:9px 4px">✓ Clôturée</span></sc-if>
+            </div>
+            <sc-if value="{{ a.expanded }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;border-top:1px dashed #e2e8f0">
+                <sc-for list="{{ a.resp }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f3f1ec;flex-wrap:wrap">
+                    <span style="flex:none;width:36px;height:36px;border-radius:50%;background:#fbeceb;color:#b8322a;display:grid;place-items:center;font-family:Montserrat,sans-serif;font-weight:800;font-size:12px">{{ r.g }}</span>
+                    <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:1px"><strong style="font-size:14px">{{ r.name }}</strong><span style="font-size:12px;color:#5b6678">{{ r.slot }} · {{ r.town }}</span></div>
+                    <sc-if value="{{ r.notDone }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.mark }}" style="border:1.5px solid #e2e8f0;background:#fff;color:#334155;border-radius:999px;padding:7px 12px;font-weight:600;font-size:12px;cursor:pointer" style-hover="border-color:#529e3b;color:#3b7a29">Confirmer le don</button></sc-if>
+                    <sc-if value="{{ r.done }}" hint-placeholder-val="{{ false }}"><span style="border:1.5px solid #529e3b;background:#ebf5e6;color:#3b7a29;border-radius:999px;padding:7px 12px;font-weight:600;font-size:12px">✓ Don confirmé · +1 {{ r.g }}</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ a.showThanks }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="10b Remercier les donneurs" style="display:flex;flex-direction:column;gap:10px;background:#ebf5e6;border-radius:18px;padding:16px">
+                <strong style="font-size:14px;color:#2f5f21">Remercier les {{ a.doneCount }} donneurs</strong>
+                <textarea value="{{ a.msg }}" onChange="{{ a.onMsg }}" style="border:1.5px solid #c8e2bd;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5;min-height:90px;outline:none;resize:vertical;background:#fff" style-focus="border-color:#529e3b"></textarea>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-size:12px;color:#3b7a29">Envoyé par SMS et notification, uniquement aux donneurs dont le don est confirmé.</span>
+                  <button onClick="{{ a.sendThanks }}" style="margin-left:auto;background:#529e3b;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:#3b7a29">Envoyer le message</button>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ a.thanksSent }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:8px;background:#f3f1ec;border-radius:14px;padding:10px 14px;font-size:13px;color:#334155"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Message de remerciement envoyé à {{ a.doneCount }} donneurs.</div>
+            </sc-if>
+          </article>
+        </sc-for>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const GROUPS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
+const TOWNS = { 'Dakar-Plateau': .35, 'Médina': .4, 'Grand Dakar': .45, 'Parcelles Assainies': .6, 'Pikine': .75, 'Guédiawaye': .5, 'Keur Massar': .45, 'Rufisque': .4 };
+const DENS = { 'O+': 410, 'O-': 60, 'A+': 250, 'A-': 40, 'B+': 180, 'B-': 20, 'AB+': 30, 'AB-': 10 };
+const LV = { vitale: ['URGENCE VITALE', '#b8322a', '#fff', 'Moins de 24 h'], urgente: ['URGENT', '#fdf0e3', '#b4601a', 'Sous 72 h'], preventive: ['PRÉVENTIF', '#eaf1f8', '#174a7c', 'Sous 2 semaines'] };
+const thanks = a => `Merci pour votre don de sang à l'Hôpital Principal de Dakar ! Grâce à vous, ${a.got} poches ${a.groups.join(', ')} ont été collectées. — SUNUSOCIAL`;
+
+class Component extends DCLogic {
+  state = {
+    picked: ['O+'], level: 'vitale', units: '10', towns: ['Dakar-Plateau', 'Médina'], ch: { sms: true, web: true }, sent: false, lastSent: null, expanded: 'h1', toast: '',
+    stock: { 'O+': 6, 'O-': 2, 'A+': 18, 'A-': 7, 'B+': 14, 'B-': 1, 'AB+': 9, 'AB-': 4 }, editing: false, draft: {}, stockUpdated: 'Mis à jour ce matin, 8 h 15',
+    alerts: [
+      { id: 'h1', groups: ['O+', 'O-'], level: 'vitale', units: 4, got: 2, reached: 470, towns: ['Médina', 'Pikine'], sentAt: "Aujourd'hui, 7 h 40", closed: false, thanks: null, msg: null,
+        resp: [{ name: 'Aminata D.', g: 'O+', town: 'Médina', slot: "Aujourd'hui, 14 h – 16 h", done: false }, { name: 'Moussa S.', g: 'O-', town: 'Pikine', slot: "Aujourd'hui, 10 h – 12 h", done: true }, { name: 'Fatou N.', g: 'O+', town: 'Médina', slot: "Aujourd'hui, 10 h – 12 h", done: true }, { name: 'Ibrahima F.', g: 'O+', town: 'Médina', slot: 'Demain, 8 h – 10 h', done: false }] },
+      { id: 'h2', groups: ['B-'], level: 'urgente', units: 6, got: 1, reached: 20, towns: ['Grand Dakar'], sentAt: 'Hier, 16 h 05', closed: false, thanks: null, msg: null,
+        resp: [{ name: 'Awa K.', g: 'B-', town: 'Médina', slot: 'Hier, 17 h', done: true }, { name: 'Ousmane D.', g: 'B-', town: 'Médina', slot: 'Demain, 8 h – 10 h', done: false }] }
+    ]
+  };
+  componentWillUnmount() { clearTimeout(this._t); clearTimeout(this._r); }
+  toast(m) { clearTimeout(this._t); this.setState({ toast: m }); this._t = setTimeout(() => this.setState({ toast: '' }), 3000); }
+  upd(id, fn) { this.setState(st => ({ alerts: st.alerts.map(x => x.id === id ? fn(x) : x) })); }
+  renderVals() {
+    const s = this.state, R = '#b8322a';
+    const reach = Math.round(s.picked.reduce((a, g) => a + DENS[g], 0) * s.towns.reduce((a, t) => a + TOWNS[t], 0));
+    const units = parseInt(s.units) || 0;
+    const bad = !s.picked.length || !units || !s.towns.length || !(s.ch.sms || s.ch.web);
+    const lvl = n => n <= 3 ? ['Critique', R, R] : n <= 8 ? ['Bas', '#de7d28', '#b4601a'] : ['Correct', '#529e3b', '#3b7a29'];
+    const setDraft = (g, v) => this.setState(st => ({ draft: { ...st.draft, [g]: Math.max(0, v) } }));
+    return {
+      logout: () => { location.href = 'SUNUSOCIAL-v2.dc.html'; },
+      toast: s.toast, stockUpdated: s.stockUpdated,
+      editing: s.editing, notEditing: !s.editing,
+      startEdit: () => this.setState({ editing: true, draft: { ...s.stock } }),
+      cancelEdit: () => this.setState({ editing: false }),
+      saveEdit: () => { this.setState({ editing: false, stock: { ...s.draft }, stockUpdated: "Mis à jour à l'instant" }); this.toast('Stocks enregistrés'); },
+      stock: GROUPS.map(g => { const n = s.stock[g]; const [label, dot, fg] = lvl(n); const flash = s.flash === g; return { g, units: n, label, dot, fg, pct: Math.min(100, n / 20 * 100) + '%', bd: flash ? '#529e3b' : 'transparent',
+        draft: String(s.draft[g] ?? n), onInput: e => setDraft(g, parseInt(e.target.value.replace(/\D/g, '')) || 0),
+        inc: () => setDraft(g, (s.draft[g] ?? n) + 1), dec: () => setDraft(g, (s.draft[g] ?? n) - 1) }; }),
+      notSent: !s.sent, sent: s.sent,
+      groupOpts: GROUPS.map(g => { const on = s.picked.includes(g); return { g, bd: on ? R : '#e2e8f0', bg: on ? R : '#fff', fg: on ? '#fff' : '#1e293b', pick: () => this.setState({ picked: on ? s.picked.filter(x => x !== g) : [...s.picked, g] }) }; }),
+      levelOpts: Object.entries(LV).map(([k, v]) => { const on = s.level === k; return { label: v[0].charAt(0) + v[0].slice(1).toLowerCase(), sub: v[3], bd: on ? R : '#e2e8f0', bg: on ? '#fbeceb' : '#fff', fg: on ? R : '#1e293b', pick: () => this.setState({ level: k }) }; }),
+      units: s.units, onUnits: e => this.setState({ units: e.target.value.replace(/\D/g, '') }),
+      townOpts: Object.keys(TOWNS).map(t => { const on = s.towns.includes(t); return { label: (on ? '✓ ' : '') + t, count: String(Math.round(s.picked.reduce((a, g) => a + DENS[g], 0) * TOWNS[t])), bd: on ? R : '#e2e8f0', bg: on ? '#fbeceb' : '#fff', fg: on ? R : '#334155', pick: () => this.setState({ towns: on ? s.towns.filter(x => x !== t) : [...s.towns, t] }) }; }),
+      townList: s.towns.length ? s.towns.join(', ') : '— choisissez au moins une commune',
+      channels: [['sms', 'SMS (recommandé)'], ['web', 'Notification sur l’application']].map(([k, l]) => { const on = s.ch[k]; return { label: l, bd: on ? R : '#cbd5e1', bg: on ? '#fbeceb' : '#fff', dot: on ? R : '#fff', check: on ? '✓' : '', pick: () => this.setState({ ch: { ...s.ch, [k]: !on } }) }; }),
+      reach, cantSend: bad, sendOpacity: bad ? 0.45 : 1,
+      send: () => {
+        if (bad) return;
+        const a = { id: 'h' + Date.now(), groups: [...s.picked], level: s.level, units, got: 0, reached: reach, towns: [...s.towns], sentAt: "À l'instant", closed: false, thanks: null, msg: null, resp: [] };
+        this.setState({ sent: true, lastSent: a, alerts: [a, ...s.alerts], expanded: a.id });
+        clearTimeout(this._r);
+        this._r = setTimeout(() => this.upd(a.id, x => ({ ...x, resp: [{ name: 'Cheikh B.', g: a.groups[0], town: a.towns[0], slot: "Aujourd'hui, 14 h – 16 h", done: false }, { name: 'Mariama T.', g: a.groups[0], town: a.towns[a.towns.length - 1], slot: "Aujourd'hui, 10 h – 12 h", done: false }] })), 2500);
+      },
+      lastSentLine: s.lastSent ? `${s.lastSent.reached} donneurs ${s.lastSent.groups.join(', ')} prévenus à ${s.lastSent.towns.join(', ')}${s.ch.sms ? ' par SMS' : ''}.` : '',
+      newAlert: () => this.setState({ sent: false }),
+      activeCount: s.alerts.filter(a => !a.closed).length + ' active(s)',
+      alerts: s.alerts.map(a => {
+        const L = LV[a.level]; const ex = s.expanded === a.id; const met = a.got >= a.units; const doneCount = a.resp.filter(r => r.done).length;
+        return { ...a, levelLabel: L[0], levelBg: L[1], levelFg: L[2], pct: Math.min(100, Math.round(a.got / a.units * 100)) + '%', barColor: met ? '#529e3b' : R, respCount: a.resp.length,
+          townsStr: 'Ciblage : ' + a.towns.join(', '), goalMet: met,
+          isOpen: !a.closed, isClosed: a.closed, expanded: ex && a.resp.length > 0, doneCount,
+          showThanks: (a.closed || met) && !a.thanks && doneCount > 0, thanksSent: !!a.thanks,
+          msg: a.msg ?? thanks(a), onMsg: e => { const v = e.target.value; this.upd(a.id, x => ({ ...x, msg: v })); },
+          sendThanks: () => { this.upd(a.id, x => ({ ...x, thanks: x.msg ?? thanks(x) })); this.toast(`Message envoyé à ${doneCount} donneurs`); },
+          toggleLabel: a.resp.length ? (ex ? 'Masquer les donneurs' : 'Voir les ' + a.resp.length + ' donneurs') : 'En attente de réponses…',
+          toggle: () => this.setState({ expanded: ex ? null : a.id }),
+          close: () => this.upd(a.id, x => ({ ...x, closed: true })),
+          resp: a.resp.map((r, i) => ({ ...r, notDone: !r.done,
+            mark: () => {
+              const before = s.stock[r.g];
+              this.setState(st => ({ flash: r.g, stockUpdated: "Mis à jour à l'instant", stock: { ...st.stock, [r.g]: st.stock[r.g] + 1 },
+                alerts: st.alerts.map(x => x.id === a.id ? { ...x, got: x.got + 1, resp: x.resp.map((y, j) => j === i ? { ...y, done: true } : y) } : x) }));
+              this.toast(`Don de ${r.name} confirmé · stock ${r.g} : ${before} → ${before + 1}`);
+              clearTimeout(this._f); this._f = setTimeout(() => this.setState({ flash: null }), 1600);
+            } })) };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

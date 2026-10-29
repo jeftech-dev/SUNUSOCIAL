@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+<link rel="icon" type="image/png" href="assets/logo-mark.png">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-1324e616-5dc0-4890-85b2-d40739eeb458/styles.css">
+<script src="_ds/industry-1324e616-5dc0-4890-85b2-d40739eeb458/_ds_bundle.js"></script>
+<style>:root{--color-accent:#174a7c;--color-accent-600:#123c64;--color-accent-700:#0f3459;--color-bg:#ffffff;--color-surface:#f5f9fd;--color-accent-100:#eaf1f8;--color-accent-800:#0e2f4e}.btn{white-space:nowrap}body{background:#fff;margin:0}a{color:#de7d28}a:hover{color:#174a7c}</style>
+</helmet>
+<div style="min-height:100vh;font-family:var(--font-body);color:#1e293b;background:#fff">
+<sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+  <nav style="display:flex;align-items:center;gap:16px;padding:14px clamp(16px,4vw,48px);border-bottom:1px solid var(--color-divider);position:sticky;top:0;background:#fff;z-index:5">
+    <a href="index.html" style="display:flex;align-items:center;margin-right:auto"><img src="assets/logo-lockup.png" alt="SUNUSOCIAL" style="height:40px;width:auto;display:block"></a>
+    <button class="btn btn-ghost" onClick="{{ goAuthDonor }}">Se connecter</button>
+  </nav>
+  <section style="background:#eaf1f8;padding:clamp(40px,8vw,96px) clamp(16px,4vw,48px)">
+    <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:40px;align-items:center">
+      <div>
+        <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#de7d28;margin-bottom:12px">Plateforme de dons vérifiés · Sénégal</div>
+        <h1 style="font-size:clamp(40px,6vw,64px);color:#174a7c;margin:0 0 16px;line-height:1.02;text-wrap:balance">Donnez avec confiance. Aidez avec impact.</h1>
+        <p style="font-size:17px;max-width:480px;color:#3a4550;text-wrap:pretty">Chaque structure est vérifiée. Chaque don est suivi jusqu'à la preuve de réception.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px">
+          <button class="btn btn-primary blueprint" style="padding:14px 22px;font-size:17px" onClick="{{ goAuthDonor }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Je suis Donateur</button>
+          <button class="btn" style="padding:14px 22px;font-size:17px;background:#de7d28;border-color:#de7d28;color:#fff" style-hover="background:#c56a1c" onClick="{{ goAuthOrg }}">Je suis une Structure</button>
+        </div>
+      </div>
+      <div class="blueprint" style="position:relative;aspect-ratio:4/3;background:repeating-linear-gradient(135deg,#dbe6f2 0 10px,#eef3fa 10px 20px);display:grid;place-items:center">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <img src="https://images.unsplash.com/photo-1658129850537-ea7517a9682f?w=900&q=70&auto=format&fit=crop" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+      </div>
+    </div>
+  </section>
+  <section style="padding:72px clamp(16px,4vw,48px)">
+    <div style="max-width:1100px;margin:0 auto">
+      <h2 style="color:#174a7c;font-size:36px;margin-bottom:32px">Comment ça marche</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px">
+        <sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+          <div class="card blueprint" style="padding:24px;gap:12px">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="font-family:var(--font-heading);font-size:44px;color:#de7d28;line-height:1">{{ s.n }}</div>
+            <div style="position:relative;overflow:hidden;height:140px;background:#eaf1f8;display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:11px;color:#174a7c"><img src="{{ s.ill }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block"></div>
+            <div class="card-title" style="font-size:22px;color:#174a7c">{{ s.t }}</div>
+            <p class="card-body" style="font-size:14px">{{ s.d }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+  <section style="padding:0 clamp(16px,4vw,48px) 72px">
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:24px">
+        <h2 style="color:#174a7c;font-size:36px;margin:0">Preuves de réception</h2>
+        <span style="font-size:13px;color:#5d5d60">Publiées par les structures, validées par nos modérateurs</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px">
+        <sc-for list="{{ proofs }}" as="p" hint-placeholder-count="6">
+          <div class="card blueprint" style="padding:0;gap:0">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="position:relative;aspect-ratio:16/10;background:repeating-linear-gradient(135deg,#dbe6f2 0 10px,#eef3fa 10px 20px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:11px;color:#174a7c"><img src="{{ p.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block"></div>
+            <div style="padding:14px;display:flex;flex-direction:column;gap:6px">
+              <span style="align-self:flex-start;font-size:11px;padding:3px 8px;background:#e7f2e1;color:#529e3b;font-weight:500">{{ p.tag }}</span>
+              <div class="card-title">{{ p.cause }}</div>
+              <div class="card-meta">{{ p.org }} · {{ p.date }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+  <footer style="background:#174a7c;color:#eaf1f8;padding:40px clamp(16px,4vw,48px)">
+    <div style="max-width:1100px;margin:0 auto;display:flex;gap:24px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+      <div>
+        <img src="assets/logo-full-white.png" alt="SUNUSOCIAL" style="height:58px;width:auto;display:block;margin-bottom:8px">
+        <div style="font-size:13px;opacity:.8">Dakar, Sénégal · Paiements sécurisés par NabooPay</div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <a href="#" style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;padding:10px 16px;text-decoration:none;font-weight:500;font-size:14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"></path></svg>Nous contacter sur WhatsApp</a>
+        <a href="Moderateur.dc.html" style="color:#eaf1f8;font-size:13px;opacity:.8">Espace modération</a>
+      </div>
+    </div>
+  </footer>
+</sc-if>
+
+<sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+  <div style="min-height:100vh;background:#eaf1f8;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:12px;padding:14px clamp(16px,4vw,48px)">
+      <button class="btn btn-ghost" onClick="{{ goLanding }}">← Retour</button>
+      <img src="assets/logo-lockup.png" alt="SUNUSOCIAL" style="height:34px;width:auto;margin-left:auto;display:block">
+    </div>
+    <div style="flex:1;display:grid;place-items:center;padding:16px">
+      <div style="width:min(960px,100%);display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;gap:0;align-self:center;border:1px solid var(--color-divider);background:#fff">
+          <button class="btn" style="{{ donorTabStyle }}" onClick="{{ pickDonor }}">Donateur</button>
+          <button class="btn" style="{{ orgTabStyle }}" onClick="{{ pickOrg }}">Structure</button>
+        </div>
+        <div class="blueprint" style="position:relative;background:#fff;min-height:620px;overflow:visible">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr">
+            <div style="padding:40px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;color:#174a7c">
+              <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#de7d28">Espace Structure</div>
+              <h2 style="margin:0;font-size:30px">Recevez des dons vérifiés et publiez vos preuves.</h2>
+              <p style="font-size:14px;color:#5d5d60">Orphelinats, foyers, centres : créez vos causes, suivez vos collectes.</p>
+            </div>
+            <div style="padding:40px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;color:#174a7c">
+              <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#de7d28">Espace Donateur</div>
+              <h2 style="margin:0;font-size:30px">Donnez en 30 secondes, sans mot de passe.</h2>
+              <p style="font-size:14px;color:#5d5d60">Un numéro, un code OTP, et vous suivez chaque franc jusqu'à la preuve.</p>
+            </div>
+          </div>
+          </sc-if>
+          <div style="{{ panelStyle }}">
+            <div style="display:flex;gap:16px;border-bottom:1px solid rgba(255,255,255,.25)">
+              <button class="btn" style="{{ loginTabStyle }}" onClick="{{ setLogin }}">Se connecter</button>
+              <button class="btn" style="{{ signupTabStyle }}" onClick="{{ setSignup }}">S'inscrire</button>
+            </div>
+            <h3 style="margin:8px 0 0;color:#fff;font-size:28px">{{ panelTitle }}</h3>
+
+            <sc-if value="{{ isDonor }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+                  <label style="display:flex;flex-direction:column;gap:5px;font-size:12px">Prénom et nom<input class="input" style="background:#fff" placeholder="Aminata Diop" value="{{ name }}" onChange="{{ onName }}"></input></label>
+                </sc-if>
+                <label style="display:flex;flex-direction:column;gap:5px;font-size:12px">Numéro de téléphone<input class="input" style="background:#fff" placeholder="+221 77 123 45 67" value="{{ phone }}" onChange="{{ onPhone }}"></input></label>
+                <sc-if value="{{ otpNotSent }}" hint-placeholder-val="{{ true }}">
+                  <button class="btn" style="background:#fff;color:#174a7c;border-color:#fff;padding:12px;font-size:16px" onClick="{{ sendOtp }}">Recevoir un code OTP</button>
+                </sc-if>
+                <sc-if value="{{ otpSent }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12px;opacity:.85">Code envoyé par SMS au {{ phoneShown }} · saisissez 1234</div>
+                  <div style="display:flex;gap:8px">
+                    <sc-for list="{{ otpBoxes }}" as="b" hint-placeholder-count="4">
+                      <div style="width:52px;height:56px;background:#fff;color:#174a7c;display:grid;place-items:center;font-family:var(--font-heading);font-size:28px">{{ b }}</div>
+                    </sc-for>
+                  </div>
+                  <input class="input" style="background:#fff" maxlength="4" placeholder="Code à 4 chiffres" value="{{ otp }}" onChange="{{ onOtp }}"></input>
+                  <button class="btn" style="background:#fff;color:#174a7c;border-color:#fff;padding:12px;font-size:16px" onClick="{{ donorLogin }}">Connexion</button>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isOrg }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+                  <label style="display:flex;flex-direction:column;gap:5px;font-size:12px">Nom de la structure<input class="input" style="background:#fff" placeholder="Foyer Keur Yaay"></input></label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                    <label style="display:flex;flex-direction:column;gap:5px;font-size:12px">Type<select class="input" style="background:#fff"><option>Orphelinat</option><option>Prison pour femmes</option><option>Centre pour handicapés</option><option>Pouponnière</option><option>Foyer</option><option>Autre</option></select></label>
+                    <label style="display:flex;flex-direction:column;gap:5px;font-size:12px">Ville<input class="input" style="background:#fff" placeholder="Thiès"></input></label>
+                  </div>
+                </sc-if>
+                <label style="display:flex;flex-direction:column;gap:5px;font-size:12px">Téléphone<input class="input" style="background:#fff" placeholder="+221 33 800 00 00"></input></label>
+                <label style="display:flex;flex-direction:column;gap:5px;font-size:12px">Mot de passe<input class="input" type="password" style="background:#fff" placeholder="••••••••"></input></label>
+                <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+                  <div style="border:1px dashed rgba(255,255,255,.7);padding:12px;display:flex;flex-direction:column;gap:4px">
+                    <div style="font-size:13px;font-weight:500">Récépissé ministériel (PDF ou image)</div>
+                    <div style="font-size:12px;opacity:.85">Glissez un fichier ou cliquez pour parcourir</div>
+                    <span style="align-self:flex-start;font-size:11px;padding:2px 8px;background:rgba(255,255,255,.2)">Vérification en cours de définition</span>
+                  </div>
+                </sc-if>
+                <button class="btn" style="background:#fff;color:#de7d28;border-color:#fff;padding:12px;font-size:16px" onClick="{{ orgLogin }}">{{ orgCta }}</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { screen: 'landing', role: 'donor', mode: 'login', otpSent: false, phone: '', name: '', otp: '' };
+  componentWillUnmount() { window.removeEventListener('resize', this._r); }
+  componentDidMount() { this._r = () => this.setState({ w: window.innerWidth }); window.addEventListener('resize', this._r); this._r(); if (location.hash === '#auth-org') this.setState({ screen: 'auth', role: 'org' }); else if (location.hash === '#auth') this.setState({ screen: 'auth' }); }
+  renderVals() {
+    const s = this.state, donor = s.role === 'donor', signup = s.mode === 'signup';
+    const navy = '#174a7c', sky = '#de7d28', wide = (s.w || 1200) >= 700;
+    const tab = on => `padding:10px 28px;font-size:16px;border:0;background:${on ? (donor ? navy : sky) : 'transparent'};color:${on ? '#fff' : navy}`;
+    const sub = on => `border:0;background:transparent;color:#fff;padding:10px 0;font-size:15px;opacity:${on ? 1 : .6};border-bottom:2px solid ${on ? '#fff' : 'transparent'};border-radius:0`;
+    return {
+      isLanding: s.screen === 'landing', isAuth: s.screen === 'auth',
+      isDonor: donor, isOrg: !donor, isSignup: signup,
+      otpSent: s.otpSent, otpNotSent: !s.otpSent,
+      phone: s.phone, name: s.name, otp: s.otp, phoneShown: s.phone || '+221 77 123 45 67',
+      otpBoxes: [0, 1, 2, 3].map(i => s.otp[i] || '·'),
+      donorTabStyle: tab(donor), orgTabStyle: tab(!donor),
+      loginTabStyle: sub(!signup), signupTabStyle: sub(signup),
+      panelTitle: donor ? (signup ? 'Créer mon compte donateur' : 'Bon retour parmi nous') : (signup ? 'Inscrire ma structure' : 'Connexion structure'),
+      orgCta: signup ? 'Envoyer ma demande' : 'Se connecter',
+      isWide: wide,
+      panelStyle: wide ? `position:absolute;top:0;bottom:0;left:0;width:50%;padding:36px;display:flex;flex-direction:column;gap:18px;color:#fff;overflow:auto;background:${donor ? navy : sky};transform:translateX(${donor ? '0%' : '100%'});transition:transform .55s cubic-bezier(.7,0,.2,1),background .55s` : `position:relative;width:100%;min-height:620px;padding:24px;display:flex;flex-direction:column;gap:18px;color:#fff;background:${donor ? navy : sky};transition:background .4s`,
+      _unused: `position:absolute;top:0;bottom:0;left:0;width:50%;padding:36px;display:flex;flex-direction:column;gap:18px;color:#fff;overflow:auto;background:${donor ? navy : sky};transform:translateX(${donor ? '0%' : '100%'});transition:transform .55s cubic-bezier(.7,0,.2,1),background .55s`,
+      steps: [
+        { n: '01', t: 'Parcourez les causes', d: 'Des besoins concrets publiés par des structures vérifiées : lait infantile, fauteuils, fournitures.', ill: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=900&q=70&auto=format&fit=crop' },
+        { n: '02', t: 'Donnez en toute transparence', d: 'Orange Money, Wave ou carte. Les frais sont affichés avant de confirmer.', ill: 'https://images.unsplash.com/photo-1509099927777-1b8a87bc3b21?w=900&q=70&auto=format&fit=crop' },
+        { n: '03', t: 'La structure reçoit et publie une preuve', d: 'Photo ou vidéo de réception, validée par un modérateur SUNUSOCIAL.', ill: 'https://images.unsplash.com/photo-1783309529161-a1a917bece7e?w=900&q=70&auto=format&fit=crop' }
+      ],
+      proofs: [
+        { org: 'Pouponnière de Mbour', cause: 'Lait infantile pour 40 nourrissons', tag: '✓ Objectif atteint', date: '18 sept. 2026', img: 'https://unsplash.com/photos/Ui0uW21uTxY/download?w=900' },
+        { org: 'Centre Talibés Espoir', cause: 'Moustiquaires pour le dortoir', tag: '✓ Don reçu', date: '16 sept. 2026', img: 'https://unsplash.com/photos/8lKu69ivQNo/download?w=900' },
+        { org: 'Foyer Keur Yaay', cause: 'Kits scolaires rentrée 2026', tag: '✓ Objectif atteint', date: '12 sept. 2026', img: 'https://images.unsplash.com/photo-1567057420215-0afa9aa9253a?w=900&q=70&auto=format&fit=crop' },
+        { org: 'Centre Handicap Ziguinchor', cause: 'Deux fauteuils roulants', tag: '✓ Don reçu', date: '9 sept. 2026', img: 'https://images.unsplash.com/photo-1642680936843-b09109c69104?w=900&q=70&auto=format&fit=crop' },
+        { org: 'Maison d\'arrêt des femmes, Liberté 6', cause: 'Kits d\'hygiène féminine', tag: '✓ Objectif atteint', date: '5 sept. 2026', img: 'https://images.unsplash.com/photo-1509099863731-ef4bff19e808?w=900&q=70&auto=format&fit=crop' },
+        { org: 'Orphelinat Darou Salam', cause: 'Riz et huile pour un mois', tag: '✓ Don reçu', date: '2 sept. 2026', img: 'https://images.unsplash.com/photo-1783309529161-a1a917bece7e?w=900&q=70&auto=format&fit=crop' }
+      ],
+      goAuthDonor: () => this.setState({ screen: 'auth', role: 'donor', mode: 'login' }),
+      goAuthOrg: () => this.setState({ screen: 'auth', role: 'org', mode: 'login' }),
+      goLanding: () => this.setState({ screen: 'landing' }),
+      pickDonor: () => this.setState({ role: 'donor' }),
+      pickOrg: () => this.setState({ role: 'org' }),
+      setLogin: () => this.setState({ mode: 'login' }),
+      setSignup: () => this.setState({ mode: 'signup' }),
+      onPhone: e => this.setState({ phone: e.target.value }),
+      onName: e => this.setState({ name: e.target.value }),
+      onOtp: e => this.setState({ otp: e.target.value.replace(/\D/g, '').slice(0, 4) }),
+      sendOtp: () => this.setState({ otpSent: true }),
+      donorLogin: () => { try { localStorage.setItem('sunu_name', (s.name || 'Aminata Diop').trim()); localStorage.setItem('sunu_phone', s.phone || '+221 77 123 45 67'); } catch (e) {} location.href = 'Donateur.dc.html'; },
+      orgLogin: () => { location.href = 'Structure.dc.html'; }
+    };
+  }
+}
+</script>
+</body>
+</html>

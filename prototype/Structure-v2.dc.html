@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SUNUSOCIAL — Espace structure</title>
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fbf8f4;color:#1e293b;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:Montserrat,sans-serif;margin:0}
+a{color:#174a7c}a:hover{color:#de7d28}
+input,select,button,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #de7d28;outline-offset:2px}
+</style>
+</helmet>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}"><div style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:90;background:#1e293b;color:#fff;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:500;display:flex;gap:8px;align-items:center;box-shadow:0 20px 40px -16px rgba(15,23,42,.5)"><span style="color:#8fd27a">✓</span>{{ toast }}</div></sc-if>
+
+<header style="background:#fff;border-bottom:1px solid #f0e6da">
+  <div style="max-width:1200px;margin:0 auto;padding:10px clamp(14px,4vw,32px);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <button onClick="{{ goDash }}" style="background:none;border:0;padding:0;cursor:pointer"><img src="assets/logo.png" alt="SUNUSOCIAL" style="height:42px;display:block"></button>
+    <span style="background:#fdf0e3;color:#b4601a;border-radius:999px;padding:5px 12px;font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em">ESPACE STRUCTURE</span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+      <span style="width:40px;height:40px;border-radius:12px;background:#de7d28;color:#fff;display:grid;place-items:center;font-family:Montserrat,sans-serif;font-weight:800">KK</span>
+      <div style="display:flex;flex-direction:column;line-height:1.3"><strong style="font-size:14px">Pouponnière Keur Khadija</strong><span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#3b7a29;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>Structure vérifiée · Mbour</span></div>
+      <a href="SUNUSOCIAL-v2.dc.html" style="font-size:13px;color:#5b6678;margin-left:8px">Déconnexion</a>
+    </div>
+  </div>
+</header>
+
+<sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+<main data-screen-label="07 Tableau de bord structure" style="max-width:1200px;margin:0 auto;padding:28px clamp(14px,4vw,32px) 64px;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:6px"><h1 style="font-size:clamp(26px,3.4vw,36px);font-weight:800">Tableau de bord</h1><p style="margin:0;color:#5b6678">Octobre 2026 · suivez vos causes, de la soumission à la clôture.</p></div>
+    <button onClick="{{ newCause }}" style="display:inline-flex;align-items:center;gap:10px;background:#de7d28;color:#fff;border:0;border-radius:999px;padding:16px 26px;font-family:Montserrat,sans-serif;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 28px -14px rgba(222,125,40,.8)" style-hover="background:#c86c1c"><span style="font-size:22px;line-height:0">+</span>Créer une cause</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+    <sc-for list="{{ stats }}" as="st" hint-placeholder-count="4">
+      <div style="background:#fff;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 0 #f0e6da">
+        <span style="width:40px;height:40px;border-radius:12px;background:{{ st.bg }};display:grid;place-items:center;color:{{ st.fg }};font-family:Montserrat,sans-serif;font-weight:800">{{ st.icon }}</span>
+        <span style="font-size:13px;color:#5b6678">{{ st.label }}</span>
+        <span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:26px;line-height:1.1">{{ st.value }}</span>
+      </div>
+    </sc-for>
+  </div>
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2 style="font-size:22px;font-weight:800">Mes causes</h2>
+    <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:minmax(0,2.4fr) 1.2fr 1fr 1fr 1.3fr;gap:12px;padding:0 22px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8a94a6"><span>Nom de la cause</span><span>Statut</span><span>Montant collecté</span><span>Objectif</span><span style="text-align:right">Actions</span></div>
+    </sc-if>
+    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+      <div style="background:#fff;border-radius:24px 24px 24px 6px;padding:18px 22px;display:flex;flex-direction:column;gap:16px;box-shadow:0 1px 0 #f0e6da">
+        <div style="display:grid;grid-template-columns:{{ rowCols }};gap:12px;align-items:center">
+          <div style="display:flex;flex-direction:column;gap:3px"><strong style="font-family:Montserrat,sans-serif;font-size:16px">{{ r.title }}</strong><span style="font-size:12px;color:#8a94a6">{{ r.cat }} · {{ r.endLabel }}</span></div>
+          <span style="justify-self:start;background:{{ r.stBg }};color:{{ r.stFg }};border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700">{{ r.stLabel }}</span>
+          <span style="font-weight:600">{{ r.raisedStr }}</span>
+          <span style="color:#5b6678">{{ r.goalStr }}</span>
+          <div style="display:flex;gap:6px;justify-content:{{ actJustify }};flex-wrap:wrap">
+            <sc-if value="{{ r.canProof }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.proof }}" style="border:0;background:#529e3b;color:#fff;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer" style-hover="background:#3b7a29">Publier la preuve</button></sc-if>
+            <button onClick="{{ r.edit }}" style="border:1.5px solid #e2e8f0;background:#fff;color:#1e293b;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;cursor:pointer" style-hover="border-color:#de7d28;color:#b4601a">Modifier</button>
+            <sc-if value="{{ r.canDel }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.del }}" style="border:0;background:none;color:#a03b2a;padding:7px 8px;font-weight:600;font-size:13px;cursor:pointer" style-hover="text-decoration:underline">Supprimer</button></sc-if>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbf8f4;border-radius:16px;padding:10px 14px">
+          <sc-for list="{{ r.tl }}" as="t" hint-placeholder-count="5">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:{{ t.fg }}"><span style="width:18px;height:18px;border-radius:50%;background:{{ t.dot }};color:#fff;display:grid;place-items:center;font-size:10px">{{ t.mark }}</span>{{ t.label }}<sc-if value="{{ t.notLast }}" hint-placeholder-val="{{ true }}"><span style="width:22px;height:2px;border-radius:2px;background:{{ t.line }};margin:0 2px"></span></sc-if></span>
+          </sc-for>
+        </div>
+        <sc-if value="{{ r.askingDel }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px;border:1.5px solid #f0c6bd;background:#fffaf8;border-radius:16px;padding:14px">
+            <strong style="font-size:14px;color:#8a2f20">Demander la suppression de cette cause</strong>
+            <span style="font-size:13px;color:#5b6678;line-height:1.5">Une cause publiée ne peut pas être supprimée directement : la demande est examinée par un modérateur SUNUSOCIAL. {{ r.delNote }}</span>
+            <textarea value="{{ delReason }}" onChange="{{ onDelReason }}" placeholder="Ex. Le besoin a été couvert par un autre partenaire." style="border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:14px;min-height:70px;outline:none;resize:vertical" style-focus="border-color:#a03b2a"></textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+              <button onClick="{{ cancelDel }}" style="border:1.5px solid #e2e8f0;background:#fff;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;color:#334155">Annuler</button>
+              <button onClick="{{ r.sendDel }}" disabled="{{ noDelReason }}" style="border:0;background:#a03b2a;color:#fff;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;opacity:{{ delOpacity }}">Envoyer la demande au modérateur</button>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ r.delPending }}" hint-placeholder-val="{{ false }}"><div style="background:#fdeeea;color:#8a2f20;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5">⏳ Demande de suppression envoyée le 12 oct. 2026 · en attente de l'autorisation du modérateur. Motif : « {{ r.delReq }} »</div></sc-if>
+        <sc-if value="{{ r.isDeletedKept }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:4px;background:#fdf0e3;color:#7a420f;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5"><strong>Preuve d'utilisation obligatoire avant le 17 oct. 2026 (J-5)</strong><span>{{ r.delNote }}</span><span style="font-weight:600">Sans preuve validée à cette date, votre compte sera suspendu : vous ne pourrez plus publier de nouvelle cause.</span></div></sc-if>
+        <sc-if value="{{ r.isRefused }}" hint-placeholder-val="{{ false }}"><div style="background:#fdeeea;color:#8a2f20;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5"><strong>Raison du refus :</strong> {{ r.reason }}</div></sc-if>
+        <sc-if value="{{ r.proofPending }}" hint-placeholder-val="{{ false }}"><div style="background:#eaf1f8;color:#174a7c;border-radius:14px;padding:12px 14px;font-size:13px">⏳ Preuve envoyée — en attente de validation par le modérateur.</div></sc-if>
+      </div>
+    </sc-for>
+  </section>
+</main>
+</sc-if>
+
+<sc-if value="{{ isForm }}" hint-placeholder-val="{{ false }}">
+<main data-screen-label="08 Créer une cause" style="max-width:820px;margin:0 auto;padding:24px clamp(14px,4vw,32px) 64px;display:flex;flex-direction:column;gap:22px">
+  <button onClick="{{ goDash }}" style="align-self:flex-start;background:none;border:0;color:#5b6678;font-size:14px;cursor:pointer;padding:0">← Tableau de bord</button>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <h1 style="font-size:clamp(24px,3vw,32px);font-weight:800">{{ formTitle }}</h1>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <sc-for list="{{ stepBar }}" as="b" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:6px;border-radius:999px;background:{{ b.color }};transition:background .3s"></div><span style="font-size:13px;font-weight:600;color:{{ b.fg }}">{{ b.label }}</span></div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="background:#fff;border-radius:28px 28px 28px 8px;padding:clamp(20px,4vw,36px);display:flex;flex-direction:column;gap:20px;box-shadow:0 30px 60px -44px rgba(30,41,59,.5)">
+    <sc-if value="{{ step1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:600;color:#334155">Image de bannière</span>
+        <button onClick="{{ toggleBanner }}" style="position:relative;overflow:hidden;aspect-ratio:21/8;border:1.5px dashed {{ bannerBd }};background:#fffaf5;border-radius:24px 24px 24px 6px;cursor:pointer;display:grid;place-items:center;padding:0">
+          <sc-if value="{{ f.banner }}" hint-placeholder-val="{{ false }}"><img src="{{ bannerImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></sc-if>
+          <sc-if value="{{ noBanner }}" hint-placeholder-val="{{ true }}"><span style="display:flex;flex-direction:column;align-items:center;gap:8px;color:#b4601a;font-size:14px;font-weight:600"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#de7d28" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"></path></svg>Ajouter une photo (JPG, PNG · 1600×600 conseillé)</span></sc-if>
+        </button>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Nom de la cause<input value="{{ f.title }}" onChange="{{ onTitle }}" placeholder="Ex. Lait infantile pour 32 nourrissons" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none" style-focus="border-color:#de7d28"></input></label>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:600;color:#334155">Description</span>
+        <div style="border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden">
+          <div style="display:flex;gap:2px;padding:6px;background:#f8f9fb;border-bottom:1px solid #eef0f4">
+            <button style="width:32px;height:30px;border:0;border-radius:8px;background:none;font-weight:800;cursor:pointer" style-hover="background:#fff">B</button>
+            <button style="width:32px;height:30px;border:0;border-radius:8px;background:none;font-style:italic;font-family:Georgia,serif;cursor:pointer" style-hover="background:#fff">I</button>
+            <button style="width:32px;height:30px;border:0;border-radius:8px;background:none;text-decoration:underline;cursor:pointer" style-hover="background:#fff">U</button>
+            <button style="width:32px;height:30px;border:0;border-radius:8px;background:none;cursor:pointer" style-hover="background:#fff">• ≡</button>
+          </div>
+          <textarea value="{{ f.desc }}" onChange="{{ onDesc }}" rows="5" placeholder="Décrivez le besoin, les bénéficiaires et l'utilisation précise des fonds." style="width:100%;border:0;padding:14px;font-size:15px;line-height:1.6;resize:vertical;outline:none"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:600;color:#334155">Catégorie</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ catOpts }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.pick }}" style="border:1.5px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:999px;padding:10px 18px;font-weight:600;font-size:14px;cursor:pointer">{{ c.label }}</button></sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ step2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:600;color:#334155">Condition de fin</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+          <sc-for list="{{ endOpts }}" as="e" hint-placeholder-count="2">
+            <button onClick="{{ e.pick }}" style="text-align:left;border:1.5px solid {{ e.bd }};background:{{ e.bg }};border-radius:18px;padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:4px"><strong style="font-family:Montserrat,sans-serif;font-size:15px;color:#1e293b">{{ e.label }}</strong><span style="font-size:13px;color:#5b6678">{{ e.sub }}</span></button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Montant cible<div style="display:flex;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden"><input value="{{ f.goal }}" onChange="{{ onGoal }}" inputMode="numeric" style="flex:1;min-width:0;border:0;padding:13px 14px;font-size:15px;outline:none"></input><span style="display:flex;align-items:center;padding:0 12px;background:#f8f9fb;color:#5b6678">FCFA</span></div></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">{{ dateLabel }}<input type="date" value="{{ f.date }}" onChange="{{ onDate }}" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:12px 14px;font-size:15px;outline:none"></input></label>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;background:#fdf0e3;border-radius:16px;padding:14px;font-size:13px;color:#7a420f;line-height:1.5">
+        <span style="flex:none;background:#de7d28;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;font-size:10px;letter-spacing:.06em">RÈGLE VALIDÉE</span>
+        <span>Toute cause a une date limite. Pour un objectif financier, les fonds sont libérés à l'objectif atteint ou à la date limite, au premier des deux — aucun don ne reste bloqué chez NabooPay. (Avec Sycapay, les dons vous sont versés directement à chaque paiement.)</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:600;color:#334155">Niveau d'urgence</span>
+        <div style="display:inline-flex;background:#f3f4f7;border-radius:14px;padding:4px;align-self:flex-start">
+          <button onClick="{{ setNormal }}" style="border:0;border-radius:11px;padding:10px 20px;font-weight:600;font-size:14px;cursor:pointer;background:{{ normBg }};color:{{ normFg }}">Normal</button>
+          <button onClick="{{ setUrgent }}" style="border:0;border-radius:11px;padding:10px 20px;font-weight:700;font-size:14px;cursor:pointer;background:{{ urgBg }};color:{{ urgFg }}">Urgent</button>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ step3 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <p style="margin:0;color:#5b6678;font-size:14px">Voici la carte telle que les donateurs la verront après approbation.</p>
+      <article style="max-width:340px;background:#fff;border-radius:24px 24px 24px 6px;overflow:hidden;box-shadow:0 0 0 1px #f0e6da,0 20px 40px -24px rgba(30,41,59,.4)">
+        <div style="position:relative;aspect-ratio:16/10;background:#eaf1f8">
+          <sc-if value="{{ f.banner }}" hint-placeholder-val="{{ false }}"><img src="{{ bannerImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></sc-if>
+          <sc-if value="{{ f.urgent }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:10px;left:10px;background:#de7d28;color:#fff;border-radius:999px;padding:4px 10px;font-family:Montserrat,sans-serif;font-weight:800;font-size:11px;letter-spacing:.08em">URGENT</span></sc-if>
+          <span style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,.94);color:#174a7c;border-radius:999px;padding:4px 10px;font-weight:600;font-size:11px">{{ f.cat }}</span>
+        </div>
+        <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;color:#5b6678">Pouponnière Keur Khadija · <span style="color:#3b7a29;font-weight:600">✓ Vérifié</span></span>
+          <h3 style="font-size:17px;font-weight:700;line-height:1.28">{{ previewTitle }}</h3>
+          <div style="height:8px;border-radius:999px;background:#eaf1f8"></div>
+          <span style="font-size:12px;color:#5b6678"><strong style="color:#1e293b">0</strong> / {{ goalStr }} · {{ endPreview }}</span>
+          <span style="border:1.5px solid #174a7c;color:#174a7c;border-radius:999px;padding:10px;font-weight:600;font-size:14px;text-align:center">Voir plus</span>
+        </div>
+      </article>
+    </div>
+    </sc-if>
+
+    <div style="display:flex;justify-content:space-between;gap:10px;padding-top:6px;border-top:1px solid #f1ede7;flex-wrap:wrap">
+      <button onClick="{{ back }}" style="border:1.5px solid #e2e8f0;background:#fff;border-radius:999px;padding:13px 22px;font-weight:600;font-size:14px;cursor:pointer">{{ backLabel }}</button>
+      <button onClick="{{ next }}" style="background:#de7d28;color:#fff;border:0;border-radius:999px;padding:14px 26px;font-family:Montserrat,sans-serif;font-weight:800;font-size:15px;cursor:pointer" style-hover="background:#c86c1c">{{ nextLabel }}</button>
+    </div>
+  </div>
+</main>
+</sc-if>
+
+<sc-if value="{{ isProof }}" hint-placeholder-val="{{ false }}">
+<main data-screen-label="09 Preuve de réception" style="max-width:720px;margin:0 auto;padding:24px clamp(14px,4vw,32px) 64px;display:flex;flex-direction:column;gap:22px">
+  <button onClick="{{ goDash }}" style="align-self:flex-start;background:none;border:0;color:#5b6678;font-size:14px;cursor:pointer;padding:0">← Tableau de bord</button>
+  <div style="display:flex;gap:14px;align-items:center;background:#ebf5e6;border-radius:20px;padding:16px 18px;color:#2f5f21">
+    <span style="flex:none;width:44px;height:44px;border-radius:50%;background:#529e3b;color:#fff;display:grid;place-items:center;font-size:20px">✓</span>
+    <div style="display:flex;flex-direction:column;gap:2px"><strong style="font-family:Montserrat,sans-serif">Fonds reçus · {{ proofCause.raisedStr }}</strong><span style="font-size:13px">« {{ proofCause.title }} » — publiez la preuve pour vos donateurs.</span></div>
+  </div>
+  <div style="background:#fff;border-radius:28px 28px 28px 8px;padding:clamp(20px,4vw,36px);display:flex;flex-direction:column;gap:20px;box-shadow:0 30px 60px -44px rgba(30,41,59,.5)">
+    <h1 style="font-size:26px;font-weight:800">Preuve de réception</h1>
+    <sc-if value="{{ proofForm }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600;color:#334155">Photos, vidéos et justificatifs</span><span style="font-size:13px;font-weight:700;color:{{ pCountFg }}">{{ pCountLabel }}</span></div>
+        <div style="height:6px;border-radius:999px;background:#eef3ea;overflow:hidden"><div style="height:100%;width:{{ pPct }};background:{{ pCountFg }};border-radius:999px;transition:width .3s"></div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px">
+          <sc-for list="{{ pItems }}" as="pi" hint-placeholder-count="0">
+            <div style="position:relative;aspect-ratio:1;border-radius:16px 16px 16px 4px;overflow:hidden;background:#f3f1ec">
+              <sc-if value="{{ pi.isMedia }}" hint-placeholder-val="{{ true }}"><img src="{{ pi.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ pi.pos }}"></sc-if>
+              <sc-if value="{{ pi.isDoc }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:0;display:grid;place-items:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#b4601a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 13h6M9 17h4"></path></svg></span></sc-if>
+              <span style="position:absolute;left:6px;bottom:6px;background:rgba(15,23,42,.82);color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600">{{ pi.kind }}</span>
+              <button onClick="{{ pi.remove }}" aria-label="Retirer" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(255,255,255,.94);color:#a03b2a;font-size:15px;line-height:1;cursor:pointer">×</button>
+            </div>
+          </sc-for>
+          <sc-if value="{{ canAddP }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ addP }}" style="aspect-ratio:1;border:1.5px dashed #a9d29a;background:#f7fbf5;border-radius:16px 16px 16px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#3b7a29;font-size:12px;font-weight:600;padding:8px" style-hover="border-color:#529e3b;background:#eef7e9"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>Ajouter</button>
+          </sc-if>
+        </div>
+        <span style="font-size:12px;color:#5b6678;line-height:1.5">Minimum 5 fichiers : photos de ce qui a été reçu, au moins une facture ou un bon de livraison, et si possible une courte vidéo (60 s max.). JPG, PNG, PDF ou MP4.</span>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Décrivez ce qui a été reçu<textarea value="{{ proofDesc }}" onChange="{{ onProofDesc }}" rows="4" placeholder="Ex. 2 cartons de 12 boîtes de lait 1er âge, livrés le 10 octobre par la pharmacie Serigne Saliou." style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;line-height:1.6;outline:none;resize:vertical"></textarea></label>
+      <span style="font-size:12px;color:#5b6678;line-height:1.5">Chaque preuve est analysée automatiquement (image réutilisée, métadonnées incohérentes) puis validée par un modérateur avant publication.</span>
+      <button onClick="{{ sendProof }}" disabled="{{ cantSendP }}" style="background:#529e3b;color:#fff;border:0;border-radius:999px;padding:16px;font-family:Montserrat,sans-serif;font-weight:800;font-size:16px;cursor:pointer;opacity:{{ sendOpacity }}" style-hover="background:#3b7a29">{{ sendLabel }}</button>
+    </div>
+    </sc-if>
+    <sc-if value="{{ proofSent }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:12px 0">
+      <span style="width:72px;height:72px;border-radius:50%;background:#eaf1f8;display:grid;place-items:center;font-size:30px">⏳</span>
+      <h2 style="font-size:22px;font-weight:800">En attente de validation par le modérateur</h2>
+      <p style="margin:0;color:#5b6678;max-width:440px;line-height:1.6">Vous serez notifié dès sa validation. Elle sera alors publiée sur la page d'accueil et envoyée aux donateurs de cette cause.</p>
+      <button onClick="{{ goDash }}" style="background:#de7d28;color:#fff;border:0;border-radius:999px;padding:14px 24px;font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;cursor:pointer">Retour au tableau de bord</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;border-top:1px dashed #e2e8f0;padding-top:20px">
+      <span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#8a94a6">APERÇU · CE QUE VERRONT LE MODÉRATEUR PUIS VOS DONATEURS</span>
+<div style="display:flex;flex-direction:column;gap:14px;color:#1e293b">
+  <div style="position:relative;aspect-ratio:4/3;border-radius:22px 22px 22px 6px;overflow:hidden;background:#eaf1f8">
+    <sc-if value="{{ pv.cur.isMedia }}" hint-placeholder-val="{{ true }}"><img src="{{ pv.cur.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ pv.cur.pos }}"></sc-if>
+    <sc-if value="{{ pv.cur.isVideo }}" hint-placeholder-val="{{ false }}">
+      <span style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,23,42,.25)"><span style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.94);display:grid;place-items:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="#174a7c"><path d="M8 5v14l11-7z"></path></svg></span></span>
+      <span style="position:absolute;right:12px;bottom:12px;background:rgba(15,23,42,.85);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600">▶ {{ pv.cur.dur }}</span>
+    </sc-if>
+    <sc-if value="{{ pv.cur.isDoc }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;display:grid;place-items:center;padding:18px;background:#f3f1ec">
+        <div style="width:100%;max-width:320px;background:#fff;border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 14px 30px -14px rgba(30,41,59,.45);transform:rotate(-1.2deg)">
+          <span style="font-family:Montserrat,sans-serif;font-size:10px;font-weight:800;letter-spacing:.14em;color:#de7d28;text-transform:uppercase">{{ pv.cur.kind }}</span>
+          <strong style="font-family:Montserrat,sans-serif;font-size:14px;line-height:1.3">{{ pv.cur.supplier }}</strong>
+          <span style="font-size:11px;color:#8a94a6">N° {{ pv.cur.ref }} · {{ pv.cur.date }}</span>
+          <div style="height:1px;background:#ece6dc"></div>
+          <sc-for list="{{ pv.cur.lines }}" as="ln" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12px"><span>{{ ln.l }}</span><span style="font-weight:600;white-space:nowrap">{{ ln.a }}</span></div></sc-for>
+          <div style="height:1px;background:#ece6dc"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px"><span style="font-size:12px;font-weight:700">Total {{ pv.cur.docTotal }}</span><span style="width:44px;height:44px;border:2px solid #529e3b;border-radius:50%;display:grid;place-items:center;color:#529e3b;font-size:7px;font-weight:800;text-align:center;line-height:1.1;transform:rotate(-12deg)">PAYÉ<br>CACHET</span></div>
+        </div>
+      </div>
+    </sc-if>
+    <span style="position:absolute;top:12px;left:12px;background:rgba(255,255,255,.94);color:#174a7c;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700">{{ pv.cur.kind }}</span>
+    <span style="position:absolute;top:12px;right:12px;background:rgba(15,23,42,.8);color:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600">{{ pv.idxLabel }}</span>
+    <button onClick="{{ pv.prev }}" aria-label="Précédent" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#174a7c;font-size:22px;line-height:1;cursor:pointer;box-shadow:0 6px 14px -6px rgba(15,23,42,.5)">‹</button>
+    <button onClick="{{ pv.next }}" aria-label="Suivant" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#174a7c;font-size:22px;line-height:1;cursor:pointer;box-shadow:0 6px 14px -6px rgba(15,23,42,.5)">›</button>
+    <sc-if value="{{ pv.cur.flagged }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:0;background:rgba(194,65,45,.94);color:#fff;padding:10px 14px;font-size:13px;line-height:1.45">🚩 {{ pv.cur.flagWhy }}</div></sc-if>
+  </div>
+  <p style="margin:0;font-size:14px;line-height:1.55;color:#334155">{{ pv.cur.cap }}</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px">
+    <sc-for list="{{ pv.thumbs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.pick }}" style="position:relative;aspect-ratio:1;border-radius:12px 12px 12px 3px;overflow:hidden;border:2.5px solid {{ t.bd }};padding:0;background:#f3f1ec;cursor:pointer;opacity:{{ t.op }}">
+        <sc-if value="{{ t.isMedia }}" hint-placeholder-val="{{ true }}"><img src="{{ t.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ t.pos }}"></sc-if>
+        <sc-if value="{{ t.isDoc }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:0;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b4601a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 13h6M9 17h4"></path></svg></span></sc-if>
+        <sc-if value="{{ t.isVideo }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:16px;text-shadow:0 1px 4px rgba(0,0,0,.6)">▶</span></sc-if>
+        <sc-if value="{{ t.flag }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:4px;right:4px;width:12px;height:12px;border-radius:50%;background:#c2412d;border:2px solid #fff"></span></sc-if>
+      </button>
+    </sc-for>
+  </div>
+  <div style="background:#faf7f2;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#8a94a6">COMPTE RENDU DE LA STRUCTURE</span>
+    <span style="font-size:14px;line-height:1.6;color:#334155">{{ pv.desc }}</span>
+  </div>
+  <div style="border:1.5px solid #ece6dc;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#8a94a6">UTILISATION DES FONDS</span>
+    <sc-for list="{{ pv.spend }}" as="sp" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span style="color:#334155">{{ sp.l }}</span><span style="font-weight:600;white-space:nowrap">{{ sp.a }}</span></div></sc-for>
+    <div style="height:1px;background:#ece6dc"></div>
+    <div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><strong>Total dépensé</strong><strong style="color:#174a7c;white-space:nowrap">{{ pv.totalStr }}</strong></div>
+    <span style="font-size:12px;color:#5b6678">Collectés : {{ pv.raisedStr }} · {{ pv.summary }}</span>
+  </div>
+</div>
+    </div>
+    </sc-if>
+  </div>
+</main>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PU = (id, w) => 'https://images.unsplash.com/' + id + '?w=' + (w || 900) + '&q=70&auto=format&fit=crop';
+const pfmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+const DOSS = {
+  'Moustiquaires imprégnées': { org: 'Centre Espoir Ziguinchor', sent: '10 oct. 2026', validated: '11 oct. 2026', raised: 55000,
+    desc: "22 moustiquaires imprégnées à longue durée achetées à la pharmacie Kadior et installées le 9 octobre dans les deux dortoirs du centre (12 chez les garçons, 10 chez les filles).",
+    spend: [['22 moustiquaires imprégnées MILDA', 48400], ['Crochets, cordes et fixations', 3600], ['Transport jusqu’au centre', 3000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: 'center', cap: 'Dortoir des garçons : 12 moustiquaires installées le 9 octobre.' },
+      { kind: 'Photo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: '20% 30%', cap: 'Dortoir des filles : 10 moustiquaires, une par lit.' },
+      { kind: 'Vidéo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: '80% 60%', dur: '0:42', cap: 'Visite filmée des deux dortoirs après l’installation.' },
+      { kind: 'Facture', supplier: 'Pharmacie Kadior, Ziguinchor', ref: 'FAC-2026-1187', date: '7 oct. 2026', lines: [['Moustiquaire MILDA × 22', 48400], ['Crochets et cordes', 3600]], cap: 'Facture d’achat des moustiquaires et du matériel de fixation.' },
+      { kind: 'Bon de livraison', supplier: 'Casamance Express', ref: 'BL-0942', date: '8 oct. 2026', lines: [['Livraison Ziguinchor → Kandé', 3000]], cap: 'Bon de livraison signé par la directrice du centre.' }
+    ] },
+  'Kits scolaires rentrée 2026': { org: 'Foyer Keur Yaay, Dakar', sent: '28 sept. 2026', validated: '29 sept. 2026', raised: 120000,
+    desc: "24 kits scolaires complets (cartable, cahiers, stylos, géométrie, blouse) remis aux enfants du foyer le 27 septembre, avant la rentrée.",
+    spend: [['24 cartables garnis', 96000], ['24 blouses', 19200], ['Transport depuis Sandaga', 4800]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: 'center', cap: 'Les 24 kits prêts à être distribués.' },
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '15% 40%', cap: 'Détail d’un kit : cahiers, stylos, règle et compas.' },
+      { kind: 'Vidéo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '85% 50%', dur: '1:05', cap: 'Remise des kits aux enfants le 27 septembre.' },
+      { kind: 'Facture', supplier: 'Librairie Clairafrique, Sandaga', ref: 'CF-26-5521', date: '24 sept. 2026', lines: [['Cartable garni × 24', 96000], ['Blouse × 24', 19200]], cap: 'Facture de la librairie.' },
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '50% 90%', cap: 'Liste d’émargement signée par les éducateurs.' }
+    ] },
+  'Riz, huile et sucre pour octobre': { org: 'Orphelinat Darou Salam, Kaolack', sent: '9 oct. 2026', raised: 175000,
+    desc: "6 sacs de riz de 50 kg, 40 L d'huile et 25 kg de sucre livrés par la boutique Diallo pour couvrir le mois d'octobre des 45 enfants.",
+    spend: [['6 sacs de riz brisé 50 kg', 117000], ['40 L d’huile', 42000], ['25 kg de sucre', 16000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1562557309-bf9e46b0670d'), pos: 'center', cap: 'Livraison des denrées dans la réserve.', flag: true, flagWhy: 'Image très proche d’une photo déjà publiée en ligne (similarité 91 %). Métadonnées de date absentes.' },
+      { kind: 'Photo', img: PU('photo-1644377949116-c4a6b529241c'), pos: 'center', cap: 'Premier repas préparé avec la livraison.' },
+      { kind: 'Vidéo', img: PU('photo-1644377949116-c4a6b529241c'), pos: '30% 70%', dur: '0:38', cap: 'Déchargement du camion devant l’orphelinat.' },
+      { kind: 'Facture', supplier: 'Boutique Diallo & Frères, Kaolack', ref: 'BD-1044', date: '6 oct. 2026', lines: [['Riz brisé 50 kg × 6', 117000], ['Huile 20 L × 2', 42000], ['Sucre 25 kg', 16000]], cap: 'Facture de la boutique Diallo.' },
+      { kind: 'Photo', img: PU('photo-1562557309-bf9e46b0670d'), pos: '70% 30%', cap: 'Stock rangé dans la réserve.', flag: true, flagWhy: 'Même prise de vue que la photo 1, recadrée.' },
+      { kind: 'Bon de livraison', supplier: 'Boutique Diallo & Frères', ref: 'BL-1044', date: '7 oct. 2026', lines: [['Livraison Kaolack centre', 0]], cap: 'Bon de livraison signé.' }
+    ] },
+  'Lait infantile — septembre': { org: 'Pouponnière Keur Khadija, Mbour', sent: '11 oct. 2026', raised: 85000,
+    desc: "17 boîtes de lait 1er âge reçues de la pharmacie Serigne Saliou le 9 octobre, soit un mois de lait pour les nourrissons de moins de 6 mois.",
+    spend: [['17 boîtes de lait 1er âge 800 g', 85000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1584367368243-c0c59fd4a1f9'), pos: 'center', cap: 'Les 17 boîtes reçues, avant rangement.' },
+      { kind: 'Photo', img: PU('flagged/photo-1570560558077-45ad028193e5'), pos: 'center', cap: 'Premier biberon préparé avec le nouveau stock.' },
+      { kind: 'Vidéo', img: PU('photo-1584367368243-c0c59fd4a1f9'), pos: '70% 40%', dur: '0:51', cap: 'Réception de la commande à la pharmacie.' },
+      { kind: 'Facture', supplier: 'Pharmacie Serigne Saliou, Mbour', ref: 'PSS-0877', date: '9 oct. 2026', lines: [['Lait 1er âge 800 g × 17', 85000]], cap: 'Facture de la pharmacie.' },
+      { kind: 'Photo', img: PU('flagged/photo-1570560558077-45ad028193e5'), pos: '30% 60%', cap: 'Registre d’alimentation tenu par les nourrices.' }
+    ] }
+};
+const buildPV = (key, idx, setIdx) => {
+  const d = DOSS[key] || DOSS['Moustiquaires imprégnées']; const n = d.items.length; const i = Math.max(0, Math.min(n - 1, idx || 0)); const it = d.items[i];
+  const total = d.spend.reduce((a, x) => a + x[1], 0);
+  const c = k => d.items.filter(x => x.kind === k).length;
+  const docs = d.items.filter(x => !x.img).length;
+  const lines = it.lines || [];
+  return { org: d.org, cause: key, desc: d.desc, sent: d.sent, validated: d.validated || '', count: n, flags: d.items.filter(x => x.flag).length,
+    summary: [c('Photo') + ' photo' + (c('Photo') > 1 ? 's' : ''), c('Vidéo') + ' vidéo' + (c('Vidéo') > 1 ? 's' : ''), docs + ' justificatif' + (docs > 1 ? 's' : '')].join(' · '),
+    idxLabel: (i + 1) + ' / ' + n,
+    cur: { kind: it.kind, cap: it.cap, img: it.img || '', pos: it.pos || 'center', dur: it.dur || '', isMedia: !!it.img, isVideo: it.kind === 'Vidéo', isDoc: !it.img, supplier: it.supplier || '', ref: it.ref || '', date: it.date || '',
+      lines: lines.map(([l, a]) => ({ l, a: a ? pfmt(a) : '—' })), docTotal: pfmt(lines.reduce((a, x) => a + x[1], 0)), flagged: !!it.flag, flagWhy: it.flagWhy || '' },
+    thumbs: d.items.map((t, j) => ({ img: t.img || '', pos: t.pos || 'center', isMedia: !!t.img, isDoc: !t.img, isVideo: t.kind === 'Vidéo', flag: !!t.flag, bd: j === i ? '#de7d28' : 'transparent', op: j === i ? 1 : 0.72, pick: () => setIdx(j) })),
+    prev: () => setIdx((i - 1 + n) % n), next: () => setIdx((i + 1) % n),
+    spend: d.spend.map(([l, a]) => ({ l, a: pfmt(a) })), totalStr: pfmt(total), raisedStr: pfmt(d.raised),
+    gapStr: d.raised - total > 0 ? pfmt(d.raised - total - Math.round(d.raised * 0.03)) : '' };
+};
+const POOL = DOSS['Lait infantile — septembre'].items.concat([
+  { kind: 'Photo', img: PU('photo-1584367368243-c0c59fd4a1f9'), pos: '20% 80%', cap: 'Rangement dans l’armoire de la nurserie.' },
+  { kind: 'Photo', img: PU('flagged/photo-1570560558077-45ad028193e5'), pos: '80% 20%', cap: 'Nourrice préparant les biberons du soir.' }
+]);
+const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+const BANNER = 'https://images.unsplash.com/photo-1584367368243-c0c59fd4a1f9?w=1200&q=70&auto=format&fit=crop';
+const STEPS = ['Soumise', 'En modération', 'Approuvée', 'Active', 'Clôturée'];
+const blank = { title: '', desc: '', cat: 'Alimentation', end: 'date', date: '2026-11-30', goal: '50000', urgent: false, banner: false };
+const dateFr = d => { const x = new Date(d); return isNaN(x) ? '—' : x.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); };
+
+class Component extends DCLogic {
+  state = {
+    delId: null, delReason: '', screen: 'dash', step: 1, editId: null, f: { ...blank }, toast: '', proofId: null, proofFile: false, pCount: 0, pvIdx: 0, proofDesc: '', proofSent: false, w: 1200,
+    causes: [
+      { id: 1, title: 'Lait infantile pour 32 nourrissons', cat: 'Alimentation', status: 'active', raised: 4500, goal: 10000, end: 'date', date: '2026-10-15', urgent: true, desc: '' },
+      { id: 2, title: 'Lait infantile — septembre', cat: 'Alimentation', status: 'closed', raised: 85000, goal: 85000, end: 'goal', date: '2026-09-30', urgent: false, desc: '' },
+      { id: 3, title: 'Couches et lingettes — trimestre 4', cat: 'Matériel', status: 'pending', raised: 0, goal: 120000, end: 'goal', date: '2026-12-15', urgent: false, desc: '' },
+      { id: 5, title: "Tapis d'éveil et jouets", cat: 'Matériel', status: 'deleted', raised: 38000, goal: 60000, end: 'date', date: '2026-11-30', urgent: false, desc: '', delNote: "Suppression autorisée le 10 oct. 2026 : fonds versés. Motif du modérateur : « Le fournisseur a fermé, achat à réaliser chez un autre revendeur. »" },
+      { id: 4, title: 'Rénovation de la salle de jeux', cat: 'Matériel', status: 'refused', raised: 0, goal: 250000, end: 'date', date: '2026-12-31', urgent: false, desc: '', reason: 'Le devis des travaux est manquant. Merci de joindre un devis signé par le prestataire.' }
+    ]
+  };
+  componentDidMount() { this._r = () => this.setState({ w: window.innerWidth }); window.addEventListener('resize', this._r); this._r(); if (window.ResizeObserver) { this._ro = new ResizeObserver(this._r); this._ro.observe(document.documentElement); } }
+  componentWillUnmount() { window.removeEventListener('resize', this._r); if (this._ro) this._ro.disconnect(); clearTimeout(this._t); }
+  go(screen, extra) { this.setState({ screen, ...(extra || {}) }); window.scrollTo(0, 0); }
+  toast(m) { clearTimeout(this._t); this.setState({ toast: m }); this._t = setTimeout(() => this.setState({ toast: '' }), 2800); }
+  setF(k, v) { this.setState(s => ({ f: { ...s.f, [k]: v } })); }
+  renderVals() {
+    const s = this.state, wide = s.w >= 860, f = s.f, O = '#de7d28', G = '#529e3b';
+    const ST = { deleted: ['Supprimée · fonds versés', '#fdf0e3', '#b4601a'], pending: ['En attente ⏳', '#fff4dc', '#8a5a00'], active: ['Approuvée ✓', '#ebf5e6', '#3b7a29'], closed: ['Clôturée ✓', '#eaf1f8', '#174a7c'], refused: ['Refusée ✗', '#fdeeea', '#a03b2a'] };
+    const reached = { deleted: 4, pending: 1, refused: 2, active: 4, closed: 5 };
+    const rows = s.causes.map(c => {
+      const st = ST[c.status], n = reached[c.status];
+      const tl = c.status === 'deleted' ? [['Active', 1], ['Suppression autorisée', 1], ['Fonds versés', 1], ['Preuve à envoyer', 0]].map(([label, ok], i) => ({ label, mark: ok ? '✓' : '', dot: ok ? G : '#e0a100', fg: '#1e293b', line: ok ? G : '#e2e6ec', notLast: i < 3 })) : STEPS.map((l, i) => {
+        const ref = c.status === 'refused' && i === 2;
+        const done = i < n && !ref, curr = c.status === 'pending' && i === 1;
+        return { label: ref ? 'Refusée' : l, mark: ref ? '✗' : done ? '✓' : '', dot: ref ? '#c2412d' : done ? G : curr ? '#e0a100' : '#d4d9e1', fg: ref ? '#a03b2a' : (done || curr) ? '#1e293b' : '#94a0b2', line: done ? G : '#e2e6ec', notLast: i < 4 && !(c.status === 'refused' && i >= 2) };
+      }).filter((t, i) => !(c.status === 'refused' && i > 2));
+      return { ...c, stLabel: st[0], stBg: st[1], stFg: st[2], tl, raisedStr: fmt(c.raised), goalStr: fmt(c.goal),
+        endLabel: c.end === 'date' ? 'fin le ' + dateFr(c.date) : 'fin à ' + fmt(c.goal) + ' ou le ' + dateFr(c.date),
+        isRefused: c.status === 'refused', isDeletedKept: c.status === 'deleted' && !c.proofSent, canProof: (c.status === 'closed' || c.status === 'deleted') && !c.proofSent, proofPending: !!c.proofSent,
+        edit: () => this.go('form', { step: 1, editId: c.id, f: { ...blank, ...c, goal: String(c.goal), banner: true } }),
+        canDel: !c.delReq && c.status !== 'refused' && c.status !== 'deleted', askingDel: s.delId === c.id, delPending: !!c.delReq,
+        delNote: c.raised > 0 ? 'Les ' + fmt(c.raised) + ' déjà collectés seront remboursés aux donateurs ou réaffectés selon la décision du modérateur.' : '',
+        del: () => c.status === 'pending' ? (this.setState({ causes: s.causes.filter(x => x.id !== c.id) }), this.toast('Cause retirée de la modération')) : this.setState({ delId: c.id, delReason: '' }),
+        sendDel: () => { if (s.delReason.trim().length < 5) return; this.setState({ delId: null, causes: s.causes.map(x => x.id === c.id ? { ...x, delReq: s.delReason.trim() } : x) }); this.toast('Demande de suppression envoyée au modérateur'); },
+        proof: () => this.go('proof', { proofId: c.id, pCount: 0, pvIdx: 0, proofDesc: '', proofSent: false }) };
+    });
+    const goalN = parseInt(String(f.goal).replace(/\D/g, '')) || 0;
+    const tab = on => [on ? '#fff' : 'transparent', on ? '#1e293b' : '#5b6678'];
+    const proofCause = s.causes.find(c => c.id === s.proofId) || s.causes[1];
+    return {
+      delReason: s.delReason || '', onDelReason: e => this.setState({ delReason: e.target.value }), cancelDel: () => this.setState({ delId: null }),
+      noDelReason: (s.delReason || '').trim().length < 5, delOpacity: (s.delReason || '').trim().length < 5 ? 0.45 : 1,
+      toast: s.toast, isDash: s.screen === 'dash', isForm: s.screen === 'form', isProof: s.screen === 'proof',
+      goDash: () => this.go('dash'),
+      newCause: () => this.go('form', { step: 1, editId: null, f: { ...blank } }),
+      stats: [
+        { label: 'Total reçu ce mois', value: fmt(89500), icon: 'F', bg: '#fdf0e3', fg: '#b4601a' },
+        { label: 'Causes actives', value: String(s.causes.filter(c => c.status === 'active').length), icon: '●', bg: '#ebf5e6', fg: '#3b7a29' },
+        { label: 'Causes en attente', value: String(s.causes.filter(c => c.status === 'pending').length), icon: '⏳', bg: '#fff4dc', fg: '#8a5a00' },
+        { label: 'Dons reçus', value: '47', icon: '♥', bg: '#eaf1f8', fg: '#174a7c' }
+      ],
+      wide, rows, rowCols: wide ? 'minmax(0,2.4fr) 1.2fr 1fr 1fr 1.3fr' : '1fr', actJustify: wide ? 'flex-end' : 'flex-start',
+      formTitle: s.editId ? 'Modifier la cause' : 'Créer une cause',
+      stepBar: ['1. Informations de base', '2. Objectif', '3. Aperçu'].map((l, i) => ({ label: l, color: i < s.step ? O : '#efe7dc', fg: i < s.step ? '#1e293b' : '#94a0b2' })),
+      step1: s.step === 1, step2: s.step === 2, step3: s.step === 3,
+      f, noBanner: !f.banner, bannerImg: BANNER, bannerBd: f.banner ? G : '#e7b98f',
+      toggleBanner: () => this.setF('banner', !f.banner),
+      onTitle: e => this.setF('title', e.target.value), onDesc: e => this.setF('desc', e.target.value),
+      onGoal: e => this.setF('goal', e.target.value.replace(/[^\d ]/g, '')), onDate: e => this.setF('date', e.target.value),
+      catOpts: ['Santé', 'Alimentation', 'Matériel'].map(l => ({ label: l, bd: f.cat === l ? O : '#e2e8f0', bg: f.cat === l ? '#fdf0e3' : '#fff', fg: f.cat === l ? '#b4601a' : '#334155', pick: () => this.setF('cat', l) })),
+      endOpts: [['date', 'Date limite', 'La cause se termine à une date précise.'], ['goal', 'Objectif financier', 'La cause se termine dès que le montant est atteint.']].map(([k, l, sub]) => ({ label: l, sub, bd: f.end === k ? O : '#e2e8f0', bg: f.end === k ? '#fffaf5' : '#fff', pick: () => this.setF('end', k) })),
+      dateLabel: f.end === 'date' ? 'Date limite' : 'Date limite de sécurité',
+      setNormal: () => this.setF('urgent', false), setUrgent: () => this.setF('urgent', true),
+      normBg: tab(!f.urgent)[0], normFg: tab(!f.urgent)[1], urgBg: f.urgent ? O : 'transparent', urgFg: f.urgent ? '#fff' : '#5b6678',
+      previewTitle: f.title || 'Titre de votre cause', goalStr: fmt(goalN),
+      endPreview: f.end === 'date' ? 'fin le ' + dateFr(f.date) : 'fin à ' + fmt(goalN),
+      backLabel: s.step === 1 ? 'Annuler' : '← Précédent',
+      nextLabel: s.step === 3 ? 'Soumettre pour modération' : 'Continuer →',
+      back: () => s.step === 1 ? this.go('dash') : this.setState({ step: s.step - 1 }),
+      next: () => {
+        if (s.step < 3) return this.setState({ step: s.step + 1 });
+        const c = { ...f, goal: goalN, title: f.title || 'Nouvelle cause', status: 'pending', raised: 0 };
+        const causes = s.editId ? s.causes.map(x => x.id === s.editId ? { ...x, ...c, id: x.id } : x) : [{ ...c, id: Date.now() }, ...s.causes];
+        this.go('dash', { causes }); this.toast('Cause soumise · en modération');
+      },
+      proofCause: { ...proofCause, raisedStr: fmt(proofCause.raised) },
+      proofForm: !s.proofSent, proofSent: s.proofSent, proofFile: s.proofFile, noProofFile: !s.proofFile, proofBd: s.proofFile ? G : '#a9d29a',
+      toggleProofFile: () => this.setState({ proofFile: !s.proofFile }),
+      proofDesc: s.proofDesc, onProofDesc: e => this.setState({ proofDesc: e.target.value }),
+      pItems: POOL.slice(0, s.pCount).map((it, i) => ({ ...it, pos: it.pos || 'center', isMedia: !!it.img, isDoc: !it.img, remove: () => this.setState({ pCount: s.pCount - 1 }) })),
+      canAddP: s.pCount < POOL.length, addP: () => this.setState({ pCount: Math.min(POOL.length, s.pCount + 1) }),
+      pCountLabel: s.pCount + ' / 5 minimum' + (s.pCount >= 5 ? ' ✓' : ''), pCountFg: s.pCount >= 5 ? G : O, pPct: Math.min(100, s.pCount / 5 * 100) + '%',
+      cantSendP: s.pCount < 5 || s.proofDesc.trim().length < 10,
+      sendLabel: s.pCount < 5 ? 'Encore ' + (5 - s.pCount) + ' fichier' + (5 - s.pCount > 1 ? 's' : '') + ' à ajouter' : s.proofDesc.trim().length < 10 ? 'Décrivez ce qui a été reçu' : 'Envoyer la preuve (' + s.pCount + ' éléments)',
+      pv: buildPV('Lait infantile — septembre', s.pvIdx, i => this.setState({ pvIdx: i })),
+      sendOpacity: (s.pCount < 5 || s.proofDesc.trim().length < 10) ? 0.5 : 1,
+      sendProof: () => { if (s.pCount < 5) return this.toast('Ajoutez au moins 5 fichiers'); if (s.proofDesc.trim().length < 10) return this.toast('Décrivez ce qui a été reçu'); this.setState({ proofSent: true, causes: s.causes.map(c => c.id === proofCause.id ? { ...c, proofSent: true } : c) }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

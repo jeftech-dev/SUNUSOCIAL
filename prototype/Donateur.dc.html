@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+<link rel="icon" type="image/png" href="assets/logo-mark.png">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-1324e616-5dc0-4890-85b2-d40739eeb458/styles.css">
+<script src="_ds/industry-1324e616-5dc0-4890-85b2-d40739eeb458/_ds_bundle.js"></script>
+<style>:root{--color-accent:#174a7c;--color-accent-600:#123c64;--color-accent-700:#0f3459;--color-bg:#ffffff;--color-surface:#f5f9fd}.btn{white-space:nowrap}body{background:#fff;margin:0}a{color:#de7d28}a:hover{color:#174a7c}@keyframes sunuDraw{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}@keyframes sunuPop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}@keyframes sunuUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}</style>
+</helmet>
+<div style="min-height:100vh;font-family:var(--font-body);color:#1e293b;background:#fff;padding-bottom:72px">
+  <nav style="display:flex;align-items:center;gap:14px;padding:12px clamp(14px,4vw,40px);border-bottom:1px solid var(--color-divider);position:sticky;top:0;background:#fff;z-index:10">
+    <button style="display:flex;align-items:center;background:none;border:0;cursor:pointer;padding:0" onClick="{{ goHome }}"><img src="assets/logo-lockup.png" alt="SUNUSOCIAL" style="height:36px;width:auto;display:block"></button>
+    <div style="flex:1;max-width:420px;margin-left:auto;position:relative">
+      <input class="input" style="background:#eaf1f8;padding-left:34px" placeholder="Rechercher une cause, une structure…" value="{{ query }}" onChange="{{ onQuery }}"></input>
+      <svg style="position:absolute;left:10px;top:10px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#174a7c" stroke-width="1.5"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    </div>
+    <button class="btn btn-icon" style="border-radius:50%;background:#174a7c;color:#fff;border-color:#174a7c;font-family:var(--font-heading)" onClick="{{ goProfile }}">{{ initials }}</button>
+  </nav>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <main style="max-width:1160px;margin:0 auto;padding:28px clamp(14px,4vw,40px);display:flex;flex-direction:column;gap:22px">
+      <div>
+        <h1 style="margin:0;color:#174a7c;font-size:clamp(32px,5vw,44px)">Bonjour {{ firstName }}</h1>
+        <p style="margin:4px 0 0;color:#5d5d60">Quelle cause allez-vous soutenir aujourd'hui ?</p>
+      </div>
+      <div class="blueprint" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));background:#eaf1f8;cursor:pointer" onClick="{{ openFeatured }}">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="min-height:240px;background:repeating-linear-gradient(135deg,#d3e0ef 0 10px,#e8f0f8 10px 20px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:11px;color:#174a7c;position:relative">
+          <span style="position:absolute;top:12px;left:12px;z-index:1;background:#174a7c;color:#fff;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px">Choix éditorial SUNUSOCIAL</span>
+          <img src="{{ featured.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+        </div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#E8734A;font-weight:500">♥ Coup de cœur de la semaine</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#174a7c">{{ featured.org }}<span style="display:inline-flex;align-items:center;gap:3px;color:#529e3b;font-size:11px;font-weight:500"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>Vérifié</span></div>
+          <h2 style="margin:0;color:#174a7c;font-size:30px">{{ featured.title }}</h2>
+          <p style="margin:0;font-size:14px;color:#3a4550">{{ featured.short }}</p>
+          <div style="height:10px;background:#fff;margin-top:6px"><div style="height:100%;background:#174a7c;width:{{ featured.pctStr }}"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px"><strong>{{ featured.raisedStr }} / {{ featured.goalStr }}</strong><span>{{ featured.pctStr }}</span></div>
+          <button class="btn btn-primary" style="align-self:flex-start;padding:10px 20px;font-size:15px">Voir plus</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--color-divider)">
+          <sc-for list="{{ catTabs }}" as="c" hint-placeholder-count="4">
+            <button class="btn" style="{{ c.style }}" onClick="{{ c.pick }}">{{ c.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="3">
+            <button class="btn" style="{{ c.style }}" onClick="{{ c.pick }}">{{ c.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:40px;text-align:center;color:#5d5d60;border:1px dashed var(--color-divider)">Aucune cause ne correspond à ces filtres.</div>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,44vw),1fr));gap:18px">
+        <sc-for list="{{ causes }}" as="c" hint-placeholder-count="6">
+          <div class="card blueprint" style="padding:0;gap:0;cursor:pointer" onClick="{{ c.open }}">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="position:relative;aspect-ratio:16/10;background:repeating-linear-gradient(135deg,#dbe6f2 0 10px,#eef3fa 10px 20px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:10px;color:#174a7c;position:relative">
+              <sc-if value="{{ c.urgent }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:8px;left:8px;z-index:1;background:#E8734A;color:#fff;font-size:10px;letter-spacing:.1em;font-weight:700;padding:3px 8px">URGENT</span></sc-if>
+              <img src="{{ c.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+            </div>
+            <div style="padding:12px;display:flex;flex-direction:column;gap:6px;flex:1">
+              <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#174a7c;flex-wrap:wrap">{{ c.org }}<span style="display:inline-flex;align-items:center;gap:3px;color:#529e3b;font-size:10px;font-weight:500"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>Vérifié</span></div>
+              <div class="card-title" style="color:#174a7c">{{ c.title }}</div>
+              <span style="align-self:flex-start;font-size:10px;padding:2px 8px;background:#eaf1f8;color:#174a7c">{{ c.cat }}</span>
+              <div style="height:6px;background:#eaf1f8;margin-top:auto"><div style="height:100%;background:#174a7c;width:{{ c.pctStr }}"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;gap:6px"><span>{{ c.raisedStr }} / {{ c.goalStr }}</span><strong>{{ c.pctStr }}</strong></div>
+              <button class="btn btn-secondary" style="margin-top:4px">Voir plus</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:1000px;margin:0 auto;padding:20px clamp(14px,4vw,40px);display:flex;flex-direction:column;gap:20px">
+      <button class="btn btn-ghost" style="align-self:flex-start" onClick="{{ goHome }}">← Toutes les causes</button>
+      <div class="blueprint" style="position:relative;aspect-ratio:21/9;min-height:200px;background:repeating-linear-gradient(135deg,#d3e0ef 0 12px,#e8f0f8 12px 24px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:12px;color:#174a7c">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><img src="{{ cur.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px;color:#174a7c;font-size:14px;flex-wrap:wrap">{{ cur.org }}<span style="display:inline-flex;align-items:center;gap:4px;color:#529e3b;font-size:12px;font-weight:500;background:#e7f2e1;padding:2px 8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>Vérifié</span></div>
+          <h1 style="margin:0;color:#174a7c;font-size:clamp(30px,5vw,42px);text-wrap:balance">{{ cur.title }}</h1>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;padding:3px 10px;background:#eaf1f8;color:#174a7c">{{ cur.cat }}</span>
+            <sc-if value="{{ cur.urgent }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;padding:3px 10px;background:#E8734A;color:#fff;letter-spacing:.1em;font-weight:700">URGENT</span></sc-if>
+            <sc-if value="{{ cur.notUrgent }}" hint-placeholder-val="{{ true }}"><span style="font-size:11px;padding:3px 10px;background:#f0f0f2;color:#424244">Urgence normale</span></sc-if>
+          </div>
+          <p style="font-size:15px;line-height:1.65;color:#2b2f33;text-wrap:pretty">{{ cur.desc }}</p>
+          <a href="#" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;padding:10px 16px;text-decoration:none;font-weight:500;font-size:14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"></path></svg>Nous contacter sur WhatsApp</a>
+        </div>
+        <div class="blueprint" style="padding:22px;display:flex;flex-direction:column;gap:12px;background:#eaf1f8">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="font-family:var(--font-heading);font-size:40px;color:#174a7c;line-height:1">{{ cur.raisedStr }}</div>
+          <div style="font-size:14px;color:#3a4550">collectés sur {{ cur.goalStr }}</div>
+          <div style="height:16px;background:#fff;position:relative"><div style="height:100%;background:#174a7c;width:{{ cur.pctStr }};transition:width .8s"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px"><strong>{{ cur.pctStr }} atteint</strong><span>{{ cur.donors }} donateurs</span></div>
+          <div style="font-size:14px;padding:10px 12px;background:#fff;border-left:0;color:#174a7c;display:flex;gap:8px;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>{{ cur.end }}</div>
+          <button class="btn btn-primary blueprint" style="padding:16px;font-size:19px" onClick="{{ openModal }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Faire un don</button>
+        </div>
+      </div>
+      <h2 style="margin:20px 0 0;color:#174a7c">Causes similaires</h2>
+      <div style="display:flex;gap:16px;overflow-x:auto;padding:8px 6px 12px">
+        <sc-for list="{{ similar }}" as="c" hint-placeholder-count="3">
+          <div class="card blueprint" style="flex:0 0 260px;padding:0;gap:0;cursor:pointer" onClick="{{ c.open }}">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="position:relative;aspect-ratio:16/9;background:repeating-linear-gradient(135deg,#dbe6f2 0 10px,#eef3fa 10px 20px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:10px;color:#174a7c"><img src="{{ c.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block"></div>
+            <div style="padding:12px;display:flex;flex-direction:column;gap:6px">
+              <div style="font-size:12px;color:#174a7c">{{ c.org }}</div>
+              <div class="card-title" style="color:#174a7c">{{ c.title }}</div>
+              <div style="height:6px;background:#eaf1f8"><div style="height:100%;background:#174a7c;width:{{ c.pctStr }}"></div></div>
+              <div style="font-size:11px">{{ c.raisedStr }} / {{ c.goalStr }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:900px;margin:0 auto;padding:28px clamp(14px,4vw,40px);display:flex;flex-direction:column;gap:24px">
+      <div class="blueprint" style="padding:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;background:#174a7c;color:#fff">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div><div style="font-family:var(--font-heading);font-size:30px">{{ name }}</div><div style="opacity:.8;font-size:14px">{{ phone }}</div></div>
+        <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.75">Total donné</div><div style="font-family:var(--font-heading);font-size:34px">{{ totalStr }}</div></div>
+        <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.75">Causes soutenues</div><div style="font-family:var(--font-heading);font-size:34px">{{ causeCount }}</div></div>
+      </div>
+      <div style="padding:14px 16px;background:#eaf1f8;color:#174a7c;font-size:15px">Vous avez contribué à <strong>{{ causeCount }} causes</strong> pour un total de <strong>{{ totalStr }}</strong>.</div>
+      <h2 style="margin:0;color:#174a7c">Mes donations</h2>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ donations }}" as="d" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-divider)">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;color:#174a7c">{{ d.cause }}</div>
+              <div style="font-size:13px;color:#5d5d60">{{ d.org }} · {{ d.date }} · {{ d.method }}</div>
+              <div style="font-weight:700;font-size:15px">{{ d.amountStr }}</div>
+            </div>
+            <sc-if value="{{ d.hasProof }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="width:88px;height:64px;background:repeating-linear-gradient(135deg,#dbe6f2 0 8px,#eef3fa 8px 16px);border:1px solid #529e3b;display:grid;place-items:center;font-size:9px;font-family:ui-monospace,monospace;color:#174a7c;position:relative;overflow:hidden"><img src="{{ d.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block"></div>
+                <span style="font-size:11px;color:#529e3b;font-weight:500">✓ Preuve de réception</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ d.noProof }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.55">
+                <div style="width:88px;height:64px;background:#ededef;border:1px dashed #98989b"></div>
+                <span style="font-size:11px;color:#5d5d60">En attente de preuve</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <button class="btn btn-ghost" style="align-self:flex-start" onClick="{{ logout }}">Se déconnecter</button>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ backdropStyle }}" onClick="{{ closeModal }}">
+      <div style="{{ sheetStyle }}" onClick="{{ stop }}">
+        <sc-if value="{{ notDone }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+            <div><div style="font-size:12px;color:#5d5d60">{{ cur.org }}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;color:#174a7c;line-height:1.15">{{ cur.title }}</div></div>
+            <button class="btn btn-icon" style="border:0" onClick="{{ closeModal }}">✕</button>
+          </div>
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Moyen de paiement</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <sc-for list="{{ methods }}" as="m" hint-placeholder-count="3">
+              <button class="btn" style="{{ m.style }}" onClick="{{ m.pick }}">
+                <span style="width:32px;height:32px;display:grid;place-items:center;font-family:var(--font-heading);font-size:13px;color:#fff;background:{{ m.color }}">{{ m.logo }}</span>
+                <span style="font-size:13px">{{ m.label }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Montant</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <sc-for list="{{ amounts }}" as="a" hint-placeholder-count="4">
+              <button class="btn" style="{{ a.style }}" onClick="{{ a.pick }}">{{ a.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+            <input class="input" type="number" style="background:#fff;font-size:18px;min-height:46px" placeholder="Montant en FCFA" value="{{ otherVal }}" onChange="{{ onOther }}"></input>
+          </sc-if>
+          <div style="padding:12px 14px;background:#eaf1f8;color:#174a7c;font-size:14px;line-height:1.45">{{ feeLine }}</div>
+          <button class="btn btn-primary" style="padding:14px;font-size:18px" disabled="{{ cantConfirm }}" onClick="{{ confirm }}">Confirmer le don · {{ amountStr }}</button>
+        </sc-if>
+        <sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:12px 0">
+            {{ checkmark }}
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;color:#174a7c">Merci {{ firstName }} ! Votre don a bien été envoyé.</div>
+            <div style="font-size:14px;color:#5d5d60">{{ lastNet }} seront versés à {{ cur.org }}.</div>
+            <div style="width:100%;display:flex;flex-direction:column;gap:6px">
+              <div style="height:12px;background:#eaf1f8"><div style="height:100%;background:#174a7c;width:{{ cur.pctStr }};transition:width 1s .3s"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><strong>{{ cur.raisedStr }} / {{ cur.goalStr }}</strong><span>{{ cur.pctStr }}</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">
+              <button class="btn btn-secondary" style="padding:12px" onClick="{{ again }}">Faire un autre don</button>
+              <button class="btn btn-primary" style="padding:12px" onClick="{{ browse }}">Parcourir d'autres causes</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-top:1px solid var(--color-divider);z-index:20">
+      <sc-for list="{{ bottomNav }}" as="b" hint-placeholder-count="3">
+        <button style="{{ b.style }}" onClick="{{ b.go }}">{{ b.label }}</button>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = (() => {
+    const C = [
+      { id: 1, org: 'Pouponnière Keur Khadija, Mbour', title: 'Lait infantile pour 32 nourrissons', cat: 'Alimentation', urgent: true, raised: 4500, goal: 10000, end: 'Se termine le 15 octobre 2026', img: 'https://unsplash.com/photos/Ui0uW21uTxY/download?w=900', recent: true, donors: 9, desc: 'La pouponnière accueille 32 nourrissons abandonnés ou orphelins de mère. Le stock de lait 1er âge sera épuisé dans dix jours. Votre don finance l\'achat de boîtes de lait auprès d\'une pharmacie partenaire de Mbour, avec facture publiée en preuve.' },
+      { id: 2, org: 'Centre Aw Handicap, Thiès', title: 'Trois fauteuils roulants adaptés', cat: 'Matériel', urgent: false, raised: 312000, goal: 360000, end: 'Se termine à 360 000 FCFA', img: 'https://images.unsplash.com/photo-1619618691037-751d1e6c9ad1?w=900&q=70&auto=format&fit=crop', recent: false, donors: 57, desc: 'Trois jeunes du centre attendent un fauteuil adapté à leur morphologie pour pouvoir se rendre à l\'école. Les fauteuils sont fabriqués par un artisan de Thiès.' },
+      { id: 3, org: 'Maison d\'arrêt des femmes, Liberté 6', title: 'Kits d\'hygiène pour 80 détenues', cat: 'Santé', urgent: true, raised: 61000, goal: 120000, end: 'Se termine le 30 octobre 2026', img: 'https://images.unsplash.com/photo-1509099863731-ef4bff19e808?w=900&q=70&auto=format&fit=crop', recent: true, donors: 22, desc: 'Savon, serviettes hygiéniques et dentifrice pour trois mois. Distribution encadrée par l\'assistante sociale de l\'établissement.' },
+      { id: 4, org: 'Orphelinat Darou Salam, Kaolack', title: 'Riz, huile et sucre pour novembre', cat: 'Alimentation', urgent: false, raised: 158000, goal: 175000, end: 'Se termine à 175 000 FCFA', img: 'https://images.unsplash.com/photo-1644377949116-c4a6b529241c?w=900&q=70&auto=format&fit=crop', recent: false, donors: 41, desc: 'Nourrir 45 enfants pendant un mois : 6 sacs de riz, 40 litres d\'huile et 25 kg de sucre achetés au marché central de Kaolack.' },
+      { id: 5, org: 'Foyer Keur Yaay, Dakar', title: 'Consultations pédiatriques mensuelles', cat: 'Santé', urgent: false, raised: 22500, goal: 90000, end: 'Se termine le 20 décembre 2026', img: 'https://unsplash.com/photos/yo01Z-9HQAw/download?w=900', recent: true, donors: 6, desc: 'Un pédiatre bénévole passe chaque mois ; le don couvre les médicaments et les analyses prescrites.' },
+      { id: 6, org: 'Daara Serigne Fallou, Touba', title: '60 nattes et couvertures', cat: 'Matériel', urgent: true, raised: 18000, goal: 150000, end: 'Se termine le 1 novembre 2026', img: 'https://images.unsplash.com/photo-1567057419565-4349c49d8a04?w=900&q=70&auto=format&fit=crop', recent: true, donors: 5, desc: 'Avant la saison fraîche, les talibés dorment à même le sol. Nattes et couvertures achetées localement.' },
+      { id: 7, org: 'Centre Espoir Ziguinchor', title: 'Moustiquaires imprégnées', cat: 'Santé', urgent: false, raised: 47000, goal: 55000, end: 'Se termine à 55 000 FCFA', img: 'https://unsplash.com/photos/WQysERfYbog/download?w=900', recent: false, donors: 18, desc: '40 moustiquaires imprégnées pour protéger les enfants du paludisme pendant l\'hivernage.' }
+    ];
+    let name = 'Aminata Diop', phone = '+221 77 123 45 67';
+    try { name = localStorage.getItem('sunu_name') || name; phone = localStorage.getItem('sunu_phone') || phone; } catch (e) {}
+    return {
+      screen: 'home', causes: C, curId: 1, cat: 'Tous', chip: null, query: '',
+      modal: false, done: false, method: 'om', amt: 1000, other: '', lastNet: 0, name, phone,
+      donations: [
+        { cause: 'Kits scolaires rentrée 2026', org: 'Foyer Keur Yaay, Dakar', amount: 5000, date: '2 sept. 2026', method: 'Wave', proof: true, img: 'https://images.unsplash.com/photo-1567057420215-0afa9aa9253a?w=900&q=70&auto=format&fit=crop' },
+        { cause: 'Moustiquaires imprégnées', org: 'Centre Espoir Ziguinchor', amount: 2500, date: '28 août 2026', method: 'Orange Money', proof: true, img: 'https://unsplash.com/photos/WQysERfYbog/download?w=900' },
+        { cause: 'Trois fauteuils roulants adaptés', org: 'Centre Aw Handicap, Thiès', amount: 5000, date: '19 août 2026', method: 'Carte bancaire', proof: false }
+      ], w: typeof window !== 'undefined' ? window.innerWidth : 1200
+    };
+  })();
+  componentDidMount() { this._r = () => this.setState({ w: window.innerWidth }); window.addEventListener('resize', this._r); }
+  componentWillUnmount() { window.removeEventListener('resize', this._r); }
+  fmt(n) { return Math.round(n).toLocaleString('fr-FR').replace(/\u202f|\u00a0/g, ' ') + ' FCFA'; }
+  view(c) {
+    const pct = Math.min(100, Math.round(c.raised / c.goal * 100));
+    return { ...c, pctStr: pct + '%', raisedStr: this.fmt(c.raised), goalStr: this.fmt(c.goal), notUrgent: !c.urgent, short: c.desc.split('. ')[0] + '.', open: e => { e && e.stopPropagation(); this.setState({ screen: 'detail', curId: c.id, modal: false }); window.scrollTo(0, 0); } };
+  }
+  renderVals() {
+    const s = this.state, mob = s.w < 720;
+    const cur = s.causes.find(c => c.id === s.curId);
+    let list = s.causes.filter(c => c.id !== 1);
+    if (s.cat !== 'Tous') list = list.filter(c => c.cat === s.cat);
+    if (s.chip === 'Urgent') list = list.filter(c => c.urgent);
+    if (s.chip === 'Presque atteint') list = list.filter(c => c.raised / c.goal >= .75);
+    if (s.chip === 'Récent') list = list.filter(c => c.recent);
+    const q = s.query.trim().toLowerCase();
+    if (q) list = s.causes.filter(c => (c.title + c.org + c.cat).toLowerCase().includes(q));
+    const amount = s.amt === 'other' ? (parseInt(s.other) || 0) : s.amt;
+    const rate = s.method === 'card' ? 6 : 3, net = amount * (1 - rate / 100);
+    const sim = s.causes.filter(c => c.cat === cur.cat && c.id !== cur.id).concat(s.causes.filter(c => c.cat !== cur.cat && c.id !== cur.id)).slice(0, 3);
+    const total = s.donations.reduce((a, d) => a + d.amount, 0);
+    const causeCount = new Set(s.donations.map(d => d.cause)).size;
+    const pill = (on, extra = '') => `padding:8px 14px;font-size:14px;${on ? 'background:#174a7c;color:#fff;border-color:#174a7c' : 'background:#fff;color:#174a7c'};${extra}`;
+    const go = screen => () => { this.setState({ screen, modal: false }); window.scrollTo(0, 0); };
+    const methodsDef = [['om', 'Orange Money', 'OM', '#FF7900'], ['wave', 'Wave', 'W', '#1DC8F2'], ['card', 'Carte bancaire', 'CB', '#174a7c']];
+    return {
+      isHome: s.screen === 'home', isDetail: s.screen === 'detail', isProfile: s.screen === 'profile',
+      isMobile: mob, name: s.name, phone: s.phone, firstName: s.name.split(' ')[0],
+      initials: s.name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase(),
+      query: s.query, onQuery: e => this.setState({ query: e.target.value, screen: 'home' }),
+      featured: this.view(s.causes[0]), openFeatured: this.view(s.causes[0]).open,
+      catTabs: ['Tous', 'Santé', 'Alimentation', 'Matériel'].map(l => ({ label: l, style: `border:0;border-radius:0;padding:10px 16px;font-size:16px;background:transparent;color:#174a7c;border-bottom:2px solid ${s.cat === l ? '#174a7c' : 'transparent'};opacity:${s.cat === l ? 1 : .6}`, pick: () => this.setState({ cat: l }) })),
+      chips: ['Urgent', 'Presque atteint', 'Récent'].map(l => ({ label: l, style: pill(s.chip === l, 'font-size:13px;padding:6px 12px;border-radius:999px'), pick: () => this.setState({ chip: s.chip === l ? null : l }) })),
+      causes: list.map(c => this.view(c)), noResults: list.length === 0,
+      cur: this.view(cur), similar: sim.map(c => this.view(c)),
+      goHome: go('home'), goProfile: go('profile'),
+      logout: () => { location.href = 'SUNUSOCIAL.dc.html'; },
+      donations: s.donations.map(d => ({ ...d, amountStr: this.fmt(d.amount), hasProof: d.proof, noProof: !d.proof })),
+      totalStr: this.fmt(total), causeCount,
+      modalOpen: s.modal, done: s.done, notDone: !s.done,
+      openModal: () => this.setState({ modal: true, done: false }),
+      closeModal: () => this.setState({ modal: false }), stop: e => e.stopPropagation(),
+      backdropStyle: `position:fixed;inset:0;z-index:50;background:rgba(15,36,57,.55);display:flex;justify-content:center;align-items:${mob ? 'flex-end' : 'center'};padding:${mob ? 0 : 16}px`,
+      sheetStyle: `width:${mob ? '100%' : 'min(480px,100%)'};max-height:92vh;overflow:auto;background:#fff;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-lg);animation:sunuUp .35s ease-out;${mob ? 'border-top:4px solid #174a7c' : ''}`,
+      methods: methodsDef.map(([id, label, logo, color]) => ({ label, logo, color, style: `flex-direction:column;gap:6px;padding:12px 6px;${s.method === id ? 'border:2px solid #174a7c;background:#eaf1f8' : 'background:#fff'}`, pick: () => this.setState({ method: id }) })),
+      amounts: [[500, '500'], [1000, '1 000'], [5000, '5 000'], ['other', 'Autre']].map(([v, l]) => ({ label: v === 'other' ? l : l + ' FCFA', style: pill(s.amt === v, 'padding:12px 4px;font-size:13px'), pick: () => this.setState({ amt: v }) })),
+      isOther: s.amt === 'other', otherVal: s.other, onOther: e => this.setState({ other: e.target.value }),
+      feeLine: amount > 0 ? `NabooPay prélève ${rate}% → La structure recevra ${this.fmt(net)}` : 'Saisissez un montant pour voir les frais.',
+      amountStr: this.fmt(amount), cantConfirm: amount < 100,
+      confirm: () => this.setState(st => ({
+        done: true, lastNet: net,
+        causes: st.causes.map(c => c.id === cur.id ? { ...c, raised: c.raised + net, donors: c.donors + 1 } : c),
+        donations: [{ cause: cur.title, org: cur.org, amount, date: '23 sept. 2026', method: methodsDef.find(m => m[0] === st.method)[1], proof: false }, ...st.donations]
+      })),
+      lastNet: this.fmt(s.lastNet),
+      again: () => this.setState({ done: false }),
+      browse: go('home'),
+      checkmark: React.createElement('svg', { width: 76, height: 76, viewBox: '0 0 52 52', style: { animation: 'sunuPop .4s ease-out' } },
+        React.createElement('circle', { cx: 26, cy: 26, r: 24, fill: '#529e3b' }),
+        React.createElement('path', { d: 'M15 27l7 7 15-15', fill: 'none', stroke: '#fff', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round', strokeDasharray: 60, style: { animation: 'sunuDraw .5s .3s ease-out both' } })),
+      bottomNav: [['Accueil', 'home'], ['Causes', 'home'], ['Profil', 'profile']].map(([l, sc], i) => ({ label: l, go: () => { this.setState({ screen: sc, cat: 'Tous', modal: false }); if (i === 1) setTimeout(() => window.scrollTo(0, 480), 50); else window.scrollTo(0, 0); }, style: `padding:14px 0;border:0;background:transparent;font-family:var(--font-heading);font-size:15px;font-weight:600;color:${(sc === s.screen && (i !== 1)) ? '#174a7c' : '#98989b'};border-top:2px solid ${(sc === s.screen && i !== 1) ? '#174a7c' : 'transparent'}` }))
+    };
+  }
+}
+</script>
+</body>
+</html>

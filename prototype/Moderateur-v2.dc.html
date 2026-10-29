@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SUNUSOCIAL — Modération</title>
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#141c2b;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:Montserrat,sans-serif;margin:0;color:#fff}
+a{color:#8fb8e0}a:hover{color:#f0a564}
+input,button,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #de7d28;outline-offset:2px}
+@keyframes ssUp{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+</style>
+</helmet>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}"><div style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:90;max-width:calc(100vw - 32px);background:#fff;color:#1e293b;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;box-shadow:0 20px 40px -16px rgba(0,0,0,.6);animation:ssUp .3s ease-out">{{ toast }}</div></sc-if>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Mod 01 Connexion" style="min-height:100vh;display:grid;place-items:center;padding:24px;position:relative;overflow:hidden">
+  <div style="position:absolute;right:-200px;top:-200px;width:600px;height:600px;border-radius:50%;border:60px solid rgba(23,74,124,.35)"></div>
+  <div style="position:absolute;left:-160px;bottom:-220px;width:480px;height:480px;border-radius:50%;border:48px solid rgba(222,125,40,.16)"></div>
+  <div style="position:relative;width:100%;max-width:420px;background:#1e293b;border:1px solid #2c3a52;border-radius:32px 32px 32px 8px;padding:36px;display:flex;flex-direction:column;gap:20px;box-shadow:0 40px 80px -30px rgba(0,0,0,.7)">
+    <img src="assets/logo-white.png" alt="SUNUSOCIAL" style="height:54px;align-self:flex-start">
+    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-family:Montserrat,sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;color:#f0a564">PLATEFORME DE MODÉRATION</span><h1 style="font-size:26px;font-weight:800">Connexion</h1><span style="font-size:14px;color:#94a3b8">Accès réservé à l'équipe SUNUSOCIAL.</span></div>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#cbd5e1">Adresse e-mail<input value="{{ email }}" onChange="{{ onEmail }}" placeholder="prenom.nom@sunusocial.sn" style="background:#141c2b;border:1.5px solid #2c3a52;border-radius:14px;padding:13px 14px;font-size:15px;color:#fff;outline:none" style-focus="border-color:#5b8fc4"></input></label>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#cbd5e1">Mot de passe<input type="password" placeholder="••••••••" style="background:#141c2b;border:1.5px solid #2c3a52;border-radius:14px;padding:13px 14px;font-size:15px;color:#fff;outline:none" style-focus="border-color:#5b8fc4"></input></label>
+    <button onClick="{{ login }}" style="background:#174a7c;color:#fff;border:0;border-radius:999px;padding:16px;font-family:Montserrat,sans-serif;font-weight:800;font-size:16px;cursor:pointer" style-hover="background:#1f5d99">Se connecter</button>
+    <span style="font-size:12px;color:#64748b;text-align:center">Connexion journalisée · double authentification activée</span>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:100vh;display:flex;flex-direction:column">
+  <header style="background:#1e293b;border-bottom:1px solid #2c3a52">
+    <div style="max-width:1240px;margin:0 auto;padding:10px clamp(14px,4vw,32px);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <button onClick="{{ goDash }}" style="background:none;border:0;padding:0;cursor:pointer"><img src="assets/logo-white.png" alt="SUNUSOCIAL" style="height:40px;display:block"></button>
+      <span style="background:rgba(222,125,40,.16);color:#f0a564;border-radius:999px;padding:5px 12px;font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em">MODÉRATION</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:14px;font-size:13px;color:#94a3b8;flex-wrap:wrap">
+        <a href="Specifications.dc.html" style="text-decoration:none;font-weight:600">Spécifications techniques</a>
+        <span>Fatou Ndiaye</span>
+        <button onClick="{{ logout }}" style="background:none;border:1px solid #2c3a52;color:#cbd5e1;border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer" style-hover="border-color:#94a3b8">Déconnexion</button>
+      </div>
+    </div>
+  </header>
+
+  <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+  <main data-screen-label="Mod 02 Files d'attente" style="max-width:1240px;width:100%;margin:0 auto;padding:28px clamp(14px,4vw,32px) 96px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;flex-direction:column;gap:6px"><h1 style="font-size:clamp(24px,3vw,32px);font-weight:800">Files d'attente</h1><span style="color:#94a3b8">Lundi 12 octobre 2026</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:20px;align-items:start">
+
+      <section style="background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><h2 style="font-size:18px;font-weight:700">Inscriptions à valider</h2><span style="background:#529e3b;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ structureCount }}</span></div>
+        <sc-for list="{{ structures }}" as="q" hint-placeholder-count="3">
+          <button onClick="{{ q.open }}" style="display:flex;gap:14px;align-items:center;text-align:left;background:#141c2b;border:1px solid #2c3a52;border-radius:18px;padding:12px;cursor:pointer;color:inherit" style-hover="border-color:#5b8fc4">
+            <span style="flex:none;width:56px;height:56px;border-radius:14px 14px 14px 4px;background:{{ q.iconBg }};display:grid;place-items:center;color:#fff;font-family:Montserrat,sans-serif;font-weight:800;font-size:18px">{{ q.initial }}</span>
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><strong style="color:#fff;font-size:15px">{{ q.name }}</strong><span style="font-size:13px;color:#94a3b8">{{ q.type }} · {{ q.commune }}, {{ q.region }}</span><sc-if value="{{ q.isHospital }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;background:rgba(184,50,42,.22);color:#f6a39b;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;letter-spacing:.06em">DON DE SANG</span></sc-if></span>
+            <span style="flex:none;color:#5b8fc4;font-size:18px">→</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noStructures }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#64748b">Aucune inscription en attente ✓</div></sc-if>
+      </section>
+
+      <section style="background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><h2 style="font-size:18px;font-weight:700">Causes à modérer</h2><span style="background:#174a7c;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ causeCount }}</span></div>
+        <sc-for list="{{ causes }}" as="q" hint-placeholder-count="3">
+          <button onClick="{{ q.open }}" style="display:flex;gap:14px;align-items:center;text-align:left;background:#141c2b;border:1px solid #2c3a52;border-radius:18px;padding:12px;cursor:pointer;color:inherit" style-hover="border-color:#5b8fc4">
+            <span style="position:relative;flex:none;width:72px;height:56px;border-radius:12px 12px 12px 3px;overflow:hidden;background:#2c3a52"><img src="{{ q.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></span>
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><strong style="color:#fff;font-size:15px">{{ q.title }}</strong><span style="font-size:13px;color:#94a3b8">{{ q.org }} · {{ q.date }}</span></span>
+            <span style="flex:none;color:#5b8fc4;font-size:18px">→</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noCauses }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#64748b">File vide ✓</div></sc-if>
+      </section>
+
+      <section style="background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><h2 style="font-size:18px;font-weight:700">Preuves à valider</h2><span style="background:#de7d28;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ proofCount }}</span></div>
+        <sc-for list="{{ proofs }}" as="q" hint-placeholder-count="3">
+          <button onClick="{{ q.open }}" style="display:flex;gap:14px;align-items:center;text-align:left;background:#141c2b;border:1px solid {{ q.bd }};border-radius:18px;padding:12px;cursor:pointer;color:inherit" style-hover="border-color:#5b8fc4">
+            <span style="position:relative;flex:none;width:72px;height:56px;border-radius:12px 12px 12px 3px;overflow:hidden;background:#2c3a52"><img src="{{ q.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"><span style="position:absolute;left:4px;bottom:4px;background:rgba(15,23,42,.85);color:#fff;border-radius:6px;padding:1px 6px;font-size:10px">{{ q.kind }}</span></span>
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><strong style="color:#fff;font-size:15px">{{ q.cause }}</strong><span style="font-size:13px;color:#94a3b8">{{ q.org }} · {{ q.date }} · {{ q.countLabel }}</span><sc-if value="{{ q.flag }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:600;color:#f0a564">🚩 Signalée automatiquement</span></sc-if></span>
+            <span style="flex:none;color:#5b8fc4;font-size:18px">→</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noProofs }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#64748b">File vide ✓</div></sc-if>
+      </section>
+
+      <section style="background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><h2 style="font-size:18px;font-weight:700">Demandes de suppression</h2><span style="background:#c2412d;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ delCount }}</span></div>
+        <span style="font-size:13px;color:#94a3b8;margin-top:-4px">Une cause publiée ne peut être supprimée qu'avec votre autorisation.</span>
+        <sc-for list="{{ dels }}" as="q" hint-placeholder-count="2">
+          <button onClick="{{ q.open }}" style="display:flex;gap:14px;align-items:center;text-align:left;background:#141c2b;border:1px solid #2c3a52;border-radius:18px;padding:12px;cursor:pointer;color:inherit" style-hover="border-color:#c2412d">
+            <span style="position:relative;flex:none;width:72px;height:56px;border-radius:12px 12px 12px 3px;overflow:hidden;background:#2c3a52"><img src="{{ q.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.6"><span style="position:absolute;inset:0;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></span></span>
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><strong style="color:#fff;font-size:15px">{{ q.title }}</strong><span style="font-size:13px;color:#94a3b8">{{ q.org }} · {{ q.raisedStr }} collectés</span></span>
+            <span style="flex:none;color:#e58b7c;font-size:18px">→</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noDels }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;text-align:center;color:#64748b">Aucune demande ✓</div></sc-if>
+      </section>
+    </div>
+
+    <section data-screen-label="Mod 07 Demandes de remboursement" style="background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:18px;font-weight:700">Demandes de remboursement</h2><span style="background:#5b8fc4;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ refundCount }}</span><span style="font-size:13px;color:#94a3b8;margin-left:auto">NabooPay uniquement · avant le versement des fonds · décision définitive</span></div>
+      <sc-if value="{{ noRefunds }}" hint-placeholder-val="{{ false }}"><div style="padding:18px;text-align:center;color:#64748b">Aucune demande ✓</div></sc-if>
+      <sc-for list="{{ refunds }}" as="r" hint-placeholder-count="1">
+        <div style="background:#141c2b;border:1px solid #2c3a52;border-radius:18px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 20px;align-items:center">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <strong style="color:#fff;font-size:15px">{{ r.donor }} · {{ r.amountStr }}</strong>
+            <span style="font-size:13px;color:#94a3b8">{{ r.cause }} · {{ r.org }}</span>
+            <span style="font-size:13px;color:#e2e8f0;line-height:1.5">« {{ r.reason }} »</span>
+            <span style="font-size:12px;color:#64748b">Demandé le {{ r.date }} · via {{ r.method }}</span>
+          </div>
+          <sc-if value="{{ r.isOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+              <button onClick="{{ r.accept }}" style="background:#529e3b;color:#fff;border:0;border-radius:999px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:#3b7a29">Rembourser</button>
+              <button onClick="{{ r.reject }}" style="background:transparent;color:#fff;border:1.5px solid #5b8fc4;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:rgba(91,143,196,.14)">Refuser</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ r.isClosed }}" hint-placeholder-val="{{ false }}"><span style="justify-self:end;font-size:13px;font-weight:700;color:{{ r.doneFg }}">{{ r.doneLabel }}</span></sc-if>
+        </div>
+      </sc-for>
+      <sc-if value="{{ isSyca }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#f0a564">Avec Sycapay, les fonds sont versés à chaque don : aucune demande de remboursement n'est possible.</span></sc-if>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h2 style="font-size:18px;font-weight:700">Suivi après suppression</h2><span style="font-size:13px;color:#94a3b8">Fonds versés à la structure : preuve d'utilisation obligatoire sous 7 jours, sinon suspension du compte.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:12px">
+        <sc-for list="{{ follow }}" as="f" hint-placeholder-count="1">
+          <div style="background:#1e293b;border:1px solid {{ f.bd }};border-radius:22px 22px 22px 6px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="display:flex;flex-direction:column;gap:2px"><strong style="color:#fff;font-size:15px">{{ f.title }}</strong><span style="font-size:13px;color:#94a3b8">{{ f.org }} · {{ f.amountStr }}</span></div><span style="flex:none;background:{{ f.tagBg }};color:{{ f.tagFg }};border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700">{{ f.tag }}</span></div>
+            <span style="font-size:13px;color:#cbd5e1">Suppression autorisée le {{ f.decided }} · preuve attendue avant le {{ f.due }}</span>
+            <sc-if value="{{ f.isSuspended }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#f6a39b;line-height:1.5">Délai dépassé : compte suspendu automatiquement. La structure ne peut plus publier de cause tant que la preuve n'est pas validée.</span></sc-if>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onClick="{{ f.remind }}" style="background:none;border:1px solid #2c3a52;color:#cbd5e1;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#de7d28;color:#f0a564">Relancer la structure</button>
+              <sc-if value="{{ f.isSuspended }}" hint-placeholder-val="{{ false }}"><button onClick="{{ f.lift }}" style="background:none;border:1px solid #2c3a52;color:#cbd5e1;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#529e3b;color:#8fd27a">Lever la suspension</button></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isStructure }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Mod 03 Revue d'inscription" style="max-width:1240px;width:100%;margin:0 auto;padding:22px clamp(14px,4vw,32px) 96px;display:flex;flex-direction:column;gap:20px">
+    <button onClick="{{ goDash }}" style="align-self:flex-start;background:none;border:0;color:#94a3b8;font-size:14px;cursor:pointer;padding:0">← Files d'attente</button>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#94a3b8">DOCUMENT FOURNI</span>
+        <div style="position:relative;background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:28px;display:grid;place-items:center">
+          <div style="width:100%;max-width:320px;aspect-ratio:3/4;background:#fff;color:#1e293b;border-radius:6px;padding:24px;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 40px -16px rgba(0,0,0,.6)">
+            <span style="font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#8a94a6;text-align:center">République du Sénégal</span>
+            <strong style="font-family:Montserrat,sans-serif;font-size:15px;color:#174a7c;text-align:center;line-height:1.2">{{ ss.docTitle }}</strong>
+            <div style="height:1px;background:#ece6dc"></div>
+            <span style="font-size:10px;color:#5b6678;line-height:1.7">N° {{ ss.receiptNo }}<br>Dénomination : <strong style="color:#1e293b">{{ ss.name }}</strong><br>Objet : {{ ss.type }}<br>Siège : {{ ss.commune }}, {{ ss.region }}</span>
+            <div style="display:flex;flex-direction:column;gap:5px"><div style="height:6px;border-radius:3px;background:#f3f1ec"></div><div style="height:6px;border-radius:3px;background:#f3f1ec;width:88%"></div><div style="height:6px;border-radius:3px;background:#f3f1ec;width:94%"></div><div style="height:6px;border-radius:3px;background:#f3f1ec;width:70%"></div></div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end"><span style="font-size:9px;color:#8a94a6;line-height:1.3">{{ ss.ministry }}</span><span style="width:48px;height:48px;border:2px solid #174a7c;border-radius:50%;display:grid;place-items:center;color:#174a7c;font-size:6.5px;font-weight:700;text-align:center;line-height:1.1;transform:rotate(-9deg)">CACHET<br>OFFICIEL</span></div>
+          </div>
+          <span style="position:absolute;left:14px;bottom:14px;background:rgba(15,23,42,.85);color:#fff;border-radius:999px;padding:5px 12px;font-size:12px">📎 {{ ss.receiptFile }}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:#f0a564;font-weight:600">Demande d'inscription · {{ ss.date }}</span><h2 style="font-size:26px;font-weight:800">{{ ss.name }}</h2></div>
+        <sc-if value="{{ ss.isHospital }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:10px;align-items:flex-start;background:rgba(184,50,42,.16);border:1px solid rgba(184,50,42,.5);border-radius:18px;padding:14px;font-size:13px;line-height:1.55;color:#f6d3cf"><svg style="flex:none;margin-top:1px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f6a39b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></svg><span>Compte hôpital : une fois validé, il pourra publier des alertes de don de sang vers les communes de sa région et mettre à jour ses réserves. Pas de cagnotte.</span></div>
+        </sc-if>
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="font-size:16px;font-weight:700">Informations déclarées</h3>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px"><span style="color:#94a3b8">Type</span><span>{{ ss.type }}</span><span style="color:#94a3b8">Région</span><span>{{ ss.region }}</span><span style="color:#94a3b8">Commune</span><span>{{ ss.commune }}</span><span style="color:#94a3b8">Téléphone</span><span>{{ ss.phone }}</span><span style="color:#94a3b8">Responsable</span><span>{{ ss.contact }}</span></div>
+          <div style="background:#141c2b;border-radius:14px;padding:12px;font-size:14px;line-height:1.6;color:#e2e8f0">« {{ ss.desc }} »</div>
+        </div>
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="font-size:16px;font-weight:700">Décision</h3>
+          <sc-if value="{{ refusing }}" hint-placeholder-val="{{ false }}">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#cbd5e1">Raison du refus (visible par le demandeur) *<textarea value="{{ reason }}" onChange="{{ onReason }}" rows="4" placeholder="Ex. Le récépissé est illisible. Merci d'envoyer un scan complet." style="background:#141c2b;border:1.5px solid {{ reasonBd }};border-radius:14px;padding:12px;color:#fff;font-size:14px;line-height:1.5;outline:none;resize:vertical"></textarea></label>
+          </sc-if>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button onClick="{{ approveStructure }}" style="background:#529e3b;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:800;font-size:15px;cursor:pointer" style-hover="background:#3b7a29">Valider le compte</button>
+            <button onClick="{{ refuseStructure }}" style="background:#c2412d;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:800;font-size:15px;cursor:pointer;opacity:{{ refuseOpacity }}" style-hover="background:#a03b2a">{{ refuseLabel }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isCause }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Mod 04 Revue de cause" style="max-width:1240px;width:100%;margin:0 auto;padding:22px clamp(14px,4vw,32px) 96px;display:flex;flex-direction:column;gap:20px">
+    <button onClick="{{ goDash }}" style="align-self:flex-start;background:none;border:0;color:#94a3b8;font-size:14px;cursor:pointer;padding:0">← Files d'attente</button>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#94a3b8">APERÇU DONATEUR</span>
+        <article style="background:#faf7f2;color:#1e293b;border-radius:28px 28px 28px 8px;overflow:hidden">
+          <div style="position:relative;aspect-ratio:16/8;background:#eaf1f8"><img src="{{ cc.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"><sc-if value="{{ cc.urgent }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:12px;left:12px;background:#de7d28;color:#fff;border-radius:999px;padding:5px 11px;font-family:Montserrat,sans-serif;font-weight:800;font-size:11px;letter-spacing:.08em">URGENT</span></sc-if></div>
+          <div style="padding:22px;display:flex;flex-direction:column;gap:12px">
+            <span style="font-size:13px;color:#5b6678">{{ cc.org }} · <span style="color:#3b7a29;font-weight:600">✓ Vérifié</span></span>
+            <h2 style="color:#1e293b;font-size:24px;font-weight:800;line-height:1.15">{{ cc.title }}</h2>
+            <span style="align-self:flex-start;background:#eaf1f8;color:#174a7c;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600">{{ cc.cat }}</span>
+            <p style="margin:0;line-height:1.7;color:#334155">{{ cc.desc }}</p>
+            <div style="height:10px;border-radius:999px;background:#eaf1f8"></div>
+            <span style="font-size:14px;color:#5b6678"><strong style="color:#1e293b">0 FCFA</strong> / {{ cc.goalStr }} · {{ cc.endLabel }}</span>
+          </div>
+        </article>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="font-size:16px;font-weight:700">Structure</h3>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px"><span style="color:#94a3b8">Nom</span><span>{{ cc.org }}</span><span style="color:#94a3b8">Type</span><span>{{ cc.type }}</span><span style="color:#94a3b8">Localité</span><span>{{ cc.city }}</span><span style="color:#94a3b8">Inscrite depuis</span><span>{{ cc.since }}</span><span style="color:#94a3b8">Causes passées</span><span>{{ cc.past }}</span><span style="color:#94a3b8">Soumise le</span><span>{{ cc.date }}</span></div>
+          <div style="display:flex;align-items:center;gap:10px;background:#141c2b;border-radius:14px;padding:12px"><span style="font-size:20px">📄</span><span style="flex:1;font-size:13px">Récépissé ministériel</span><span style="background:{{ cc.docBg }};color:{{ cc.docFg }};border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600">{{ cc.doc }}</span></div>
+        </div>
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="font-size:16px;font-weight:700">Décision</h3>
+          <sc-if value="{{ refusing }}" hint-placeholder-val="{{ false }}">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#cbd5e1">Raison du refus (visible par la structure) *<textarea value="{{ reason }}" onChange="{{ onReason }}" rows="4" placeholder="Ex. Le devis fourni n'est pas signé." style="background:#141c2b;border:1.5px solid {{ reasonBd }};border-radius:14px;padding:12px;color:#fff;font-size:14px;line-height:1.5;outline:none;resize:vertical"></textarea></label>
+          </sc-if>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button onClick="{{ approve }}" style="background:#529e3b;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:800;font-size:15px;cursor:pointer" style-hover="background:#3b7a29">Approuver</button>
+            <button onClick="{{ refuse }}" style="background:#c2412d;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:800;font-size:15px;cursor:pointer;opacity:{{ refuseOpacity }}" style-hover="background:#a03b2a">{{ refuseLabel }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isProof }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Mod 05 Revue de preuve" style="max-width:1240px;width:100%;margin:0 auto;padding:22px clamp(14px,4vw,32px) 96px;display:flex;flex-direction:column;gap:20px">
+    <button onClick="{{ goDash }}" style="align-self:flex-start;background:none;border:0;color:#94a3b8;font-size:14px;cursor:pointer;padding:0">← Files d'attente</button>
+    <sc-if value="{{ pp.flag }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;gap:12px;align-items:flex-start;background:rgba(222,125,40,.14);border:1px solid rgba(222,125,40,.5);border-radius:18px;padding:14px 16px;color:#f8c79a"><span style="font-size:18px">🚩</span><div style="display:flex;flex-direction:column;gap:3px"><strong style="color:#fff">Contenu signalé automatiquement — à vérifier</strong><span style="font-size:13px">{{ pp.flagReason }}</span></div></div>
+    </sc-if>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#94a3b8">DOSSIER DE PREUVE · TEL QUE LE VERRONT LES DONATEURS</span>
+        <article style="background:#fff;border-radius:28px 28px 28px 8px;padding:18px">
+<div style="display:flex;flex-direction:column;gap:14px;color:#1e293b">
+  <div style="position:relative;aspect-ratio:4/3;border-radius:22px 22px 22px 6px;overflow:hidden;background:#eaf1f8">
+    <sc-if value="{{ pv.cur.isMedia }}" hint-placeholder-val="{{ true }}"><img src="{{ pv.cur.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ pv.cur.pos }}"></sc-if>
+    <sc-if value="{{ pv.cur.isVideo }}" hint-placeholder-val="{{ false }}">
+      <span style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,23,42,.25)"><span style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.94);display:grid;place-items:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="#174a7c"><path d="M8 5v14l11-7z"></path></svg></span></span>
+      <span style="position:absolute;right:12px;bottom:12px;background:rgba(15,23,42,.85);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600">▶ {{ pv.cur.dur }}</span>
+    </sc-if>
+    <sc-if value="{{ pv.cur.isDoc }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;display:grid;place-items:center;padding:18px;background:#f3f1ec">
+        <div style="width:100%;max-width:320px;background:#fff;border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 14px 30px -14px rgba(30,41,59,.45);transform:rotate(-1.2deg)">
+          <span style="font-family:Montserrat,sans-serif;font-size:10px;font-weight:800;letter-spacing:.14em;color:#de7d28;text-transform:uppercase">{{ pv.cur.kind }}</span>
+          <strong style="font-family:Montserrat,sans-serif;font-size:14px;line-height:1.3">{{ pv.cur.supplier }}</strong>
+          <span style="font-size:11px;color:#8a94a6">N° {{ pv.cur.ref }} · {{ pv.cur.date }}</span>
+          <div style="height:1px;background:#ece6dc"></div>
+          <sc-for list="{{ pv.cur.lines }}" as="ln" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12px"><span>{{ ln.l }}</span><span style="font-weight:600;white-space:nowrap">{{ ln.a }}</span></div></sc-for>
+          <div style="height:1px;background:#ece6dc"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px"><span style="font-size:12px;font-weight:700">Total {{ pv.cur.docTotal }}</span><span style="width:44px;height:44px;border:2px solid #529e3b;border-radius:50%;display:grid;place-items:center;color:#529e3b;font-size:7px;font-weight:800;text-align:center;line-height:1.1;transform:rotate(-12deg)">PAYÉ<br>CACHET</span></div>
+        </div>
+      </div>
+    </sc-if>
+    <span style="position:absolute;top:12px;left:12px;background:rgba(255,255,255,.94);color:#174a7c;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700">{{ pv.cur.kind }}</span>
+    <span style="position:absolute;top:12px;right:12px;background:rgba(15,23,42,.8);color:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600">{{ pv.idxLabel }}</span>
+    <button onClick="{{ pv.prev }}" aria-label="Précédent" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#174a7c;font-size:22px;line-height:1;cursor:pointer;box-shadow:0 6px 14px -6px rgba(15,23,42,.5)">‹</button>
+    <button onClick="{{ pv.next }}" aria-label="Suivant" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#174a7c;font-size:22px;line-height:1;cursor:pointer;box-shadow:0 6px 14px -6px rgba(15,23,42,.5)">›</button>
+    <sc-if value="{{ pv.cur.flagged }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:0;background:rgba(194,65,45,.94);color:#fff;padding:10px 14px;font-size:13px;line-height:1.45">🚩 {{ pv.cur.flagWhy }}</div></sc-if>
+  </div>
+  <p style="margin:0;font-size:14px;line-height:1.55;color:#334155">{{ pv.cur.cap }}</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px">
+    <sc-for list="{{ pv.thumbs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.pick }}" style="position:relative;aspect-ratio:1;border-radius:12px 12px 12px 3px;overflow:hidden;border:2.5px solid {{ t.bd }};padding:0;background:#f3f1ec;cursor:pointer;opacity:{{ t.op }}">
+        <sc-if value="{{ t.isMedia }}" hint-placeholder-val="{{ true }}"><img src="{{ t.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ t.pos }}"></sc-if>
+        <sc-if value="{{ t.isDoc }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:0;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b4601a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 13h6M9 17h4"></path></svg></span></sc-if>
+        <sc-if value="{{ t.isVideo }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:16px;text-shadow:0 1px 4px rgba(0,0,0,.6)">▶</span></sc-if>
+        <sc-if value="{{ t.flag }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:4px;right:4px;width:12px;height:12px;border-radius:50%;background:#c2412d;border:2px solid #fff"></span></sc-if>
+      </button>
+    </sc-for>
+  </div>
+  <div style="background:#faf7f2;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#8a94a6">COMPTE RENDU DE LA STRUCTURE</span>
+    <span style="font-size:14px;line-height:1.6;color:#334155">{{ pv.desc }}</span>
+  </div>
+  <div style="border:1.5px solid #ece6dc;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#8a94a6">UTILISATION DES FONDS</span>
+    <sc-for list="{{ pv.spend }}" as="sp" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span style="color:#334155">{{ sp.l }}</span><span style="font-weight:600;white-space:nowrap">{{ sp.a }}</span></div></sc-for>
+    <div style="height:1px;background:#ece6dc"></div>
+    <div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><strong>Total dépensé</strong><strong style="color:#174a7c;white-space:nowrap">{{ pv.totalStr }}</strong></div>
+    <span style="font-size:12px;color:#5b6678">Collectés : {{ pv.raisedStr }} · {{ pv.summary }}</span>
+  </div>
+</div>
+        </article>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#94a3b8">CONTRÔLE DU DOSSIER</span>
+          <sc-for list="{{ checks }}" as="ck" hint-placeholder-count="4">
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:14px"><span style="flex:none;width:20px;height:20px;border-radius:50%;background:{{ ck.bg }};color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800">{{ ck.mark }}</span><span style="display:flex;flex-direction:column;gap:1px"><span style="color:#fff">{{ ck.label }}</span><span style="font-size:12px;color:#94a3b8">{{ ck.sub }}</span></span></div>
+          </sc-for>
+        </div>
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#94a3b8">CAUSE LIÉE</span>
+          <h2 style="font-size:20px;font-weight:800">{{ pp.cause }}</h2>
+          <span style="font-size:14px;color:#cbd5e1">{{ pp.org }} · {{ pp.raised }} collectés · envoyée le {{ pp.date }}</span>
+          <div style="background:#141c2b;border-radius:14px;padding:12px;font-size:14px;line-height:1.6;color:#e2e8f0">« {{ pp.desc }} »</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+          <button onClick="{{ approveProof }}" style="background:#529e3b;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:800;font-size:15px;cursor:pointer" style-hover="background:#3b7a29">Approuver et publier</button>
+          <button onClick="{{ escalate }}" style="background:transparent;color:#f0a564;border:1.5px solid #de7d28;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:rgba(222,125,40,.12)">Vérification approfondie</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isDel }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Mod 06 Demande de suppression" style="max-width:1240px;width:100%;margin:0 auto;padding:22px clamp(14px,4vw,32px) 96px;display:flex;flex-direction:column;gap:20px">
+    <button onClick="{{ goDash }}" style="align-self:flex-start;background:none;border:0;color:#94a3b8;font-size:14px;cursor:pointer;padding:0">← Files d'attente</button>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#94a3b8">CAUSE PUBLIÉE</span>
+        <article style="background:#faf7f2;color:#1e293b;border-radius:28px 28px 28px 8px;overflow:hidden">
+          <div style="position:relative;aspect-ratio:16/8;background:#eaf1f8"><img src="{{ dd.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div>
+          <div style="padding:22px;display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:13px;color:#5b6678">{{ dd.org }}</span>
+            <h2 style="color:#1e293b;font-size:24px;font-weight:800;line-height:1.15">{{ dd.title }}</h2>
+            <div style="height:10px;border-radius:999px;background:#eaf1f8;overflow:hidden"><div style="height:100%;width:{{ dd.pct }};background:#174a7c;border-radius:999px"></div></div>
+            <span style="font-size:14px;color:#5b6678"><strong style="color:#1e293b">{{ dd.raisedStr }}</strong> / {{ dd.goalStr }} · {{ dd.donors }} donateurs</span>
+            <span style="font-size:13px;color:#8a94a6">Publiée le {{ dd.published }} · {{ dd.end }}</span>
+          </div>
+        </article>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:#e58b7c;font-weight:600">Demande de suppression · {{ dd.date }}</span></div>
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#94a3b8">MOTIF DE LA STRUCTURE</span>
+          <div style="background:#141c2b;border-radius:14px;padding:12px;font-size:14px;line-height:1.6;color:#e2e8f0">« {{ dd.reason }} »</div>
+        </div>
+        <sc-if value="{{ dd.hasFunds }}" hint-placeholder-val="{{ true }}">
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap"><h3 style="font-size:16px;font-weight:700">Que deviennent les {{ dd.raisedStr }} ?</h3><span style="font-size:12px;color:#94a3b8">Prestataire : {{ provName }}</span></div>
+          <sc-for list="{{ fundOpts }}" as="o" hint-placeholder-count="2">
+            <button onClick="{{ o.pick }}" disabled="{{ o.disabled }}" style="display:flex;gap:12px;align-items:flex-start;text-align:left;background:{{ o.bg }};border:1.5px solid {{ o.bd }};border-radius:18px;padding:14px;cursor:pointer;color:inherit;opacity:{{ o.op }}">
+              <span style="flex:none;margin-top:2px;width:18px;height:18px;border-radius:50%;border:2px solid {{ o.dotBd }};background:{{ o.dot }}"></span>
+              <span style="display:flex;flex-direction:column;gap:3px"><strong style="color:#fff;font-size:15px">{{ o.label }}</strong><span style="font-size:13px;color:#cbd5e1;line-height:1.5">{{ o.sub }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+        </sc-if>
+        <sc-if value="{{ dd.noFunds }}" hint-placeholder-val="{{ false }}"><div style="background:rgba(82,158,59,.14);border:1px solid rgba(82,158,59,.4);border-radius:18px;padding:14px;font-size:14px;color:#c7e7bb">Aucun don reçu : la cause peut être retirée sans impact pour les donateurs.</div></sc-if>
+        <div style="background:#1e293b;border:1px solid #2c3a52;border-radius:24px 24px 24px 6px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="font-size:16px;font-weight:700">Décision</h3>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#cbd5e1">Justification (visible par la structure et les donateurs) *<textarea value="{{ reason }}" onChange="{{ onReason }}" rows="3" placeholder="Ex. Besoin couvert par une ONG partenaire, livraison vérifiée par téléphone." style="background:#141c2b;border:1.5px solid #2c3a52;border-radius:14px;padding:12px;color:#fff;font-size:14px;line-height:1.5;outline:none;resize:vertical" style-focus="border-color:#5b8fc4"></textarea></label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+            <button onClick="{{ approveDel }}" disabled="{{ cantDel }}" style="background:#c2412d;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:800;font-size:15px;cursor:pointer;opacity:{{ delOpacity }}" style-hover="background:#a03b2a">Autoriser la suppression</button>
+            <button onClick="{{ keepCause }}" disabled="{{ cantKeep }}" style="background:transparent;color:#fff;border:1.5px solid #5b8fc4;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;cursor:pointer;opacity:{{ keepOpacity }}" style-hover="background:rgba(91,143,196,.14)">Maintenir la cause</button>
+          </div>
+          <span style="font-size:12px;color:#94a3b8">{{ delHint }}</span>
+        </div>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+</div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PU = (id, w) => 'https://images.unsplash.com/' + id + '?w=' + (w || 900) + '&q=70&auto=format&fit=crop';
+const pfmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+const DOSS = {
+  'Moustiquaires imprégnées': { org: 'Centre Espoir Ziguinchor', sent: '10 oct. 2026', validated: '11 oct. 2026', raised: 55000,
+    desc: "22 moustiquaires imprégnées à longue durée achetées à la pharmacie Kadior et installées le 9 octobre dans les deux dortoirs du centre (12 chez les garçons, 10 chez les filles).",
+    spend: [['22 moustiquaires imprégnées MILDA', 48400], ['Crochets, cordes et fixations', 3600], ['Transport jusqu’au centre', 3000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: 'center', cap: 'Dortoir des garçons : 12 moustiquaires installées le 9 octobre.' },
+      { kind: 'Photo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: '20% 30%', cap: 'Dortoir des filles : 10 moustiquaires, une par lit.' },
+      { kind: 'Vidéo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: '80% 60%', dur: '0:42', cap: 'Visite filmée des deux dortoirs après l’installation.' },
+      { kind: 'Facture', supplier: 'Pharmacie Kadior, Ziguinchor', ref: 'FAC-2026-1187', date: '7 oct. 2026', lines: [['Moustiquaire MILDA × 22', 48400], ['Crochets et cordes', 3600]], cap: 'Facture d’achat des moustiquaires et du matériel de fixation.' },
+      { kind: 'Bon de livraison', supplier: 'Casamance Express', ref: 'BL-0942', date: '8 oct. 2026', lines: [['Livraison Ziguinchor → Kandé', 3000]], cap: 'Bon de livraison signé par la directrice du centre.' }
+    ] },
+  'Kits scolaires rentrée 2026': { org: 'Foyer Keur Yaay, Dakar', sent: '28 sept. 2026', validated: '29 sept. 2026', raised: 120000,
+    desc: "24 kits scolaires complets (cartable, cahiers, stylos, géométrie, blouse) remis aux enfants du foyer le 27 septembre, avant la rentrée.",
+    spend: [['24 cartables garnis', 96000], ['24 blouses', 19200], ['Transport depuis Sandaga', 4800]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: 'center', cap: 'Les 24 kits prêts à être distribués.' },
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '15% 40%', cap: 'Détail d’un kit : cahiers, stylos, règle et compas.' },
+      { kind: 'Vidéo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '85% 50%', dur: '1:05', cap: 'Remise des kits aux enfants le 27 septembre.' },
+      { kind: 'Facture', supplier: 'Librairie Clairafrique, Sandaga', ref: 'CF-26-5521', date: '24 sept. 2026', lines: [['Cartable garni × 24', 96000], ['Blouse × 24', 19200]], cap: 'Facture de la librairie.' },
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '50% 90%', cap: 'Liste d’émargement signée par les éducateurs.' }
+    ] },
+  'Riz, huile et sucre pour octobre': { org: 'Orphelinat Darou Salam, Kaolack', sent: '9 oct. 2026', raised: 175000,
+    desc: "6 sacs de riz de 50 kg, 40 L d'huile et 25 kg de sucre livrés par la boutique Diallo pour couvrir le mois d'octobre des 45 enfants.",
+    spend: [['6 sacs de riz brisé 50 kg', 117000], ['40 L d’huile', 42000], ['25 kg de sucre', 16000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1562557309-bf9e46b0670d'), pos: 'center', cap: 'Livraison des denrées dans la réserve.', flag: true, flagWhy: 'Image très proche d’une photo déjà publiée en ligne (similarité 91 %). Métadonnées de date absentes.' },
+      { kind: 'Photo', img: PU('photo-1644377949116-c4a6b529241c'), pos: 'center', cap: 'Premier repas préparé avec la livraison.' },
+      { kind: 'Vidéo', img: PU('photo-1644377949116-c4a6b529241c'), pos: '30% 70%', dur: '0:38', cap: 'Déchargement du camion devant l’orphelinat.' },
+      { kind: 'Facture', supplier: 'Boutique Diallo & Frères, Kaolack', ref: 'BD-1044', date: '6 oct. 2026', lines: [['Riz brisé 50 kg × 6', 117000], ['Huile 20 L × 2', 42000], ['Sucre 25 kg', 16000]], cap: 'Facture de la boutique Diallo.' },
+      { kind: 'Photo', img: PU('photo-1562557309-bf9e46b0670d'), pos: '70% 30%', cap: 'Stock rangé dans la réserve.', flag: true, flagWhy: 'Même prise de vue que la photo 1, recadrée.' },
+      { kind: 'Bon de livraison', supplier: 'Boutique Diallo & Frères', ref: 'BL-1044', date: '7 oct. 2026', lines: [['Livraison Kaolack centre', 0]], cap: 'Bon de livraison signé.' }
+    ] },
+  'Lait infantile — septembre': { org: 'Pouponnière Keur Khadija, Mbour', sent: '11 oct. 2026', raised: 85000,
+    desc: "17 boîtes de lait 1er âge reçues de la pharmacie Serigne Saliou le 9 octobre, soit un mois de lait pour les nourrissons de moins de 6 mois.",
+    spend: [['17 boîtes de lait 1er âge 800 g', 85000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1584367368243-c0c59fd4a1f9'), pos: 'center', cap: 'Les 17 boîtes reçues, avant rangement.' },
+      { kind: 'Photo', img: PU('flagged/photo-1570560558077-45ad028193e5'), pos: 'center', cap: 'Premier biberon préparé avec le nouveau stock.' },
+      { kind: 'Vidéo', img: PU('photo-1584367368243-c0c59fd4a1f9'), pos: '70% 40%', dur: '0:51', cap: 'Réception de la commande à la pharmacie.' },
+      { kind: 'Facture', supplier: 'Pharmacie Serigne Saliou, Mbour', ref: 'PSS-0877', date: '9 oct. 2026', lines: [['Lait 1er âge 800 g × 17', 85000]], cap: 'Facture de la pharmacie.' },
+      { kind: 'Photo', img: PU('flagged/photo-1570560558077-45ad028193e5'), pos: '30% 60%', cap: 'Registre d’alimentation tenu par les nourrices.' }
+    ] }
+};
+const buildPV = (key, idx, setIdx) => {
+  const d = DOSS[key] || DOSS['Moustiquaires imprégnées']; const n = d.items.length; const i = Math.max(0, Math.min(n - 1, idx || 0)); const it = d.items[i];
+  const total = d.spend.reduce((a, x) => a + x[1], 0);
+  const c = k => d.items.filter(x => x.kind === k).length;
+  const docs = d.items.filter(x => !x.img).length;
+  const lines = it.lines || [];
+  return { org: d.org, cause: key, desc: d.desc, sent: d.sent, validated: d.validated || '', count: n, flags: d.items.filter(x => x.flag).length,
+    summary: [c('Photo') + ' photo' + (c('Photo') > 1 ? 's' : ''), c('Vidéo') + ' vidéo' + (c('Vidéo') > 1 ? 's' : ''), docs + ' justificatif' + (docs > 1 ? 's' : '')].join(' · '),
+    idxLabel: (i + 1) + ' / ' + n,
+    cur: { kind: it.kind, cap: it.cap, img: it.img || '', pos: it.pos || 'center', dur: it.dur || '', isMedia: !!it.img, isVideo: it.kind === 'Vidéo', isDoc: !it.img, supplier: it.supplier || '', ref: it.ref || '', date: it.date || '',
+      lines: lines.map(([l, a]) => ({ l, a: a ? pfmt(a) : '—' })), docTotal: pfmt(lines.reduce((a, x) => a + x[1], 0)), flagged: !!it.flag, flagWhy: it.flagWhy || '' },
+    thumbs: d.items.map((t, j) => ({ img: t.img || '', pos: t.pos || 'center', isMedia: !!t.img, isDoc: !t.img, isVideo: t.kind === 'Vidéo', flag: !!t.flag, bd: j === i ? '#de7d28' : 'transparent', op: j === i ? 1 : 0.72, pick: () => setIdx(j) })),
+    prev: () => setIdx((i - 1 + n) % n), next: () => setIdx((i + 1) % n),
+    spend: d.spend.map(([l, a]) => ({ l, a: pfmt(a) })), totalStr: pfmt(total), raisedStr: pfmt(d.raised),
+    gapStr: d.raised - total > 0 ? pfmt(d.raised - total - Math.round(d.raised * 0.03)) : '' };
+};
+const U = id => `https://images.unsplash.com/${id}?w=900&q=70&auto=format&fit=crop`;
+const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+const PROV = { NabooPay: ['3 %', "Fonds conservés jusqu'à l'objectif ou la date limite, puis versés à la structure."], Sycapay: ['1,5 %', 'Chaque don est versé directement à la structure.'] };
+const RKEY = 'sunu_refund_reqs';
+const SEED_REQ = { id: 'seed', donor: 'Ousmane Ba', cause: 'Séances de kinésithérapie', org: 'Centre Aw Handicap', amount: 10000, method: 'Wave', date: '11 oct. 2026', reason: "Je me suis trompé de montant : je voulais donner 1 000 FCFA." };
+const readReqs = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch (e) { return []; } };
+const readProv = () => { try { return localStorage.getItem('sunu_provider') === 'Sycapay' ? 'Sycapay' : 'NabooPay'; } catch (e) { return 'NabooPay'; } };
+
+class Component extends DCLogic {
+  state = {
+    reqs: readReqs(), seedStatus: null, pvIdx: 0, screen: 'login', email: '', curId: null, refusing: false, reason: '', toast: '', fund: null, provider: readProv(), optOpen: false,
+    structures: [
+      { id: 1, name: 'Foyer Keur Yaay', type: 'Foyer', region: 'Dakar', commune: 'Grand Dakar', phone: '+221 33 800 12 34', contact: 'Awa Sow', date: '11 oct. 2026', receiptNo: 'SG/DAGAT/2026-0417', receiptFile: 'recepisse_keur_yaay.pdf', desc: "Foyer accueillant 24 enfants en situation de rue. Nous souhaitons financer les repas et les fournitures scolaires." },
+      { id: 2, name: 'Hôpital régional de Thiès', type: 'Hôpital (don de sang)', region: 'Thiès', commune: 'Thiès', phone: '+221 33 951 10 10', contact: 'Dr Mame Diarra Sarr', date: '11 oct. 2026', receiptNo: 'MSAS/DES/2019-0231', receiptFile: 'agrement_msas_thies.pdf', desc: "Service de transfusion de l'hôpital régional. Nous souhaitons alerter les donneurs de la région quand un groupe sanguin vient à manquer." },
+      { id: 3, name: 'Centre Baamtaare Handicap', type: 'Centre pour handicapés', region: 'Kaolack', commune: 'Kaolack', phone: '+221 77 654 32 10', contact: 'Modou Faye', date: '10 oct. 2026', receiptNo: 'MI/AS/2026-1188', receiptFile: 'agrement_baamtaare.jpg', desc: "Accueil de jour pour 18 enfants en situation de handicap. Besoin de matériel de rééducation et de transport adapté." },
+      { id: 4, name: "Maison d'arrêt des femmes", type: 'Prison pour femmes', region: 'Dakar', commune: 'Rufisque', phone: '+221 33 836 00 00', contact: 'Fatou Ndiaye', date: '9 oct. 2026', receiptNo: 'MJ/AP/2026-0092', receiptFile: 'autorisation_administration.pdf', desc: "Programme de réinsertion des femmes détenues : kits d'hygiène et matériel de couture pour la formation." }
+    ],
+    causes: [
+      { id: 1, org: 'Pouponnière Keur Khadija', type: 'Pouponnière', city: 'Mbour, Thiès', since: 'mars 2026', past: 4, date: '10 oct. 2026', title: 'Couches et lingettes — trimestre 4', cat: 'Matériel', urgent: false, goal: 120000, endLabel: 'fin à 120 000 FCFA ou le 15 déc. 2026', doc: 'Vérifié', img: U('flagged/photo-1570560558077-45ad028193e5'), desc: "Couches taille 1 à 4 et lingettes pour nos 32 nourrissons pendant trois mois. Fournisseur : grossiste Touba Sandaga, devis joint." },
+      { id: 2, org: 'Foyer Jàmm', type: 'Foyer', city: 'Saint-Louis, Saint-Louis', since: 'septembre 2026', past: 0, date: '9 oct. 2026', title: 'Réparation de la toiture du dortoir', cat: 'Matériel', urgent: true, goal: 450000, endLabel: 'fin le 30 nov. 2026', doc: 'En cours de définition', img: U('photo-1528047705243-ebb19baf436f'), desc: "La toiture en tôle du dortoir des filles fuit depuis l'hivernage. Remplacement de 24 tôles et de la charpente abîmée." },
+      { id: 3, org: 'Centre Aw Handicap', type: 'Centre pour handicapés', city: 'Thiès, Thiès', since: 'janvier 2026', past: 7, date: '8 oct. 2026', title: 'Séances de kinésithérapie', cat: 'Santé', urgent: false, goal: 180000, endLabel: 'fin le 20 déc. 2026', doc: 'Vérifié', img: U('photo-1723433892471-62f113c8c9a0'), desc: "24 séances de kinésithérapie pour trois enfants atteints d'infirmité motrice cérébrale, avec le cabinet partenaire de Thiès." }
+    ],
+    proofs: [
+      { id: 1, org: 'Centre Espoir Ziguinchor', date: '10 oct. 2026', cause: 'Moustiquaires imprégnées', raised: '55 000 FCFA', img: U('photo-1533633310920-cc9bf1e7f9b0'), kind: 'Photo', file: 'IMG_2041.jpg', flag: false, desc: '22 moustiquaires imprégnées installées dans les deux dortoirs le 9 octobre.' },
+      { id: 2, org: 'Orphelinat Darou Salam', date: '9 oct. 2026', cause: 'Riz, huile et sucre pour octobre', raised: '175 000 FCFA', img: U('photo-1562557309-bf9e46b0670d'), kind: 'Photo', file: 'livraison.jpg', flag: true, flagReason: "Image très proche d'une photo déjà publiée en ligne (similarité 91 %). Métadonnées de date absentes.", desc: "6 sacs de riz, 40 L d'huile et 25 kg de sucre livrés par la boutique Diallo." },
+      { id: 3, org: 'Pouponnière Keur Khadija', date: '11 oct. 2026', cause: 'Lait infantile — septembre', raised: '85 000 FCFA', img: U('photo-1584367368243-c0c59fd4a1f9'), kind: 'Vidéo', file: 'reception_lait.mp4', flag: false, desc: '17 boîtes de lait 1er âge reçues de la pharmacie Serigne Saliou, factures jointes.' }
+    ],
+    dels: [
+      { id: 1, org: 'Orphelinat Darou Salam, Kaolack', title: 'Fournitures scolaires 2026', date: '12 oct. 2026', published: '2 oct. 2026', raised: 64000, goal: 150000, donors: 18, end: 'fin le 30 oct. 2026', img: U('photo-1567057420215-0afa9aa9253a'), reason: "Une ONG partenaire vient de nous livrer l'ensemble des fournitures. Le besoin est couvert." },
+      { id: 2, org: 'Foyer Keur Yaay, Dakar', title: 'Sortie pédagogique au Lac Rose', date: '10 oct. 2026', published: '28 sept. 2026', raised: 0, goal: 60000, donors: 0, end: 'fin à 60 000 FCFA', img: U('photo-1509099863731-ef4bff19e808'), reason: "Sortie annulée par l'inspection académique." }
+    ],
+    follow: [
+      { title: "Tapis d'éveil et jouets", org: 'Pouponnière Keur Khadija', amount: 38000, decided: '10 oct. 2026', due: '17 oct. 2026' },
+      { title: 'Groupe électrogène', org: 'Foyer Jàmm', amount: 95000, decided: '1er oct. 2026', due: '8 oct. 2026', overdue: true }
+    ]
+  };
+  componentDidMount() { this._s = () => this.setState({ provider: readProv(), reqs: readReqs() }); window.addEventListener('storage', this._s); window.addEventListener('focus', this._s); }
+  componentWillUnmount() { clearTimeout(this._t); window.removeEventListener('storage', this._s); window.removeEventListener('focus', this._s); }
+  go(screen, extra) { this.setState({ screen, pvIdx: 0, refusing: false, reason: '', fund: null, ...(extra || {}) }); window.scrollTo(0, 0); }
+  toast(m) { clearTimeout(this._t); this.setState({ toast: m }); this._t = setTimeout(() => this.setState({ toast: '' }), 3200); }
+  writeDecision(title, d) { try { const all = JSON.parse(localStorage.getItem('sunu_del_decisions') || '{}'); all[title] = d; localStorage.setItem('sunu_del_decisions', JSON.stringify(all)); } catch (e) {} }
+  renderVals() {
+    const s = this.state, syca = s.provider === 'Sycapay';
+    const cc0 = s.causes.find(c => c.id === s.curId) || s.causes[0] || {};
+    const pp = s.proofs.find(p => p.id === s.curId) || s.proofs[0] || {};
+    const ss0 = s.structures.find(x => x.id === s.curId) || s.structures[0] || {};
+    const d0 = s.dels.find(x => x.id === s.curId) || s.dels[0] || {};
+    const hosp = x => (x.type || '').startsWith('Hôpital');
+    const docOk = cc0.doc === 'Vérifié';
+    const drop = (key, item, msg, extra) => { this.go('dash', { [key]: s[key].filter(x => x.id !== item.id), ...(extra || {}) }); this.toast(msg); };
+    const fund = syca ? 'kept' : s.fund;
+    const hasFunds = (d0.raised || 0) > 0;
+    const okReason = s.reason.trim().length >= 10;
+    const cantDel = !okReason || (hasFunds && !fund);
+    const refuseFlow = (key, item, msg) => { if (!s.refusing) return this.setState({ refusing: true }); if (!s.reason.trim()) return this.toast('La raison du refus est obligatoire'); drop(key, item, msg); };
+    return {
+      toast: s.toast, isLogin: s.screen === 'login', isApp: s.screen !== 'login',
+      isDash: s.screen === 'dash', isCause: s.screen === 'cause', isProof: s.screen === 'proof', isStructure: s.screen === 'structure', isDel: s.screen === 'del',
+      email: s.email, onEmail: e => this.setState({ email: e.target.value }),
+      login: () => this.go('dash'), logout: () => this.go('login'), goDash: () => this.go('dash'),
+      structures: s.structures.map(x => ({ ...x, isHospital: hosp(x), initial: x.name.charAt(0), iconBg: hosp(x) ? '#b8322a' : '#de7d28', open: () => this.go('structure', { curId: x.id }) })),
+      causes: s.causes.map(c => ({ ...c, open: () => this.go('cause', { curId: c.id }) })),
+      proofs: s.proofs.map(p => ({ ...p, countLabel: (DOSS[p.cause] ? DOSS[p.cause].items.length : 0) + ' éléments', bd: p.flag ? 'rgba(222,125,40,.6)' : '#2c3a52', open: () => this.go('proof', { curId: p.id }) })),
+      dels: s.dels.map(x => ({ ...x, raisedStr: fmt(x.raised), open: () => this.go('del', { curId: x.id }) })),
+      follow: s.follow.map((f, i) => ({ ...f, amountStr: fmt(f.amount), isSuspended: !!f.overdue && !f.lifted, tag: f.overdue && !f.lifted ? 'Compte suspendu' : f.lifted ? 'Suspension levée' : 'Preuve attendue', tagBg: f.overdue && !f.lifted ? 'rgba(194,65,45,.25)' : 'rgba(222,125,40,.18)', tagFg: f.overdue && !f.lifted ? '#f6a39b' : '#f0a564', bd: f.overdue && !f.lifted ? 'rgba(194,65,45,.6)' : '#2c3a52',
+        lift: () => { this.setState({ follow: s.follow.map((x, j) => j === i ? { ...x, lifted: true } : x) }); this.toast(`Suspension de ${f.org} levée`); }, remind: () => this.toast(`Rappel envoyé à ${f.org} : preuve attendue avant le ${f.due}`) })),
+      refundCount: s.provider === 'Sycapay' ? 0 : [{ status: s.seedStatus }, ...s.reqs].filter(r => !r.status).length, noRefunds: s.provider === 'Sycapay',
+      structureCount: s.structures.length, causeCount: s.causes.length, proofCount: s.proofs.length, delCount: s.dels.length,
+      refunds: (() => { const syca = s.provider === 'Sycapay'; const list = [{ ...SEED_REQ, status: s.seedStatus }, ...s.reqs]; const shown = syca ? [] : list;
+        const decide = (r, st) => { if (r.id === 'seed') this.setState({ seedStatus: st }); else { const reqs = s.reqs.map(x => x.id === r.id ? { ...x, status: st } : x); try { localStorage.setItem(RKEY, JSON.stringify(reqs)); } catch (e) {} this.setState({ reqs }); } this.toast(st === 'refunded' ? `${fmt(r.amount)} remboursés à ${r.donor} sur ${r.method}` : `Demande de ${r.donor} refusée — le don reste affecté à la cause`); };
+        return shown.map(r => ({ ...r, amountStr: fmt(r.amount), isOpen: !r.status, isClosed: !!r.status, doneLabel: r.status === 'refunded' ? '✓ Remboursé' : 'Refusé · don maintenu', doneFg: r.status === 'refunded' ? '#8fd27a' : '#94a3b8', accept: () => decide(r, 'refunded'), reject: () => decide(r, 'rejected') })); })(),
+      isSyca: s.provider === 'Sycapay',
+      noStructures: !s.structures.length, noCauses: !s.causes.length, noProofs: !s.proofs.length, noDels: !s.dels.length,
+      ss: { ...ss0, isHospital: hosp(ss0), docTitle: hosp(ss0) ? 'Agrément du ministère de la Santé' : "Récépissé de déclaration d'association", ministry: hosp(ss0) ? "Ministère de la Santé et de l'Action sociale" : "Ministère de l'Intérieur" },
+      cc: { ...cc0, goalStr: fmt(cc0.goal || 0), docBg: docOk ? 'rgba(82,158,59,.2)' : 'rgba(222,125,40,.18)', docFg: docOk ? '#8fd27a' : '#f0a564' },
+      pp, pv: buildPV(pp.cause, s.pvIdx, i => this.setState({ pvIdx: i })),
+      checks: (() => { const dd = DOSS[pp.cause]; if (!dd) return []; const n = dd.items.length, docs = dd.items.filter(x => !x.img).length, vids = dd.items.filter(x => x.kind === 'Vidéo').length, fl = dd.items.filter(x => x.flag).length; const spent = dd.spend.reduce((a, x) => a + x[1], 0);
+        const ok = (b, label, sub) => ({ label, sub, mark: b ? '✓' : '!', bg: b ? '#529e3b' : '#de7d28' });
+        return [ok(n >= 5, n + ' éléments fournis', 'Minimum requis : 5'), ok(docs >= 1, docs + ' facture(s) ou bon(s) de livraison', 'Au moins un justificatif d’achat'), ok(vids >= 1, vids + ' vidéo(s)', 'Recommandé'), ok(spent <= dd.raised, 'Dépenses déclarées : ' + pfmt(spent), 'Montant collecté : ' + pfmt(dd.raised)), ok(fl === 0, fl ? fl + ' élément(s) signalé(s) automatiquement' : 'Aucun élément signalé', fl ? 'Cliquez sur les vignettes marquées d’un point rouge' : 'Analyse d’image et métadonnées')]; })(),
+      refusing: s.refusing, reason: s.reason, onReason: e => this.setState({ reason: e.target.value }),
+      reasonBd: s.refusing && !s.reason.trim() ? '#c2412d' : '#2c3a52',
+      refuseLabel: s.refusing ? 'Confirmer le refus' : 'Refuser', refuseOpacity: s.refusing && !s.reason.trim() ? 0.5 : 1,
+      approve: () => drop('causes', cc0, 'Cause approuvée — publiée pour les donateurs'),
+      refuse: () => refuseFlow('causes', cc0, 'Cause refusée — la structure a été notifiée'),
+      approveStructure: () => drop('structures', ss0, hosp(ss0) ? `${ss0.name} validé — il peut publier des alertes de don de sang` : `${ss0.name} validée — elle peut publier des causes`),
+      refuseStructure: () => refuseFlow('structures', ss0, `Inscription refusée — motif transmis à ${ss0.contact}`),
+      approveProof: () => drop('proofs', pp, 'Preuve validée — publiée sur l’accueil'),
+      escalate: () => drop('proofs', pp, 'Preuve envoyée en vérification approfondie'),
+      dd: { ...d0, raisedStr: fmt(d0.raised || 0), goalStr: fmt(d0.goal || 0), pct: Math.min(100, Math.round((d0.raised || 0) / (d0.goal || 1) * 100)) + '%', hasFunds, noFunds: !hasFunds },
+      fundOpts: [
+        ['refund', 'Rembourser les donateurs', syca ? 'Impossible avec Sycapay : les fonds sont déjà sur le compte de la structure.' : `Les ${fmt(d0.raised || 0)} bloqués chez NabooPay sont reversés aux ${d0.donors} donateurs sur leur Mobile Money.`],
+        ['kept', 'Verser les fonds à la structure', syca ? `Fonds déjà versés. La structure doit justifier l'utilisation des ${fmt(d0.raised || 0)} avec une preuve sous 7 jours.` : `Les ${fmt(d0.raised || 0)} sont débloqués et versés aujourd'hui. Preuve d'utilisation obligatoire sous 7 jours.`]
+      ].map(([k, l, sub]) => { const on = fund === k, dis = syca && k === 'refund'; return { label: l, sub, disabled: dis, op: dis ? 0.45 : 1, bd: on ? '#5b8fc4' : '#2c3a52', bg: on ? 'rgba(91,143,196,.14)' : '#141c2b', dot: on ? '#5b8fc4' : 'transparent', dotBd: on ? '#5b8fc4' : '#64748b', pick: () => !dis && this.setState({ fund: k }) }; }),
+      cantDel, delOpacity: cantDel ? 0.45 : 1, cantKeep: !okReason, keepOpacity: okReason ? 1 : 0.45,
+      delHint: !okReason ? 'Rédigez une justification d’au moins 10 caractères.' : (hasFunds && !fund) ? 'Choisissez le sort des fonds collectés.' : 'La structure et les donateurs seront notifiés de votre décision.',
+      approveDel: () => {
+        if (cantDel) return;
+        const outcome = hasFunds ? fund : 'refund';
+        this.writeDecision(d0.title, { outcome, reason: s.reason.trim(), date: '12 oct. 2026', due: '19 oct. 2026' });
+        const follow = outcome === 'kept' ? [{ title: d0.title, org: d0.org.split(',')[0], amount: d0.raised, decided: '12 oct. 2026', due: '19 oct. 2026' }, ...s.follow] : s.follow;
+        drop('dels', d0, !hasFunds ? `« ${d0.title} » supprimée.` : outcome === 'refund' ? `« ${d0.title} » supprimée — ${d0.donors} donateurs remboursés` : `« ${d0.title} » supprimée — fonds versés, preuve attendue avant le 19 oct.`, { follow });
+      },
+      keepCause: () => { if (!okReason) return; this.writeDecision(d0.title, { outcome: 'maintained', reason: s.reason.trim(), date: '12 oct. 2026' }); drop('dels', d0, `« ${d0.title} » maintenue — réponse transmise à la structure`); },
+      provName: s.provider, optOpen: s.optOpen, toggleOpt: () => this.setState({ optOpen: !s.optOpen }),
+      provOpts: Object.entries(PROV).map(([name, [rate, desc]]) => { const on = s.provider === name; return { name, rate, desc, bd: on ? '#174a7c' : '#e2e8f0', bg: on ? '#eaf1f8' : '#fff', dot: on ? '#174a7c' : '#fff', dotBd: on ? '#174a7c' : '#cbd5e1', pick: () => { try { localStorage.setItem('sunu_provider', name); } catch (e) {} this.setState({ provider: name, fund: null }); } }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

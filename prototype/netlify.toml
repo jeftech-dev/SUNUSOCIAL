@@ -1,0 +1,34 @@
+# SUNUSOCIAL prototype — static site, no build step.
+[build]
+  publish = "."
+  command = ""
+
+# CRITICAL: disable Netlify's post-processing. The dc-runtime relies on custom
+# elements (<x-dc>, <sc-if>, <sc-for>) and inline data-dc-script templates, and
+# on the literal ".dc.html" URLs. HTML minification and "Prettify URLs" mangle
+# those and leave a blank page. skip_processing turns off all of it (minify,
+# bundling, image compression, pretty URLs).
+[build.processing]
+  skip_processing = true
+
+# Always serve the latest HTML (so a redeploy shows immediately),
+# but let fingerprint-free assets be revalidated too.
+[[headers]]
+  for = "/*.dc.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/nav.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/support.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

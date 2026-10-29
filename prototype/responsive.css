@@ -1,0 +1,43 @@
+/* Mobile responsiveness safety net for the SUNUSOCIAL prototype.
+   Linked on every page. The pages use inline styles, and an author stylesheet
+   with !important overrides a *non-important* inline style, so these rules win
+   on small screens.
+
+   We only collapse the "plain 1fr" grids that get cramped on a phone
+   (repeat(4,1fr), repeat(3,1fr), and "1fr 1fr" splits). We deliberately leave
+   author-controlled minmax(0,1fr) grids alone — those already shrink cleanly
+   and some pages set them per-breakpoint themselves. Fixed-position bars (the
+   mobile bottom tab nav) are excluded so they keep their columns. */
+
+img, svg, video { max-width: 100%; height: auto; }
+
+/* Landing header: the in-page anchor links are secondary — hide them on phones
+   so the bar stays a clean logo <-> "Se connecter" row (the content is still
+   reachable by scrolling). */
+@media (max-width: 640px) {
+  .nav-anchors { display: none !important; }
+}
+
+@media (max-width: 700px) {
+  /* Kill any stray horizontal scroll */
+  html, body { overflow-x: hidden; max-width: 100%; }
+
+  /* 4- and 3-column plain grids drop to 2 columns */
+  [style*="grid-template-columns:repeat(4,1fr)"]:not([style*="position:fixed"]),
+  [style*="grid-template-columns:repeat(3,1fr)"]:not([style*="position:fixed"]) {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Two-up splits stack to a single column */
+  [style*="grid-template-columns:1fr 1fr"]:not([style*="position:fixed"]) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 430px) {
+  /* Very narrow phones: the 2-up grids above go single column too */
+  [style*="grid-template-columns:repeat(4,1fr)"]:not([style*="position:fixed"]),
+  [style*="grid-template-columns:repeat(3,1fr)"]:not([style*="position:fixed"]) {
+    grid-template-columns: 1fr !important;
+  }
+}

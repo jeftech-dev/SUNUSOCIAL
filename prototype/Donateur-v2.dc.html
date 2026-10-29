@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./nav.js"></script>
+<link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>SUNUSOCIAL — Espace donateur</title>
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#faf7f2;color:#1e293b;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:Montserrat,sans-serif;margin:0}
+a{color:#174a7c}a:hover{color:#de7d28}
+input,select,button,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #de7d28;outline-offset:2px}
+@keyframes ssPop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes ssDraw{from{stroke-dashoffset:40}to{stroke-dashoffset:0}}
+@keyframes ssUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;padding-bottom:{{ padBottom }}">
+  <header style="position:sticky;top:0;z-index:30;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid #ece6dc">
+    <div style="max-width:1200px;margin:0 auto;padding:10px clamp(14px,4vw,32px);display:flex;align-items:center;gap:16px">
+      <button onClick="{{ goHome }}" style="background:none;border:0;padding:0;cursor:pointer;flex:none"><img src="{{ logoSrc }}" alt="SUNUSOCIAL" style="height:42px;display:block"></button>
+      <label style="flex:1;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;background:#f3f1ec;border-radius:999px;padding:0 16px;height:44px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5b6678" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Rechercher une cause, une structure…" style="flex:1;min-width:0;border:0;background:transparent;font-size:14px;outline:none"></input>
+      </label>
+      <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+        <nav style="flex:none;display:flex;gap:4px">
+          <button onClick="{{ goHome }}" style="border:0;border-radius:999px;padding:10px 16px;font-weight:600;font-size:14px;cursor:pointer;background:{{ navCausesBg }};color:{{ navCausesFg }}">Causes</button>
+          <button onClick="{{ goBlood }}" style="display:flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:10px 16px;font-weight:600;font-size:14px;cursor:pointer;background:{{ navBloodBg }};color:{{ navBloodFg }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b8322a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></svg>Don de sang<sc-if value="{{ hasBloodBadge }}" hint-placeholder-val="{{ true }}"><span style="min-width:18px;height:18px;border-radius:999px;background:#b8322a;color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 5px">{{ bloodBadge }}</span></sc-if></button>
+        </nav>
+      </sc-if>
+      <button onClick="{{ goProfile }}" style="flex:none;display:flex;align-items:center;gap:10px;background:none;border:0;cursor:pointer;padding:0">
+        <span style="width:42px;height:42px;border-radius:50%;background:#174a7c;color:#fff;display:grid;place-items:center;font-family:Montserrat,sans-serif;font-weight:700;font-size:15px">{{ initials }}</span>
+      </button>
+    </div>
+  </header>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <main data-screen-label="03 Accueil donateur" style="max-width:1200px;margin:0 auto;padding:28px clamp(14px,4vw,32px) 56px;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 style="font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.01em">Bonjour {{ firstName }} 👋</h1>
+      <p style="margin:0;color:#5b6678">Voici les besoins vérifiés qui attendent votre soutien aujourd'hui.</p>
+    </div>
+
+    <sc-if value="{{ showBloodBanner }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1.5px solid #f2c9c5;border-radius:22px 22px 22px 6px;padding:14px 16px">
+      <span style="flex:none;width:46px;height:46px;border-radius:50%;background:#fbeceb;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b8322a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></svg></span>
+      <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:12px;font-weight:700;color:#b8322a;letter-spacing:.06em">ALERTE DON DE SANG · {{ topAlert.levelLabel }}</span>
+        <strong style="font-size:15px">{{ topAlert.hospital }} recherche du sang {{ myGroup }}</strong>
+        <span style="font-size:13px;color:#5b6678">Alerte envoyée aux donneurs de {{ myCommune }} · {{ topAlert.deadline }}</span>
+      </div>
+      <button onClick="{{ goBlood }}" style="flex:none;background:#b8322a;color:#fff;border:0;border-radius:999px;padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:#9a2921">Voir l'alerte</button>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ showFeatured }}" hint-placeholder-val="{{ true }}">
+    <article onClick="{{ featured.open }}" style="position:relative;cursor:pointer;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));background:#174a7c;border-radius:36px 36px 36px 10px;overflow:hidden;color:#fff;box-shadow:0 30px 60px -36px rgba(23,74,124,.7)">
+      <div style="position:relative;min-height:280px;background:#0f3459">
+        <img src="{{ featured.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+        <span style="position:absolute;top:16px;left:16px;display:inline-flex;align-items:center;gap:8px;background:#de7d28;color:#fff;border-radius:999px;padding:8px 14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em">♥ Coup de cœur de la semaine</span>
+      </div>
+      <div style="position:relative;padding:clamp(22px,3vw,36px);display:flex;flex-direction:column;gap:14px;justify-content:center;overflow:hidden">
+        <div style="position:absolute;right:-120px;bottom:-140px;width:320px;height:320px;border-radius:50%;border:36px solid rgba(222,125,40,.3)"></div>
+        <span style="position:relative;align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:999px;padding:6px 12px 6px 6px;font-size:12px;font-weight:600"><img src="assets/mark-white.png" alt="" style="height:20px">Sélection éditoriale SUNUSOCIAL</span>
+        <span style="position:relative;display:inline-flex;align-items:center;gap:6px;font-size:14px;color:#d6e2ef">{{ featured.org }}<span style="display:inline-flex;align-items:center;gap:4px;background:#529e3b;color:#fff;border-radius:999px;padding:2px 8px 2px 6px;font-size:11px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"></path><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></svg>Vérifié</span></span>
+        <h2 style="position:relative;font-size:clamp(24px,2.8vw,32px);font-weight:800;line-height:1.15;color:#fff">{{ featured.title }}</h2>
+        <p style="position:relative;margin:0;color:#d6e2ef;line-height:1.55;font-size:15px">{{ featured.short }}</p>
+        <div style="position:relative;display:flex;flex-direction:column;gap:8px">
+          <div style="height:10px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden"><div style="height:100%;width:{{ featured.pct }};border-radius:999px;background:#de7d28"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;gap:8px;flex-wrap:wrap"><span><strong style="font-family:Montserrat,sans-serif">{{ featured.raisedStr }}</strong> / {{ featured.goalStr }}</span><span style="color:#d6e2ef">{{ featured.pct }}</span></div>
+        </div>
+        <span style="position:relative;align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:#fff;color:#174a7c;border-radius:999px;padding:12px 20px;font-family:Montserrat,sans-serif;font-weight:700;font-size:14px">Voir la cause →</span>
+      </div>
+    </article>
+    </sc-if>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">
+        <sc-for list="{{ cats }}" as="c" hint-placeholder-count="4">
+          <button onClick="{{ c.pick }}" style="flex:none;border:0;border-radius:999px;padding:10px 18px;font-weight:600;font-size:14px;cursor:pointer;background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:13px;color:#5b6678;margin-right:4px">Affiner :</span>
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="2">
+          <button onClick="{{ c.pick }}" style="border:1.5px solid {{ c.bd }};border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;cursor:pointer;background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</button>
+        </sc-for>
+        <span style="margin-left:auto;font-size:13px;color:#5b6678">{{ countLabel }}</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:{{ gridCols }};gap:{{ gridGap }}">
+      <sc-for list="{{ list }}" as="c" hint-placeholder-count="6">
+        <article style="background:#fff;border-radius:24px 24px 24px 6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 0 #ece6dc,0 14px 30px -22px rgba(30,41,59,.35)">
+          <div style="position:relative;aspect-ratio:16/10;background:#eaf1f8">
+            <img src="{{ c.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+            <sc-if value="{{ c.urgent }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:10px;left:10px;background:#de7d28;color:#fff;border-radius:999px;padding:4px 10px;font-family:Montserrat,sans-serif;font-weight:800;font-size:11px;letter-spacing:.08em">URGENT</span></sc-if>
+            <span style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,.94);color:#174a7c;border-radius:999px;padding:4px 10px;font-weight:600;font-size:11px">{{ c.cat }}</span>
+          </div>
+          <div style="padding:{{ cardPad }};display:flex;flex-direction:column;gap:10px;flex:1">
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5b6678;flex-wrap:wrap">{{ c.orgShort }}<span style="display:inline-flex;align-items:center;gap:3px;color:#3b7a29;font-weight:600"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>Vérifié</span></span>
+            <h3 style="font-size:{{ titleSize }};font-weight:700;line-height:1.28;text-wrap:pretty">{{ c.title }}</h3>
+            <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px">
+              <div style="height:8px;border-radius:999px;background:#eaf1f8;overflow:hidden"><div style="height:100%;width:{{ c.pct }};border-radius:999px;background:{{ c.barColor }}"></div></div>
+              <div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;color:#5b6678;flex-wrap:wrap"><span><strong style="color:#1e293b">{{ c.raisedNum }}</strong> / {{ c.goalStr }}</span><span style="font-weight:600;color:#174a7c">{{ c.pct }}</span></div>
+            </div>
+            <button onClick="{{ c.open }}" style="border:1.5px solid #174a7c;background:transparent;color:#174a7c;border-radius:999px;padding:10px;font-weight:600;font-size:14px;cursor:pointer" style-hover="background:#174a7c;color:#fff">Voir plus</button>
+          </div>
+        </article>
+      </sc-for>
+    </div>
+    <sc-if value="{{ emptyList }}" hint-placeholder-val="{{ false }}"><div style="text-align:center;padding:40px;color:#5b6678;background:#fff;border-radius:24px">Aucune cause ne correspond à ces filtres.</div></sc-if>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="04 Détail de la cause" style="max-width:1200px;margin:0 auto;padding:20px clamp(14px,4vw,32px) 64px;display:flex;flex-direction:column;gap:28px">
+    <button onClick="{{ goHome }}" style="align-self:flex-start;background:none;border:0;color:#5b6678;font-size:14px;cursor:pointer;padding:0" style-hover="color:#1e293b">← Toutes les causes</button>
+    <div style="position:relative;aspect-ratio:21/8;min-height:220px;border-radius:36px 36px 36px 10px;overflow:hidden;background:#eaf1f8">
+      <img src="{{ cur.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+      <div style="position:absolute;left:18px;top:18px;display:flex;gap:8px;flex-wrap:wrap">
+        <sc-if value="{{ cur.urgent }}" hint-placeholder-val="{{ false }}"><span style="background:#de7d28;color:#fff;border-radius:999px;padding:6px 12px;font-family:Montserrat,sans-serif;font-weight:800;font-size:12px;letter-spacing:.08em">URGENT</span></sc-if>
+        <span style="background:rgba(255,255,255,.94);color:#174a7c;border-radius:999px;padding:6px 12px;font-weight:600;font-size:12px">{{ cur.cat }}</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:clamp(24px,4vw,48px);align-items:start">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <span style="display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#5b6678;flex-wrap:wrap">{{ cur.org }}<span style="display:inline-flex;align-items:center;gap:4px;background:#ebf5e6;color:#3b7a29;border-radius:999px;padding:3px 10px 3px 7px;font-size:12px;font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>Structure vérifiée</span></span>
+        <h1 style="font-size:clamp(28px,3.6vw,42px);font-weight:800;line-height:1.1;letter-spacing:-.01em;text-wrap:balance">{{ cur.title }}</h1>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px">
+          <span style="background:#eaf1f8;color:#174a7c;border-radius:999px;padding:6px 12px;font-weight:600">Catégorie : {{ cur.cat }}</span>
+          <span style="background:{{ cur.urgBg }};color:{{ cur.urgFg }};border-radius:999px;padding:6px 12px;font-weight:600">Urgence : {{ cur.urgLabel }}</span>
+        </div>
+        <p style="margin:0;font-size:16px;line-height:1.75;color:#334155;text-wrap:pretty">{{ cur.desc }}</p>
+        <a href="https://wa.me/221770000000?text=Bonjour%20SUNUSOCIAL" target="_blank" rel="noopener" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:#ebf5e6;color:#3b7a29;border-radius:999px;padding:11px 18px;text-decoration:none;font-weight:600;font-size:14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>Nous contacter sur WhatsApp</a>
+      </div>
+      <aside style="background:#fff;border-radius:28px 28px 28px 8px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 60px -40px rgba(30,41,59,.45);position:sticky;top:84px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#5b6678">Collectés</span>
+          <span style="font-family:Montserrat,sans-serif;font-size:34px;font-weight:800;color:#174a7c;line-height:1.1">{{ cur.raisedStr }}</span>
+          <span style="font-size:14px;color:#5b6678">sur un objectif de <strong style="color:#1e293b">{{ cur.goalStr }}</strong></span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="height:14px;border-radius:999px;background:#eaf1f8;overflow:hidden"><div style="height:100%;width:{{ cur.pct }};border-radius:999px;background:#174a7c;transition:width .8s"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:700;color:#174a7c">{{ cur.pct }} atteint</span><span style="color:#5b6678">{{ cur.donors }} donateurs</span></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;background:#faf7f2;border-radius:16px;padding:14px">
+          <svg style="flex:none;margin-top:2px" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#de7d28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <div style="display:flex;flex-direction:column;gap:3px"><strong style="font-size:15px">{{ cur.endLabel }}</strong><span style="font-size:13px;color:#5b6678">{{ cur.endSub }}</span></div>
+        </div>
+        <button onClick="{{ openModal }}" style="background:#de7d28;color:#fff;border:0;border-radius:999px;padding:18px;font-family:Montserrat,sans-serif;font-weight:800;font-size:17px;cursor:pointer;box-shadow:0 14px 28px -14px rgba(222,125,40,.8)" style-hover="background:#c86c1c">Faire un don</button>
+        <div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#5b6678;line-height:1.5;border-top:1px dashed #e2e8f0;padding-top:14px">
+          <span style="flex:none;background:#fdf0e3;color:#b4601a;border-radius:6px;padding:2px 6px;font-weight:700;font-size:10px;letter-spacing:.06em">RÈGLE VALIDÉE</span>
+          <span>{{ fundsNote }}</span>
+        </div>
+      </aside>
+    </div>
+    <section style="display:flex;flex-direction:column;gap:16px">
+      <h2 style="font-size:24px;font-weight:800">Causes similaires</h2>
+      <div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory">
+        <sc-for list="{{ similar }}" as="c" hint-placeholder-count="3">
+          <article onClick="{{ c.open }}" style="flex:none;width:280px;scroll-snap-align:start;cursor:pointer;background:#fff;border-radius:24px 24px 24px 6px;overflow:hidden;box-shadow:0 1px 0 #ece6dc,0 14px 30px -22px rgba(30,41,59,.35)">
+            <div style="position:relative;aspect-ratio:16/10;background:#eaf1f8"><img src="{{ c.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div>
+            <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:12px;color:#5b6678">{{ c.orgShort }}</span>
+              <h3 style="font-size:16px;font-weight:700;line-height:1.3">{{ c.title }}</h3>
+              <div style="height:6px;border-radius:999px;background:#eaf1f8;overflow:hidden"><div style="height:100%;width:{{ c.pct }};background:#174a7c;border-radius:999px"></div></div>
+              <span style="font-size:12px;color:#5b6678">{{ c.raisedNum }} / {{ c.goalStr }}</span>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="06 Profil donateur" style="max-width:1000px;margin:0 auto;padding:28px clamp(14px,4vw,32px) 64px;display:flex;flex-direction:column;gap:28px">
+    <section style="position:relative;overflow:hidden;background:#174a7c;color:#fff;border-radius:36px 36px 36px 10px;padding:clamp(22px,4vw,40px);display:flex;flex-direction:column;gap:24px">
+      <div style="position:absolute;right:-110px;top:-130px;width:340px;height:340px;border-radius:50%;border:38px solid rgba(222,125,40,.3)"></div>
+      <div style="position:relative;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span style="width:68px;height:68px;border-radius:50%;background:#fff;color:#174a7c;display:grid;place-items:center;font-family:Montserrat,sans-serif;font-weight:800;font-size:24px">{{ initials }}</span>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1"><h1 style="font-size:28px;font-weight:800;color:#fff">{{ name }}</h1><span style="color:#d6e2ef;font-size:14px">{{ phone }}</span></div>
+        <button onClick="{{ logout }}" style="background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:999px;padding:10px 16px;font-weight:600;font-size:13px;cursor:pointer" style-hover="background:rgba(255,255,255,.22)">Se déconnecter</button>
+      </div>
+      <div style="position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+        <div style="background:rgba(255,255,255,.1);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:4px"><span style="font-size:13px;color:#d6e2ef">Total donné</span><span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:28px">{{ totalStr }}</span></div>
+        <div style="background:rgba(255,255,255,.1);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:4px"><span style="font-size:13px;color:#d6e2ef">Causes soutenues</span><span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:28px">{{ causeCount }}</span></div>
+      </div>
+    </section>
+    <div style="display:flex;gap:12px;align-items:center;background:#ebf5e6;border-radius:20px;padding:16px 20px;color:#2f5f21;font-size:15px">
+      <svg style="flex:none" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+      <span>{{ impactLine }}</span>
+    </div>
+    <section style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="font-size:24px;font-weight:800">Mes donations</h2>
+      <sc-for list="{{ donations }}" as="d" hint-placeholder-count="3">
+        <div style="background:#fff;border-radius:22px 22px 22px 6px;padding:16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;box-shadow:0 1px 0 #ece6dc">
+          <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:4px">
+            <strong style="font-family:Montserrat,sans-serif;font-size:16px">{{ d.cause }}</strong>
+            <span style="font-size:13px;color:#5b6678">{{ d.org }}</span>
+            <span style="font-size:12px;color:#8a94a6">{{ d.date }} · {{ d.method }}</span>
+          </div>
+          <span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:18px;color:#174a7c">{{ d.amountStr }}</span>
+          <sc-if value="{{ d.hasProof }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ d.openProof }}" style="display:flex;align-items:center;gap:10px;background:#ebf5e6;border:0;border-radius:16px;padding:6px 14px 6px 6px;cursor:pointer;text-align:left" style-hover="background:#dcefd3">
+              <span style="position:relative;width:52px;height:52px;border-radius:12px;overflow:hidden;background:#d8ead1"><img src="{{ d.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"><span style="position:absolute;right:3px;bottom:3px;background:rgba(15,23,42,.8);color:#fff;border-radius:6px;padding:0 5px;font-size:10px;font-weight:700">{{ d.proofCount }}</span></span>
+              <span style="display:flex;flex-direction:column;font-size:12px;color:#2f5f21"><strong>Preuve de réception</strong><span>Validée ✓ · Voir le dossier →</span></span>
+            </button>
+          </sc-if>
+          <sc-if value="{{ d.noProof }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:10px;background:#f3f4f7;border-radius:16px;padding:6px 12px 6px 6px;color:#8a94a6">
+              <span style="width:52px;height:52px;border-radius:12px;background:#e6e8ee;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a0a8b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
+              <span style="font-size:12px;font-weight:600">En attente de preuve</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ d.canAsk }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ d.notAsking }}" hint-placeholder-val="{{ true }}"><button onClick="{{ d.ask }}" style="flex-basis:100%;align-self:flex-start;text-align:left;background:none;border:0;padding:0;font-size:13px;font-weight:600;color:#174a7c;cursor:pointer" style-hover="color:#de7d28">Demander un remboursement</button></sc-if>
+          </sc-if>
+          <sc-if value="{{ d.asking }}" hint-placeholder-val="{{ false }}">
+            <div style="flex-basis:100%;display:flex;flex-direction:column;gap:10px;background:#faf7f2;border-radius:16px;padding:14px">
+              <span style="font-size:13px;color:#334155;line-height:1.5">Les fonds n'ont pas encore été versés à la structure (NabooPay) : vous pouvez demander à récupérer votre don. Un modérateur décide, sa décision est définitive.</span>
+              <textarea value="{{ rfReason }}" onChange="{{ onRfReason }}" placeholder="Ex. Je me suis trompé de montant." style="border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:14px;min-height:64px;outline:none;resize:vertical;background:#fff" style-focus="border-color:#174a7c"></textarea>
+              <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+                <button onClick="{{ cancelRf }}" style="border:1.5px solid #e2e8f0;background:#fff;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;color:#334155">Annuler</button>
+                <button onClick="{{ d.sendReq }}" disabled="{{ rfCant }}" style="border:0;background:#174a7c;color:#fff;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;opacity:{{ rfOpacity }}">Envoyer la demande</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ d.hasReq }}" hint-placeholder-val="{{ false }}">
+            <div style="flex-basis:100%;display:flex;flex-direction:column;gap:3px;background:{{ d.rqBg }};border-radius:16px;padding:12px 14px;font-size:13px;line-height:1.5;color:#334155"><strong style="color:{{ d.rqFg }}">{{ d.rqTitle }}</strong><span>{{ d.rqText }}</span></div>
+          </sc-if>
+          <sc-if value="{{ d.isDeleted }}" hint-placeholder-val="{{ false }}">
+            <div style="flex-basis:100%;display:flex;gap:12px;align-items:flex-start;background:{{ d.delBg }};border-radius:16px;padding:12px 14px">
+              <svg style="flex:none;margin-top:2px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ d.delFg }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg>
+              <div style="display:flex;flex-direction:column;gap:3px;font-size:13px;line-height:1.55;color:#334155"><strong style="color:{{ d.delFg }}">{{ d.delTitle }}</strong><span>{{ d.delText }}</span></div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isBlood }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="07 Don de sang" style="max-width:1100px;margin:0 auto;padding:28px clamp(14px,4vw,32px) 64px;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 style="font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.01em">Don de sang</h1>
+      <p style="margin:0;color:#5b6678;max-width:640px;text-wrap:pretty">Les hôpitaux proches de chez vous publient une alerte quand un groupe sanguin vient à manquer. Vous êtes prévenu uniquement si votre groupe est recherché.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px">
+      <section style="position:relative;overflow:hidden;background:#fff;border-radius:28px 28px 28px 8px;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 1px 0 #ece6dc,0 20px 40px -30px rgba(30,41,59,.4)">
+        <div style="display:flex;align-items:center;gap:16px">
+          <span style="flex:none;width:76px;height:76px;border-radius:50% 50% 50% 8px;background:#b8322a;color:#fff;display:grid;place-items:center;font-family:Montserrat,sans-serif;font-weight:800;font-size:26px">{{ myGroup }}</span>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <span style="font-size:12px;color:#5b6678;font-weight:600;letter-spacing:.04em">MON PROFIL DONNEUR</span>
+            <strong style="font-family:Montserrat,sans-serif;font-size:18px">Groupe {{ myGroup }}</strong>
+            <span style="font-size:13px;color:#5b6678">{{ addr }}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;background:#ebf5e6;border-radius:16px;padding:12px 14px;font-size:13px;color:#2f5f21;line-height:1.5">
+          <svg style="flex:none;margin-top:1px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+          <span>Dernier don le 12 juin 2026. Vous pouvez donner à nouveau.</span>
+        </div>
+        <button onClick="{{ toggleSms }}" style="display:flex;align-items:center;gap:12px;background:#faf7f2;border:0;border-radius:16px;padding:12px 14px;cursor:pointer;text-align:left">
+          <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600;color:#1e293b">Recevoir les alertes par SMS</span><span style="font-size:12px;color:#5b6678">Sur le {{ phone }}</span></span>
+          <span style="position:relative;flex:none;width:44px;height:26px;border-radius:999px;background:{{ smsTrack }};transition:background .2s"><span style="position:absolute;top:3px;left:{{ smsKnob }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)"></span></span>
+        </button>
+        <span style="align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.06em;color:#b4601a;background:#fdf0e3;border-radius:6px;padding:3px 8px">CANAL SMS EN COURS DE VALIDATION</span>
+      </section>
+      <section style="background:#1e293b;color:#fff;border-radius:28px 28px 28px 8px;padding:24px;display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:12px;color:#94a3b8;font-weight:600;letter-spacing:.04em">EXEMPLE D'ALERTE REÇUE</span>
+        <div style="align-self:flex-start;max-width:340px;background:#334155;border-radius:20px 20px 20px 6px;padding:14px 16px;font-size:14px;line-height:1.55">SUNUSOCIAL : l'Hôpital Principal de Dakar recherche du sang O+ (urgence vitale). Alerte envoyée aux donneurs de Médina. Confirmez votre venue sur sunusocial.sn/sang</div>
+        <span style="font-size:12px;color:#94a3b8">Envoyé uniquement aux donneurs du groupe recherché, dans les communes de votre région choisies par l'hôpital. Votre adresse n'est jamais partagée.</span>
+      </section>
+    </div>
+
+    <section style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h2 style="font-size:24px;font-weight:800;margin-right:auto">Alertes des hôpitaux</h2>
+        <div style="display:flex;gap:4px;background:#f3f1ec;border-radius:999px;padding:4px">
+          <sc-for list="{{ bloodFilters }}" as="f" hint-placeholder-count="2">
+            <button onClick="{{ f.pick }}" style="border:0;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;background:{{ f.bg }};color:{{ f.fg }}">{{ f.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="3">
+        <article style="background:#fff;border-radius:24px 24px 24px 6px;padding:18px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px 24px;align-items:center;box-shadow:0 1px 0 #ece6dc,0 14px 30px -24px rgba(30,41,59,.35)">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span style="background:{{ a.levelBg }};color:{{ a.levelFg }};border-radius:999px;padding:4px 10px;font-family:Montserrat,sans-serif;font-weight:800;font-size:11px;letter-spacing:.06em">{{ a.levelLabel }}</span>
+              <span style="font-size:13px;color:#5b6678">{{ a.deadline }}</span>
+            </div>
+            <strong style="font-family:Montserrat,sans-serif;font-size:17px;line-height:1.3">{{ a.hospital }}</strong>
+            <span style="font-size:13px;color:#5b6678">{{ a.place }} · alerte envoyée à {{ myCommune }}</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{ a.groups }}" as="g" hint-placeholder-count="2">
+                <span style="min-width:40px;text-align:center;border-radius:999px;padding:4px 10px;font-family:Montserrat,sans-serif;font-weight:800;font-size:13px;background:{{ g.bg }};color:{{ g.fg }}">{{ g.g }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;gap:8px"><span><strong>{{ a.got }}</strong> / {{ a.units }} poches</span><span style="color:#5b6678">{{ a.responders }} donneurs en route</span></div>
+            <div style="height:8px;border-radius:999px;background:#fbeceb;overflow:hidden"><div style="height:100%;width:{{ a.pct }};border-radius:999px;background:#b8322a"></div></div>
+            <sc-if value="{{ a.canRespond }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ a.respond }}" style="background:#b8322a;color:#fff;border:0;border-radius:999px;padding:12px;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:#9a2921">Je peux donner</button>
+            </sc-if>
+            <sc-if value="{{ a.isResponded }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:8px;background:#ebf5e6;color:#2f5f21;border-radius:999px;padding:11px 14px;font-weight:600;font-size:13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Venue confirmée · {{ a.slotLabel }}</div>
+            </sc-if>
+            <sc-if value="{{ a.incompatible }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:13px;color:#8a94a6;text-align:center;padding:10px">Groupe non recherché pour cette alerte</span>
+            </sc-if>
+          </div>
+        </article>
+      </sc-for>
+      <sc-if value="{{ noAlerts }}" hint-placeholder-val="{{ false }}"><div style="text-align:center;padding:36px;color:#5b6678;background:#fff;border-radius:24px">Aucune alerte pour votre groupe en ce moment. Nous vous préviendrons.</div></sc-if>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:12px;background:#fff;border-radius:24px 24px 24px 6px;padding:20px 22px">
+      <h3 style="font-size:17px;font-weight:700">Avant de venir</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:14px;color:#334155">
+        <span style="display:flex;gap:8px"><span style="color:#b8322a;font-weight:700">01</span>Avoir entre 18 et 65 ans et peser plus de 50 kg</span>
+        <span style="display:flex;gap:8px"><span style="color:#b8322a;font-weight:700">02</span>Avoir mangé et bu dans les heures qui précèdent</span>
+        <span style="display:flex;gap:8px"><span style="color:#b8322a;font-weight:700">03</span>Apporter une pièce d'identité</span>
+        <span style="display:flex;gap:8px"><span style="color:#b8322a;font-weight:700">04</span>Le médecin de l'hôpital confirme votre aptitude sur place</span>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ rOpen }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="08 Confirmer sa venue" onClick="{{ rClose }}" style="position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);display:flex;align-items:{{ modalAlign }};justify-content:center;padding:{{ modalPad }}">
+    <div onClick="{{ stop }}" style="width:100%;max-width:480px;max-height:94vh;overflow:auto;background:#fff;border-radius:{{ modalRadius }};animation:ssUp .35s cubic-bezier(.2,.8,.2,1);box-shadow:0 40px 80px -30px rgba(15,23,42,.6)">
+      <sc-if value="{{ rNotDone }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:22px 24px 24px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:700;color:#b8322a;letter-spacing:.06em">CONFIRMER MA VENUE</span><strong style="font-family:Montserrat,sans-serif;font-size:18px;line-height:1.25">{{ rAlert.hospital }}</strong><span style="font-size:13px;color:#5b6678">{{ rAlert.address }} · {{ rAlert.hours }}</span></div>
+          <button onClick="{{ rClose }}" style="flex:none;width:36px;height:36px;border-radius:50%;border:0;background:#f3f4f7;cursor:pointer;font-size:18px;color:#5b6678" style-hover="background:#e6e8ee">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:14px">Quand pouvez-vous venir ?</span>
+          <sc-for list="{{ slots }}" as="sl" hint-placeholder-count="3">
+            <button onClick="{{ sl.pick }}" style="display:flex;align-items:center;justify-content:space-between;border:1.5px solid {{ sl.bd }};background:{{ sl.bg }};border-radius:14px;padding:13px 14px;font-weight:600;font-size:14px;color:#1e293b;cursor:pointer;text-align:left">{{ sl.label }}<span style="width:18px;height:18px;border-radius:50%;border:2px solid {{ sl.bd }};background:{{ sl.dot }}"></span></button>
+          </sc-for>
+        </div>
+        <button onClick="{{ rConfirm }}" disabled="{{ rCantConfirm }}" style="background:#b8322a;color:#fff;border:0;border-radius:999px;padding:16px;font-family:Montserrat,sans-serif;font-weight:800;font-size:16px;cursor:pointer;opacity:{{ rOpacity }}" style-hover="background:#9a2921">Je confirme ma venue</button>
+        <span style="font-size:12px;color:#8a94a6;text-align:center">L'hôpital voit votre prénom et votre groupe sanguin, pas votre adresse.</span>
+      </div>
+      </sc-if>
+      <sc-if value="{{ rDone }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:34px 26px 26px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
+        {{ checkmark }}
+        <h2 style="font-size:22px;font-weight:800;text-wrap:balance">Merci {{ firstName }}, l'hôpital est prévenu.</h2>
+        <p style="margin:0;color:#5b6678;font-size:14px;line-height:1.6">Rendez-vous {{ rSlotLabel }} à {{ rAlert.hospital }}, {{ rAlert.address }}. Un SMS de rappel vous sera envoyé 2 heures avant.</p>
+        <button onClick="{{ rClose }}" style="width:100%;background:#174a7c;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:#0f3459">Retour aux alertes</button>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ pvOpen }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="06b Dossier de preuve" onClick="{{ closePv }}" style="position:fixed;inset:0;z-index:65;background:rgba(15,23,42,.6);backdrop-filter:blur(3px);display:flex;align-items:{{ modalAlign }};justify-content:center;padding:{{ modalPad }}">
+    <div onClick="{{ stop }}" style="width:100%;max-width:640px;max-height:94vh;overflow:auto;background:#fff;border-radius:{{ modalRadius }};animation:ssUp .35s cubic-bezier(.2,.8,.2,1);box-shadow:0 40px 80px -30px rgba(15,23,42,.6)">
+      <div style="padding:20px 22px 14px;display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid #eef0f4">
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#3b7a29"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#529e3b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Preuve validée par SUNUSOCIAL le {{ pv.validated }}</span>
+          <strong style="font-family:Montserrat,sans-serif;font-size:19px;line-height:1.25">{{ pv.cause }}</strong>
+          <span style="font-size:13px;color:#5b6678">{{ pv.org }} · publiée le {{ pv.sent }} · {{ pv.count }} éléments</span>
+        </div>
+        <button onClick="{{ closePv }}" style="flex:none;width:36px;height:36px;border-radius:50%;border:0;background:#f3f4f7;cursor:pointer;font-size:18px;color:#5b6678" style-hover="background:#e6e8ee">×</button>
+      </div>
+      <div style="padding:18px 22px 24px">
+<div style="display:flex;flex-direction:column;gap:14px;color:#1e293b">
+  <div style="position:relative;aspect-ratio:4/3;border-radius:22px 22px 22px 6px;overflow:hidden;background:#eaf1f8">
+    <sc-if value="{{ pv.cur.isMedia }}" hint-placeholder-val="{{ true }}"><img src="{{ pv.cur.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ pv.cur.pos }}"></sc-if>
+    <sc-if value="{{ pv.cur.isVideo }}" hint-placeholder-val="{{ false }}">
+      <span style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,23,42,.25)"><span style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.94);display:grid;place-items:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="#174a7c"><path d="M8 5v14l11-7z"></path></svg></span></span>
+      <span style="position:absolute;right:12px;bottom:12px;background:rgba(15,23,42,.85);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600">▶ {{ pv.cur.dur }}</span>
+    </sc-if>
+    <sc-if value="{{ pv.cur.isDoc }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;display:grid;place-items:center;padding:18px;background:#f3f1ec">
+        <div style="width:100%;max-width:320px;background:#fff;border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 14px 30px -14px rgba(30,41,59,.45);transform:rotate(-1.2deg)">
+          <span style="font-family:Montserrat,sans-serif;font-size:10px;font-weight:800;letter-spacing:.14em;color:#de7d28;text-transform:uppercase">{{ pv.cur.kind }}</span>
+          <strong style="font-family:Montserrat,sans-serif;font-size:14px;line-height:1.3">{{ pv.cur.supplier }}</strong>
+          <span style="font-size:11px;color:#8a94a6">N° {{ pv.cur.ref }} · {{ pv.cur.date }}</span>
+          <div style="height:1px;background:#ece6dc"></div>
+          <sc-for list="{{ pv.cur.lines }}" as="ln" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12px"><span>{{ ln.l }}</span><span style="font-weight:600;white-space:nowrap">{{ ln.a }}</span></div></sc-for>
+          <div style="height:1px;background:#ece6dc"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px"><span style="font-size:12px;font-weight:700">Total {{ pv.cur.docTotal }}</span><span style="width:44px;height:44px;border:2px solid #529e3b;border-radius:50%;display:grid;place-items:center;color:#529e3b;font-size:7px;font-weight:800;text-align:center;line-height:1.1;transform:rotate(-12deg)">PAYÉ<br>CACHET</span></div>
+        </div>
+      </div>
+    </sc-if>
+    <span style="position:absolute;top:12px;left:12px;background:rgba(255,255,255,.94);color:#174a7c;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700">{{ pv.cur.kind }}</span>
+    <span style="position:absolute;top:12px;right:12px;background:rgba(15,23,42,.8);color:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600">{{ pv.idxLabel }}</span>
+    <button onClick="{{ pv.prev }}" aria-label="Précédent" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#174a7c;font-size:22px;line-height:1;cursor:pointer;box-shadow:0 6px 14px -6px rgba(15,23,42,.5)">‹</button>
+    <button onClick="{{ pv.next }}" aria-label="Suivant" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#174a7c;font-size:22px;line-height:1;cursor:pointer;box-shadow:0 6px 14px -6px rgba(15,23,42,.5)">›</button>
+    <sc-if value="{{ pv.cur.flagged }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:0;background:rgba(194,65,45,.94);color:#fff;padding:10px 14px;font-size:13px;line-height:1.45">🚩 {{ pv.cur.flagWhy }}</div></sc-if>
+  </div>
+  <p style="margin:0;font-size:14px;line-height:1.55;color:#334155">{{ pv.cur.cap }}</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px">
+    <sc-for list="{{ pv.thumbs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.pick }}" style="position:relative;aspect-ratio:1;border-radius:12px 12px 12px 3px;overflow:hidden;border:2.5px solid {{ t.bd }};padding:0;background:#f3f1ec;cursor:pointer;opacity:{{ t.op }}">
+        <sc-if value="{{ t.isMedia }}" hint-placeholder-val="{{ true }}"><img src="{{ t.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ t.pos }}"></sc-if>
+        <sc-if value="{{ t.isDoc }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:0;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b4601a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 13h6M9 17h4"></path></svg></span></sc-if>
+        <sc-if value="{{ t.isVideo }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:16px;text-shadow:0 1px 4px rgba(0,0,0,.6)">▶</span></sc-if>
+        <sc-if value="{{ t.flag }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:4px;right:4px;width:12px;height:12px;border-radius:50%;background:#c2412d;border:2px solid #fff"></span></sc-if>
+      </button>
+    </sc-for>
+  </div>
+  <div style="background:#faf7f2;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#8a94a6">COMPTE RENDU DE LA STRUCTURE</span>
+    <span style="font-size:14px;line-height:1.6;color:#334155">{{ pv.desc }}</span>
+  </div>
+  <div style="border:1.5px solid #ece6dc;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#8a94a6">UTILISATION DES FONDS</span>
+    <sc-for list="{{ pv.spend }}" as="sp" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span style="color:#334155">{{ sp.l }}</span><span style="font-weight:600;white-space:nowrap">{{ sp.a }}</span></div></sc-for>
+    <div style="height:1px;background:#ece6dc"></div>
+    <div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><strong>Total dépensé</strong><strong style="color:#174a7c;white-space:nowrap">{{ pv.totalStr }}</strong></div>
+    <span style="font-size:12px;color:#5b6678">Collectés : {{ pv.raisedStr }} · {{ pv.summary }}</span>
+  </div>
+</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ modal }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="05 Modal de don" onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);display:flex;align-items:{{ modalAlign }};justify-content:center;padding:{{ modalPad }}">
+    <div onClick="{{ stop }}" style="width:100%;max-width:520px;max-height:94vh;overflow:auto;background:#fff;border-radius:{{ modalRadius }};animation:ssUp .35s cubic-bezier(.2,.8,.2,1);box-shadow:0 40px 80px -30px rgba(15,23,42,.6)">
+      <sc-if value="{{ notDone }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column">
+        <div style="padding:22px 24px 18px;display:flex;gap:14px;align-items:flex-start;border-bottom:1px solid #eef0f4">
+          <span style="position:relative;flex:none;width:56px;height:56px;border-radius:16px 16px 16px 4px;overflow:hidden;background:#eaf1f8"><img src="{{ cur.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></span>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;color:#5b6678">Soutenir · {{ cur.orgShort }}</span><strong style="font-family:Montserrat,sans-serif;font-size:17px;line-height:1.25">{{ cur.title }}</strong></div>
+          <button onClick="{{ closeModal }}" style="flex:none;width:36px;height:36px;border-radius:50%;border:0;background:#f3f4f7;cursor:pointer;font-size:18px;color:#5b6678" style-hover="background:#e6e8ee">×</button>
+        </div>
+        <div style="padding:22px 24px;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:14px">Montant de votre don</span>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+              <sc-for list="{{ presets }}" as="p" hint-placeholder-count="4">
+                <button onClick="{{ p.pick }}" style="border:1.5px solid {{ p.bd }};background:{{ p.bg }};color:{{ p.fg }};border-radius:14px;padding:13px 4px;font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;cursor:pointer">{{ p.label }}</button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ otherOn }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;border:1.5px solid #174a7c;border-radius:14px;overflow:hidden"><input value="{{ other }}" onChange="{{ onOther }}" placeholder="Saisissez un montant" inputMode="numeric" style="flex:1;min-width:0;border:0;padding:14px;font-size:18px;font-family:Montserrat,sans-serif;font-weight:700;outline:none"></input><span style="padding:0 14px;color:#5b6678;font-weight:600">FCFA</span></div>
+            </sc-if>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:14px">Moyen de paiement</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <sc-for list="{{ methods }}" as="m" hint-placeholder-count="2">
+                <button onClick="{{ m.pick }}" style="display:flex;align-items:center;gap:10px;border:1.5px solid {{ m.bd }};background:{{ m.bg }};border-radius:16px;padding:12px;cursor:pointer;text-align:left">
+                  <span style="flex:none;width:38px;height:38px;border-radius:10px;background:{{ m.logoBg }};color:{{ m.logoFg }};display:grid;place-items:center;font-family:Montserrat,sans-serif;font-weight:800;font-size:13px">{{ m.short }}</span>
+                  <span style="flex:1;font-weight:600;font-size:14px;color:#1e293b">{{ m.label }}</span>
+                  <span style="flex:none;width:18px;height:18px;border-radius:50%;border:2px solid {{ m.dotBd }};background:{{ m.dot }}"></span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#faf7f2;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;font-size:14px">
+            <div style="display:flex;justify-content:space-between"><span style="color:#5b6678">Votre don</span><strong>{{ amountStr }}</strong></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:#5b6678;white-space:nowrap">Frais {{ provName }} ({{ provRate }})</span><span style="color:#b4601a">− {{ feeStr }}</span></div>
+            <div style="height:1px;background:#ece6dc"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:600">La structure recevra</span><strong style="font-family:Montserrat,sans-serif;font-size:20px;color:#3b7a29">{{ netStr }}</strong></div>
+            <span style="font-size:12px;color:#5b6678">{{ provName }} prélève {{ provRate }} → La structure recevra {{ netStr }} · {{ holdLine }}</span>
+            <span style="align-self:flex-start;font-size:10px;font-weight:700;letter-spacing:.06em;color:#b4601a;background:#fdf0e3;border-radius:6px;padding:2px 6px">PRESTATAIRE À CONFIRMER : NABOOPAY OU SYCAPAY</span>
+          </div>
+          <button onClick="{{ confirm }}" disabled="{{ cantPay }}" style="background:#de7d28;color:#fff;border:0;border-radius:999px;padding:17px;font-family:Montserrat,sans-serif;font-weight:800;font-size:16px;cursor:pointer;opacity:{{ payOpacity }}" style-hover="background:#c86c1c">Confirmer le don · {{ amountStr }}</button>
+          <span style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#8a94a6"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Paiement sécurisé par {{ provName }}</span>
+        </div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:36px 28px 28px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center">
+        {{ checkmark }}
+        <h2 style="font-size:24px;font-weight:800;text-wrap:balance">Merci {{ firstName }} ! Votre don a bien été envoyé.</h2>
+        <p style="margin:0;color:#5b6678;font-size:14px;line-height:1.6">{{ lastDonStr }} via {{ methodLabel }} pour « {{ cur.title }} ». Vous serez notifié dès que la structure publiera sa preuve de réception.</p>
+        <div style="width:100%;background:#faf7f2;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;text-align:left">
+          <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#5b6678">Nouvelle progression</span><strong style="color:#174a7c">{{ cur.pct }}</strong></div>
+          <div style="height:12px;border-radius:999px;background:#eaf1f8;overflow:hidden"><div style="height:100%;width:{{ successPct }};border-radius:999px;background:#529e3b;transition:width 1.1s cubic-bezier(.2,.8,.2,1)"></div></div>
+          <span style="font-size:13px"><strong>{{ cur.raisedStr }}</strong> / {{ cur.goalStr }}</span>
+        </div>
+        <div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+          <button onClick="{{ again }}" style="background:#174a7c;color:#fff;border:0;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:#0f3459">Faire un autre don</button>
+          <button onClick="{{ browse }}" style="background:transparent;color:#174a7c;border:1.5px solid #174a7c;border-radius:999px;padding:14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;cursor:pointer" style-hover="background:#eaf1f8">Parcourir d'autres causes</button>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+  <nav style="position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid #ece6dc;display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px calc(6px + env(safe-area-inset-bottom))">
+    <sc-for list="{{ bottomNav }}" as="b" hint-placeholder-count="3">
+      <button onClick="{{ b.go }}" style="background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;min-height:52px;cursor:pointer;color:{{ b.fg }};font-size:12px;font-weight:600">{{ b.icon }}{{ b.label }}</button>
+    </sc-for>
+  </nav>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PU = (id, w) => 'https://images.unsplash.com/' + id + '?w=' + (w || 900) + '&q=70&auto=format&fit=crop';
+const pfmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+const DOSS = {
+  'Moustiquaires imprégnées': { org: 'Centre Espoir Ziguinchor', sent: '10 oct. 2026', validated: '11 oct. 2026', raised: 55000,
+    desc: "22 moustiquaires imprégnées à longue durée achetées à la pharmacie Kadior et installées le 9 octobre dans les deux dortoirs du centre (12 chez les garçons, 10 chez les filles).",
+    spend: [['22 moustiquaires imprégnées MILDA', 48400], ['Crochets, cordes et fixations', 3600], ['Transport jusqu’au centre', 3000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: 'center', cap: 'Dortoir des garçons : 12 moustiquaires installées le 9 octobre.' },
+      { kind: 'Photo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: '20% 30%', cap: 'Dortoir des filles : 10 moustiquaires, une par lit.' },
+      { kind: 'Vidéo', img: PU('photo-1533633310920-cc9bf1e7f9b0'), pos: '80% 60%', dur: '0:42', cap: 'Visite filmée des deux dortoirs après l’installation.' },
+      { kind: 'Facture', supplier: 'Pharmacie Kadior, Ziguinchor', ref: 'FAC-2026-1187', date: '7 oct. 2026', lines: [['Moustiquaire MILDA × 22', 48400], ['Crochets et cordes', 3600]], cap: 'Facture d’achat des moustiquaires et du matériel de fixation.' },
+      { kind: 'Bon de livraison', supplier: 'Casamance Express', ref: 'BL-0942', date: '8 oct. 2026', lines: [['Livraison Ziguinchor → Kandé', 3000]], cap: 'Bon de livraison signé par la directrice du centre.' }
+    ] },
+  'Kits scolaires rentrée 2026': { org: 'Foyer Keur Yaay, Dakar', sent: '28 sept. 2026', validated: '29 sept. 2026', raised: 120000,
+    desc: "24 kits scolaires complets (cartable, cahiers, stylos, géométrie, blouse) remis aux enfants du foyer le 27 septembre, avant la rentrée.",
+    spend: [['24 cartables garnis', 96000], ['24 blouses', 19200], ['Transport depuis Sandaga', 4800]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: 'center', cap: 'Les 24 kits prêts à être distribués.' },
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '15% 40%', cap: 'Détail d’un kit : cahiers, stylos, règle et compas.' },
+      { kind: 'Vidéo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '85% 50%', dur: '1:05', cap: 'Remise des kits aux enfants le 27 septembre.' },
+      { kind: 'Facture', supplier: 'Librairie Clairafrique, Sandaga', ref: 'CF-26-5521', date: '24 sept. 2026', lines: [['Cartable garni × 24', 96000], ['Blouse × 24', 19200]], cap: 'Facture de la librairie.' },
+      { kind: 'Photo', img: PU('photo-1567057420215-0afa9aa9253a'), pos: '50% 90%', cap: 'Liste d’émargement signée par les éducateurs.' }
+    ] },
+  'Riz, huile et sucre pour octobre': { org: 'Orphelinat Darou Salam, Kaolack', sent: '9 oct. 2026', raised: 175000,
+    desc: "6 sacs de riz de 50 kg, 40 L d'huile et 25 kg de sucre livrés par la boutique Diallo pour couvrir le mois d'octobre des 45 enfants.",
+    spend: [['6 sacs de riz brisé 50 kg', 117000], ['40 L d’huile', 42000], ['25 kg de sucre', 16000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1562557309-bf9e46b0670d'), pos: 'center', cap: 'Livraison des denrées dans la réserve.', flag: true, flagWhy: 'Image très proche d’une photo déjà publiée en ligne (similarité 91 %). Métadonnées de date absentes.' },
+      { kind: 'Photo', img: PU('photo-1644377949116-c4a6b529241c'), pos: 'center', cap: 'Premier repas préparé avec la livraison.' },
+      { kind: 'Vidéo', img: PU('photo-1644377949116-c4a6b529241c'), pos: '30% 70%', dur: '0:38', cap: 'Déchargement du camion devant l’orphelinat.' },
+      { kind: 'Facture', supplier: 'Boutique Diallo & Frères, Kaolack', ref: 'BD-1044', date: '6 oct. 2026', lines: [['Riz brisé 50 kg × 6', 117000], ['Huile 20 L × 2', 42000], ['Sucre 25 kg', 16000]], cap: 'Facture de la boutique Diallo.' },
+      { kind: 'Photo', img: PU('photo-1562557309-bf9e46b0670d'), pos: '70% 30%', cap: 'Stock rangé dans la réserve.', flag: true, flagWhy: 'Même prise de vue que la photo 1, recadrée.' },
+      { kind: 'Bon de livraison', supplier: 'Boutique Diallo & Frères', ref: 'BL-1044', date: '7 oct. 2026', lines: [['Livraison Kaolack centre', 0]], cap: 'Bon de livraison signé.' }
+    ] },
+  'Lait infantile — septembre': { org: 'Pouponnière Keur Khadija, Mbour', sent: '11 oct. 2026', raised: 85000,
+    desc: "17 boîtes de lait 1er âge reçues de la pharmacie Serigne Saliou le 9 octobre, soit un mois de lait pour les nourrissons de moins de 6 mois.",
+    spend: [['17 boîtes de lait 1er âge 800 g', 85000]],
+    items: [
+      { kind: 'Photo', img: PU('photo-1584367368243-c0c59fd4a1f9'), pos: 'center', cap: 'Les 17 boîtes reçues, avant rangement.' },
+      { kind: 'Photo', img: PU('flagged/photo-1570560558077-45ad028193e5'), pos: 'center', cap: 'Premier biberon préparé avec le nouveau stock.' },
+      { kind: 'Vidéo', img: PU('photo-1584367368243-c0c59fd4a1f9'), pos: '70% 40%', dur: '0:51', cap: 'Réception de la commande à la pharmacie.' },
+      { kind: 'Facture', supplier: 'Pharmacie Serigne Saliou, Mbour', ref: 'PSS-0877', date: '9 oct. 2026', lines: [['Lait 1er âge 800 g × 17', 85000]], cap: 'Facture de la pharmacie.' },
+      { kind: 'Photo', img: PU('flagged/photo-1570560558077-45ad028193e5'), pos: '30% 60%', cap: 'Registre d’alimentation tenu par les nourrices.' }
+    ] }
+};
+const buildPV = (key, idx, setIdx) => {
+  const d = DOSS[key] || DOSS['Moustiquaires imprégnées']; const n = d.items.length; const i = Math.max(0, Math.min(n - 1, idx || 0)); const it = d.items[i];
+  const total = d.spend.reduce((a, x) => a + x[1], 0);
+  const c = k => d.items.filter(x => x.kind === k).length;
+  const docs = d.items.filter(x => !x.img).length;
+  const lines = it.lines || [];
+  return { org: d.org, cause: key, desc: d.desc, sent: d.sent, validated: d.validated || '', count: n, flags: d.items.filter(x => x.flag).length,
+    summary: [c('Photo') + ' photo' + (c('Photo') > 1 ? 's' : ''), c('Vidéo') + ' vidéo' + (c('Vidéo') > 1 ? 's' : ''), docs + ' justificatif' + (docs > 1 ? 's' : '')].join(' · '),
+    idxLabel: (i + 1) + ' / ' + n,
+    cur: { kind: it.kind, cap: it.cap, img: it.img || '', pos: it.pos || 'center', dur: it.dur || '', isMedia: !!it.img, isVideo: it.kind === 'Vidéo', isDoc: !it.img, supplier: it.supplier || '', ref: it.ref || '', date: it.date || '',
+      lines: lines.map(([l, a]) => ({ l, a: a ? pfmt(a) : '—' })), docTotal: pfmt(lines.reduce((a, x) => a + x[1], 0)), flagged: !!it.flag, flagWhy: it.flagWhy || '' },
+    thumbs: d.items.map((t, j) => ({ img: t.img || '', pos: t.pos || 'center', isMedia: !!t.img, isDoc: !t.img, isVideo: t.kind === 'Vidéo', flag: !!t.flag, bd: j === i ? '#de7d28' : 'transparent', op: j === i ? 1 : 0.72, pick: () => setIdx(j) })),
+    prev: () => setIdx((i - 1 + n) % n), next: () => setIdx((i + 1) % n),
+    spend: d.spend.map(([l, a]) => ({ l, a: pfmt(a) })), totalStr: pfmt(total), raisedStr: pfmt(d.raised),
+    gapStr: d.raised - total > 0 ? pfmt(d.raised - total - Math.round(d.raised * 0.03)) : '' };
+};
+const U = id => `https://images.unsplash.com/${id}?w=900&q=70&auto=format&fit=crop`;
+const D = id => `https://unsplash.com/photos/${id}/download?w=900`;
+const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+const num = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const svg = (d, c) => React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: c, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', dangerouslySetInnerHTML: { __html: d } });
+const CAUSES = [
+  { id: 1, org: 'Pouponnière Keur Khadija, Mbour', title: 'Lait infantile pour 32 nourrissons', cat: 'Alimentation', urgent: true, raised: 4500, goal: 10000, end: 'date', date: '15 octobre 2026', donors: 6, img: U('photo-1584367368243-c0c59fd4a1f9'), desc: "La pouponnière accueille 32 nourrissons de 0 à 2 ans, orphelins ou abandonnés. Notre réserve de lait 1er âge sera épuisée dans moins de deux semaines. Une boîte de 800 g coûte 5 000 FCFA et nourrit un bébé pendant cinq jours. Les fonds serviront uniquement à l'achat de lait auprès de notre pharmacie partenaire de Mbour ; les factures seront jointes à la preuve de réception." },
+  { id: 2, org: 'Centre Aw Handicap, Thiès', title: 'Trois fauteuils roulants adaptés', cat: 'Matériel', urgent: false, raised: 312000, goal: 360000, end: 'goal', date: '30 novembre 2026', donors: 41, img: U('photo-1642680936843-b09109c69104'), desc: "Trois adolescents du centre attendent un fauteuil adapté à leur morphologie depuis plus d'un an. Le devis de l'atelier orthopédique de Thiès s'élève à 120 000 FCFA par fauteuil, réglages et suivi compris." },
+  { id: 3, org: "Maison d'arrêt des femmes, Liberté 6", title: "Kits d'hygiène pour 80 détenues", cat: 'Santé', urgent: true, raised: 61000, goal: 120000, end: 'date', date: '30 octobre 2026', donors: 18, img: U('photo-1509099863731-ef4bff19e808'), desc: "Savon, serviettes hygiéniques, dentifrice et brosses à dents pour les 80 femmes détenues accompagnées par notre association. Un kit mensuel revient à 1 500 FCFA." },
+  { id: 4, org: 'Orphelinat Darou Salam, Kaolack', title: 'Riz, huile et sucre pour novembre', cat: 'Alimentation', urgent: false, raised: 158000, goal: 175000, end: 'goal', date: '31 octobre 2026', donors: 37, img: U('photo-1644377949116-c4a6b529241c'), desc: "45 enfants vivent à l'orphelinat. Nous cherchons à couvrir un mois de denrées de base : 6 sacs de riz de 50 kg, 40 litres d'huile et 25 kg de sucre." },
+  { id: 5, org: 'Foyer Keur Yaay, Dakar', title: 'Consultations pédiatriques mensuelles', cat: 'Santé', urgent: false, raised: 22500, goal: 90000, end: 'date', date: '20 décembre 2026', donors: 9, img: U('photo-1758691462268-fbe66c4f3e28'), desc: "Visite mensuelle d'un pédiatre pour les 24 enfants du foyer, médicaments de première nécessité compris, pendant trois mois." },
+  { id: 6, org: 'Daara Serigne Fallou, Touba', title: '60 nattes et couvertures', cat: 'Matériel', urgent: true, raised: 18000, goal: 150000, end: 'date', date: '1er novembre 2026', donors: 5, img: U('photo-1567057419565-4349c49d8a04'), desc: "Les talibés du daara dorment à même le sol. 60 nattes et 60 couvertures avant la saison fraîche permettront à chacun de dormir au sec." },
+  { id: 7, org: 'Centre Espoir Ziguinchor', title: 'Moustiquaires imprégnées', cat: 'Santé', urgent: false, raised: 47000, goal: 55000, end: 'goal', date: '15 novembre 2026', donors: 22, img: U('photo-1533633310920-cc9bf1e7f9b0'), desc: "Avec l'hivernage, les cas de paludisme se multiplient. 22 moustiquaires imprégnées à longue durée protégeront les deux dortoirs du centre." }
+];
+
+const ALERTS = [
+  { id: 'a1', hospital: 'Hôpital Principal de Dakar', place: 'Plateau, Dakar', address: 'Avenue Nelson Mandela, Plateau', hours: '8 h – 18 h', groups: ['O+', 'O-'], level: 'vitale', deadline: "Aujourd'hui avant 18 h", dist: 2.4, units: 20, got: 7, responders: 9 },
+  { id: 'a2', hospital: 'Centre National de Transfusion Sanguine', place: 'Fann, Dakar', address: 'Avenue Cheikh Anta Diop, Fann', hours: '7 h 30 – 17 h', groups: ['A+', 'O+'], level: 'urgente', deadline: 'Avant le 14 octobre', dist: 4.1, units: 30, got: 19, responders: 14 },
+  { id: 'a3', hospital: 'Hôpital Dalal Jamm', place: 'Guédiawaye', address: 'Route de Golf, Guédiawaye', hours: '8 h – 16 h', groups: ['B-'], level: 'urgente', deadline: 'Avant le 15 octobre', dist: 11.8, units: 6, got: 1, responders: 2 },
+  { id: 'a4', hospital: 'Hôpital de Pikine', place: 'Pikine, Dakar', address: 'Camp de Thiaroye, Pikine', hours: '8 h – 17 h', groups: ['AB+', 'A-'], level: 'preventive', deadline: 'Avant le 25 octobre', dist: 68, units: 15, got: 4, responders: 3 }
+];
+const LEVEL = { vitale: ['URGENCE VITALE', '#b8322a', '#fff'], urgente: ['URGENT', '#fdf0e3', '#b4601a'], preventive: ['PRÉVENTIF', '#eaf1f8', '#174a7c'] };
+const SLOTS = ["aujourd'hui entre 10 h et 12 h", "aujourd'hui entre 14 h et 16 h", 'demain entre 8 h et 10 h'];
+
+const PROV = { NabooPay: ['3 %', "Fonds conservés jusqu'à l'objectif ou la date limite, puis versés à la structure."], Sycapay: ['1,5 %', 'Chaque don est versé directement à la structure.'] };
+const readProv = () => { try { return localStorage.getItem('sunu_provider') === 'Sycapay' ? 'Sycapay' : 'NabooPay'; } catch (e) { return 'NabooPay'; } };
+const RKEY = 'sunu_refund_reqs';
+const readReqs = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch (e) { return []; } };
+const readDec = () => { try { return JSON.parse(localStorage.getItem('sunu_del_decisions') || '{}'); } catch (e) { return {}; } };
+
+class Component extends DCLogic {
+  state = (() => {
+    let name = 'Aminata Diop', phone = '+221 77 123 45 67', blood = 'O+', addr = 'Médina, Dakar';
+    try { name = localStorage.getItem('sunu_name') || name; phone = localStorage.getItem('sunu_phone') || phone; blood = localStorage.getItem('sunu_blood') || blood; addr = localStorage.getItem('sunu_addr') || addr; } catch (e) {}
+    if (blood === '?') blood = 'O+';
+    return {
+      screen: (typeof location !== 'undefined' && location.hash === '#sang') ? 'blood' : 'home', blood, addr, smsOn: true, pvKey: null, pvIdx: 0, reqs: readReqs(), rfKey: null, rfReason: '', provider: readProv(), optOpen: false, decisions: readDec(), alerts: ALERTS, bFilter: 'compat', respondId: null, slot: null, rDone: false, causes: CAUSES, curId: 1, cat: 'Tous', chip: null, query: '', name, phone,
+      modal: false, done: false, method: 'om', amt: 1000, other: '', otherOn: false, lastDon: 0, successGrow: false,
+      donations: [
+        { cause: 'Kits scolaires rentrée 2026', org: 'Foyer Keur Yaay, Dakar', amount: 5000, date: '2 sept. 2026', method: 'Wave', proof: true, img: U('photo-1567057420215-0afa9aa9253a') },
+        { cause: 'Fournitures scolaires 2026', org: 'Orphelinat Darou Salam, Kaolack', amount: 2000, date: '4 oct. 2026', method: 'Wave', proof: false, del: 'live' },
+        { cause: 'Moustiquaires imprégnées', org: 'Centre Espoir Ziguinchor', amount: 2500, date: '28 août 2026', method: 'Orange Money', proof: true, img: U('photo-1533633310920-cc9bf1e7f9b0') },
+        { cause: 'Trois fauteuils roulants adaptés', org: 'Centre Aw Handicap, Thiès', amount: 5000, date: '19 août 2026', method: 'Wave', proof: false, active: true },
+        { cause: 'Tables-bancs pour la classe 2', org: 'Daara Serigne Fallou, Touba', amount: 1000, date: '14 sept. 2026', method: 'Orange Money', proof: false, del: 'fixed', dec: { outcome: 'refund', reason: 'Le projet a été entièrement financé par la mairie de Touba.', date: '30 sept. 2026' } }
+      ],
+      w: 1200
+    };
+  })();
+  componentDidMount() { this._st = () => this.setState({ provider: readProv(), decisions: readDec(), reqs: readReqs() }); window.addEventListener('storage', this._st); window.addEventListener('focus', this._st); this._r = () => this.setState({ w: window.innerWidth }); window.addEventListener('resize', this._r); this._r(); if (window.ResizeObserver) { this._ro = new ResizeObserver(this._r); this._ro.observe(document.documentElement); } }
+  componentWillUnmount() { window.removeEventListener('storage', this._st); window.removeEventListener('focus', this._st); window.removeEventListener('resize', this._r); if (this._ro) this._ro.disconnect(); clearTimeout(this._t); }
+  go(screen, extra) { this.setState({ screen, modal: false, ...(extra || {}) }); window.scrollTo(0, 0); }
+  view(c) {
+    const p = Math.min(100, Math.round(c.raised / c.goal * 100));
+    return { ...c, pct: p + '%', raisedStr: fmt(c.raised), raisedNum: num(c.raised), goalStr: fmt(c.goal), orgShort: c.org.split(',')[0],
+      short: c.desc.split('. ')[0] + '.', barColor: p >= 75 ? '#529e3b' : '#174a7c',
+      urgLabel: c.urgent ? 'Urgent' : 'Normal', urgBg: c.urgent ? '#fdf0e3' : '#f3f4f7', urgFg: c.urgent ? '#b4601a' : '#5b6678',
+      endLabel: c.end === 'date' ? 'Se termine le ' + c.date : 'Se termine à ' + fmt(c.goal),
+      endSub: c.end === 'date' ? 'Objectif de ' + fmt(c.goal) + ' · les dons restent ouverts jusqu’à cette date.' : 'ou le ' + c.date + ' au plus tard, au premier des deux.',
+      open: () => this.go('detail', { curId: c.id }) };
+  }
+  renderVals() {
+    const s = this.state, mob = s.w < 700, B = '#174a7c', O = '#de7d28';
+    const all = s.causes.map(c => this.view(c));
+    const q = s.query.trim().toLowerCase();
+    const list = all.filter(c => (s.cat === 'Tous' || c.cat === s.cat) && (!q || (c.title + ' ' + c.org).toLowerCase().includes(q)) &&
+      (s.chip === 'Urgent' ? c.urgent : s.chip === 'Presque atteint' ? parseInt(c.pct) >= 75 : true));
+    const cur = all.find(c => c.id === s.curId);
+    const featured = all.find(c => c.id === 4);
+    const amount = s.otherOn ? (parseInt(String(s.other).replace(/\D/g, '')) || 0) : s.amt;
+    const fee = Math.round(amount * (s.provider === 'Sycapay' ? 0.015 : 0.03));
+    const first = s.name.trim().split(' ')[0] || 'Aminata';
+    const initials = s.name.trim().split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
+    const counted = s.donations.filter(d => !(d.del === 'fixed' || (d.del && s.decisions[d.cause] && s.decisions[d.cause].outcome === 'refund')) && !s.reqs.some(r => r.key === d.cause + '|' + d.date + '|' + d.amount && r.status === 'refunded'));
+    const total = counted.reduce((a, d) => a + d.amount, 0);
+    const causeCount = new Set(counted.map(d => d.cause)).size;
+    const navIcons = {
+      home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+      causes: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+      profile: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>'
+    };
+    const activeNav = s.screen === 'profile' ? 'profile' : s.screen === 'detail' ? 'causes' : s.screen === 'blood' ? 'blood' : 'home';
+    navIcons.blood = '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>';
+    const prov = s.provider === 'Sycapay' ? { name: 'Sycapay', rate: 0.015, label: '1,5 %' } : { name: 'NabooPay', rate: 0.03, label: '3 %' };
+    const compat = a => a.groups.includes(s.blood) || s.blood === 'O-';
+    const av = a => { const L = LEVEL[a.level]; const ok = compat(a); const resp = a.slot != null; return { ...a, levelLabel: L[0], levelBg: L[1], levelFg: L[2], distStr: String(a.dist).replace('.', ',') + ' km', pct: Math.min(100, Math.round(a.got / a.units * 100)) + '%',
+      groups: a.groups.map(g => ({ g, bg: g === s.blood ? '#b8322a' : '#fbeceb', fg: g === s.blood ? '#fff' : '#b8322a' })),
+      canRespond: ok && !resp, isResponded: resp, incompatible: !ok, slotLabel: resp ? SLOTS[a.slot] : '',
+      respond: () => this.setState({ respondId: a.id, slot: null, rDone: false }) }; };
+    const allA = s.alerts.map(av);
+    const shownA = s.bFilter === 'compat' ? allA.filter(a => !a.incompatible) : allA;
+    const pending = allA.filter(a => a.canRespond);
+    const rA = allA.find(a => a.id === s.respondId);
+    return {
+      logoSrc: mob ? 'assets/mark.png' : 'assets/logo.png',
+      modal: s.modal, isDesktop: !mob,
+      provName: prov.name, provRate: prov.label,
+      fundsNote: prov.name === 'Sycapay' ? "Avec Sycapay, chaque don est versé directement à la structure. Elle publie ensuite la preuve d'utilisation." : "Les dons sont conservés par NabooPay puis versés à la structure à la fin de la cause : à l'objectif ou à la date limite, au premier des deux.",
+      holdLine: prov.name === 'Sycapay' ? 'Versé directement à la structure' : 'Conservé jusqu’à la fin de la cause',
+      isBlood: s.screen === 'blood', goBlood: () => this.go('blood'),
+      navCausesBg: s.screen === 'blood' || s.screen === 'profile' ? 'transparent' : '#eaf1f8', navCausesFg: s.screen === 'blood' || s.screen === 'profile' ? '#334155' : B,
+      navBloodBg: s.screen === 'blood' ? '#fbeceb' : 'transparent', navBloodFg: s.screen === 'blood' ? '#b8322a' : '#334155',
+      hasBloodBadge: pending.length > 0, bloodBadge: pending.length,
+      myGroup: s.blood, addr: s.addr,
+      showBloodBanner: s.screen === 'home' && pending.length > 0 && s.cat === 'Tous' && !s.chip && !q, topAlert: pending[0] || allA[0],
+      toggleSms: () => this.setState({ smsOn: !s.smsOn }), smsTrack: s.smsOn ? '#529e3b' : '#cbd5e1', smsKnob: s.smsOn ? '21px' : '3px',
+      bloodFilters: [['compat', 'Pour mon groupe (' + s.blood + ')'], ['all', 'Toutes']].map(([k, l]) => ({ label: l, bg: s.bFilter === k ? '#fff' : 'transparent', fg: s.bFilter === k ? '#1e293b' : '#5b6678', pick: () => this.setState({ bFilter: k }) })),
+      alerts: shownA, noAlerts: shownA.length === 0,
+      rOpen: !!rA, rAlert: rA || allA[0], rNotDone: !s.rDone, rDone: s.rDone,
+      slots: SLOTS.map((l, i) => { const on = s.slot === i; return { label: l.charAt(0).toUpperCase() + l.slice(1), bd: on ? '#b8322a' : '#e2e8f0', bg: on ? '#fbeceb' : '#fff', dot: on ? '#b8322a' : '#fff', pick: () => this.setState({ slot: i }) }; }),
+      rCantConfirm: s.slot == null, rOpacity: s.slot == null ? 0.45 : 1, rSlotLabel: s.slot != null ? SLOTS[s.slot] : '',
+      rConfirm: () => { if (s.slot == null) return; this.setState({ rDone: true, alerts: s.alerts.map(a => a.id === s.respondId ? { ...a, slot: s.slot, responders: a.responders + 1 } : a) }); },
+      rClose: () => this.setState({ respondId: null, rDone: false }),
+      isHome: s.screen === 'home', isDetail: s.screen === 'detail', isProfile: s.screen === 'profile', isMobile: mob,
+      padBottom: mob ? '76px' : '0',
+      query: s.query, onQuery: e => this.setState({ query: e.target.value }),
+      firstName: first, initials, name: s.name, phone: s.phone,
+      goHome: () => this.go('home'), goProfile: () => this.go('profile'),
+      logout: () => { location.href = 'SUNUSOCIAL-v2.dc.html'; },
+      featured, showFeatured: s.cat === 'Tous' && !s.chip && !q,
+      cats: ['Tous', 'Santé', 'Alimentation', 'Matériel'].map(l => ({ label: l, bg: s.cat === l ? B : '#fff', fg: s.cat === l ? '#fff' : '#334155', pick: () => this.setState({ cat: l }) })),
+      chips: ['Urgent', 'Presque atteint'].map(l => { const on = s.chip === l; const col = l === 'Urgent' ? O : '#529e3b'; return { label: (on ? '✓ ' : '') + l, bd: on ? col : '#e2e8f0', bg: on ? (l === 'Urgent' ? '#fdf0e3' : '#ebf5e6') : '#fff', fg: on ? (l === 'Urgent' ? '#b4601a' : '#3b7a29') : '#334155', pick: () => this.setState({ chip: on ? null : l }) }; }),
+      countLabel: list.length + ' cause' + (list.length > 1 ? 's' : ''),
+      list, emptyList: list.length === 0,
+      gridCols: mob ? 'repeat(2,minmax(0,1fr))' : 'repeat(3,minmax(0,1fr))', gridGap: mob ? '12px' : '20px',
+      cardPad: mob ? '12px' : '16px 18px 18px', titleSize: mob ? '14px' : '17px',
+      cur, similar: all.filter(c => c.cat === cur.cat && c.id !== cur.id).concat(all.filter(c => c.cat !== cur.cat)).slice(0, 3),
+      openModal: () => this.setState({ modal: true, done: false, successGrow: false }),
+      closeModal: () => this.setState({ modal: false }), stop: e => e.stopPropagation(),
+      modalAlign: mob ? 'flex-end' : 'center', modalPad: mob ? '0' : '24px', modalRadius: mob ? '28px 28px 0 0' : '28px 28px 28px 8px',
+      notDone: !s.done, done: s.done,
+      presets: [500, 1000, 5000, null].map(v => { const on = v === null ? s.otherOn : (!s.otherOn && s.amt === v); return { label: v === null ? 'Autre' : num(v), bd: on ? B : '#e2e8f0', bg: on ? B : '#fff', fg: on ? '#fff' : '#1e293b', pick: () => this.setState(v === null ? { otherOn: true } : { otherOn: false, amt: v }) }; }),
+      otherOn: s.otherOn, other: s.other, onOther: e => this.setState({ other: e.target.value.replace(/[^\d ]/g, '') }),
+      methods: [['om', 'Orange Money', 'OM', '#ff7900', '#000'], ['wave', 'Wave', 'W', '#1dc4ff', '#fff']].map(([k, l, sh, bg, fg]) => { const on = s.method === k; return { label: l, short: sh, logoBg: bg, logoFg: fg, bd: on ? B : '#e2e8f0', bg: on ? '#eaf1f8' : '#fff', dot: on ? B : '#fff', dotBd: on ? B : '#cbd5e1', pick: () => this.setState({ method: k }) }; }),
+      amountStr: fmt(amount), feeStr: fmt(fee), netStr: fmt(amount - fee),
+      cantPay: amount < 100, payOpacity: amount < 100 ? 0.45 : 1,
+      confirm: () => {
+        if (amount < 100) return;
+        const methodName = s.method === 'om' ? 'Orange Money' : 'Wave';
+        this.setState({ done: true, lastDon: amount, successGrow: false,
+          causes: s.causes.map(c => c.id === s.curId ? { ...c, raised: c.raised + amount, donors: c.donors + 1 } : c),
+          donations: [{ cause: cur.title, org: cur.org, amount, date: '12 oct. 2026', method: methodName, proof: false, active: true, viaSyca: s.provider === 'Sycapay' }, ...s.donations] });
+        clearTimeout(this._t); this._t = setTimeout(() => this.setState({ successGrow: true }), 120);
+      },
+      successPct: s.successGrow ? cur.pct : Math.min(100, Math.round((cur.raised - s.lastDon) / cur.goal * 100)) + '%',
+      lastDonStr: fmt(s.lastDon), methodLabel: s.method === 'om' ? 'Orange Money' : 'Wave',
+      again: () => this.setState({ done: false, successGrow: false }),
+      browse: () => this.go('home', { cat: 'Tous', chip: null }),
+      checkmark: React.createElement('svg', { width: 84, height: 84, viewBox: '0 0 52 52', style: { animation: 'ssPop .5s ease-out' } },
+        React.createElement('circle', { cx: 26, cy: 26, r: 24, fill: '#529e3b' }),
+        React.createElement('path', { d: 'M15 27l7 7 15-15', fill: 'none', stroke: '#fff', strokeWidth: 3.4, strokeLinecap: 'round', strokeLinejoin: 'round', strokeDasharray: 40, style: { animation: 'ssDraw .5s .25s ease-out both' } })),
+      totalStr: fmt(total), causeCount,
+      impactLine: `Vous avez contribué à ${causeCount} cause${causeCount > 1 ? 's' : ''} pour un total de ${fmt(total)}.`,
+      donations: s.donations.map(d => {
+        const dec = d.del === 'fixed' ? d.dec : d.del ? s.decisions[d.cause] : null;
+        const k = !d.del ? null : !dec ? 'pending' : dec.outcome;
+        const T = { pending: ['Suppression demandée par la structure', 'Un modérateur SUNUSOCIAL examine la demande. Vous serez prévenu de la décision et du sort de votre don.', '#fff4dc', '#8a5a00'],
+          refund: ['Cause supprimée · don remboursé', dec ? `Remboursé sur votre ${d.method} le ${dec.date}. Motif du modérateur : « ${dec.reason} »` : '', '#eaf1f8', '#174a7c'],
+          kept: ['Cause supprimée · don versé à la structure', dec ? `Votre don reste affecté à ${d.org.split(',')[0]}. Motif du modérateur : « ${dec.reason} » La structure doit publier la preuve d'utilisation avant le ${dec.due}.` : '', '#fdf0e3', '#b4601a'],
+          maintained: ['Demande de suppression refusée', dec ? `La cause reste active. Réponse du modérateur : « ${dec.reason} »` : '', '#ebf5e6', '#3b7a29'] };
+        const t = k ? T[k] : null;
+        const key = d.cause + '|' + d.date + '|' + d.amount;
+        const req = s.reqs.find(r => r.key === key);
+        const canAsk = d.active && !d.del && !req && s.provider === 'NabooPay' && !d.viaSyca;
+        const RQ = { open: ['Demande de remboursement envoyée', 'Un modérateur va l’examiner avant le versement des fonds à la structure. Sa décision est définitive.', '#eaf1f8', '#174a7c'], refunded: ['Don remboursé', `${fmt(d.amount)} remboursés sur votre ${d.method}.`, '#ebf5e6', '#3b7a29'], rejected: ['Demande de remboursement refusée', 'Décision définitive du modérateur : votre don reste affecté à la cause.', '#f3f1ec', '#5b6678'] };
+        const rq = req ? RQ[req.status || 'open'] : null;
+        return { ...d, proofCount: DOSS[d.cause] ? DOSS[d.cause].items.length : '', openProof: () => this.setState({ pvKey: d.cause, pvIdx: 0 }), canAsk, asking: s.rfKey === key, notAsking: s.rfKey !== key, hasReq: !!req, rqTitle: rq ? rq[0] : '', rqText: rq ? rq[1] : '', rqBg: rq ? rq[2] : '', rqFg: rq ? rq[3] : '',
+          ask: () => this.setState({ rfKey: key, rfReason: '' }),
+          sendReq: () => { if (s.rfReason.trim().length < 5) return; const reqs = [...s.reqs, { id: Date.now(), key, donor: s.name, cause: d.cause, org: d.org.split(',')[0], amount: d.amount, method: d.method, date: '12 oct. 2026', reason: s.rfReason.trim() }]; try { localStorage.setItem(RKEY, JSON.stringify(reqs)); } catch (e) {} this.setState({ reqs, rfKey: null }); },
+          amountStr: fmt(d.amount), hasProof: d.proof && !d.del, noProof: !d.proof && !d.del, isDeleted: !!d.del, delTitle: t ? t[0] : '', delText: t ? t[1] : '', delBg: t ? t[2] : '', delFg: t ? t[3] : '' };
+      }),
+      provOpts: Object.entries(PROV).map(([name, [rate, desc]]) => { const on = s.provider === name; return { name, rate, desc, bd: on ? '#174a7c' : '#e2e8f0', bg: on ? '#eaf1f8' : '#fff', dot: on ? '#174a7c' : '#fff', dotBd: on ? '#174a7c' : '#cbd5e1', pick: () => { try { localStorage.setItem('sunu_provider', name); } catch (e) {} this.setState({ provider: name }); } }; }),
+      rfReason: s.rfReason, onRfReason: e => this.setState({ rfReason: e.target.value }), cancelRf: () => this.setState({ rfKey: null }), rfCant: s.rfReason.trim().length < 5, rfOpacity: s.rfReason.trim().length < 5 ? 0.45 : 1,
+      pvOpen: !!s.pvKey, pv: buildPV(s.pvKey, s.pvIdx, i => this.setState({ pvIdx: i })), closePv: () => this.setState({ pvKey: null }),
+      optOpen: s.optOpen, toggleOpt: () => this.setState({ optOpen: !s.optOpen }), optBottom: mob ? '88px' : '16px', myCommune: s.addr.split(',')[0].trim(),
+      bottomNav: [['Accueil', 'home'], ['Causes', 'causes'], ['Don de sang', 'blood'], ['Profil', 'profile']].map(([l, k]) => ({ label: l, fg: activeNav === k ? B : '#8a94a6', icon: svg(navIcons[k], activeNav === k ? B : '#8a94a6'),
+        go: () => k === 'profile' ? this.go('profile') : k === 'blood' ? this.go('blood') : this.go('home', k === 'causes' ? { cat: 'Tous', chip: null } : {}) }))
+    };
+  }
+}
+</script>
+</body>
+</html>
