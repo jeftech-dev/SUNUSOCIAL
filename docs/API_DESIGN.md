@@ -4,7 +4,7 @@
 |---|---|
 | **Base URL** | `https://<convex-deployment>.convex.cloud` (via the Convex client) |
 | **Protocol** | Convex function calls (queries / mutations / actions) over the Convex client; webhooks over HTTPS |
-| **Auth** | Convex Auth sessions (JWT + refresh); role resolved server-side; one-time code required for structure/hospital/moderator sessions. NabooPay webhook authenticated by signature. |
+| **Auth** | Convex Auth sessions (JWT + refresh); role resolved server-side; SMS one-time code required for structure/hospital/moderator sessions; sessions ≤ 7 days. NabooPay webhook authenticated by signature. |
 | **Format** | JSON documents; amounts are integer **FCFA** |
 | **Version** | v1 |
 
@@ -29,7 +29,7 @@ Sessions are established by Convex Auth (`signIn("password", …)`) and the JWT 
 Authorization: Bearer <convex-auth-jwt>      # added automatically by the Convex client
 ```
 
-Structure, hospital and moderator sessions must complete `mfa.verifyCode` before any other function accepts them (DT-2). Moderator sessions are only valid on the moderation subdomain and for 12 hours.
+Structure, hospital and moderator sessions must complete `otp.verifyLogin` (SMS code) before any other function accepts them (DT-2). Moderator sessions are only valid on the moderation subdomain. Every session expires after 7 days.
 
 **Public (no session) reads:**
 - Landing content and the **public proofs feed** (validated proof dossiers) — visible without an account.
@@ -41,13 +41,14 @@ Everything else requires a session. **Donors must be logged in to view and donat
 ### Auth
 | Kind | Function | Description | Auth |
 |------|----------|-------------|------|
-| mutation | `auth.registerDonor` | Create donor (name, phone, password) | Public |
+| action | `otp.send` | Send an SMS code (purpose: `donor_signup` \| `login_2fa` \| `password_reset`) | Public / pre-MFA session |
+| mutation | `auth.registerDonor` | Create donor (name, phone, password, SMS code) — phone verified | Public |
 | mutation | `auth.registerOrganization` | Create structure/hospital + upload récépissé + payout account; pending validation | Public |
 | action | `signIn("password")` / `signOut` | Convex Auth: phone+password (donor) or email+password (org/hospital/mod) | Public |
-| action | `mfa.sendCode` | Send the one-time code (email now, SMS later) | Org/hospital/mod session, pre-MFA |
-| mutation | `mfa.verifyCode` | Verify the code; marks the session MFA-verified | Org/hospital/mod session, pre-MFA |
-| action | `passwordReset.requestEmailReset` | Email a reset link (always returns ok) | Public |
-| mutation | `passwordReset.resetWithToken` | Set a new password with a valid token | Public (token) |
+| mutation | `otp.verifyLogin` | Verify the SMS code; marks the session MFA-verified | Org/hospital/mod session, pre-MFA |
+| mutation | `passwordReset.resetWithSmsCode` | Donor: new password with a valid SMS code | Public (code) |
+| action | `passwordReset.requestEmailReset` | Organization: email a reset link (always returns ok) | Public |
+| mutation | `passwordReset.resetWithToken` | Organization: new password with a valid token | Public (token) |
 | query | `auth.me` | Current user + role + blood opt-in | Any session |
 | mutation | `auth.updateBloodProfile` | Opt in/out, set blood type + region/commune + SMS pref | Donor |
 
@@ -62,14 +63,16 @@ Everything else requires a session. **Donors must be logged in to view and donat
 | mutation | `causes.update` | Edit a cause (pre-publication or allowed fields) | Structure |
 | mutation | `causes.withdraw` | Withdraw a cause still in moderation (no donations) | Structure |
 | mutation | `causes.requestDeletion` | Motivated deletion request for a published cause | Structure |
+| mutation | `extensions.request` | Request a cause-deadline extension or a proof delay (reason, new date) | Structure |
 
 ### Donations
 | Kind | Function | Description | Auth |
 |------|----------|-------------|------|
 | action | `donations.createCheckout` | Start Orange Money/Wave checkout; returns fee + net + redirect | Donor |
-| http | `POST /payments/naboopay/webhook` | NabooPay callback → `payments.recordPayment`: record donation (held), bump progress, schedule release at goal | Signature |
+| http | `POST /payments/naboopay/webhook` | NabooPay callback (`X-Signature` HMAC) → `payments.recordPayment`: record donation (held), bump progress, schedule release at goal | Signature |
+| query | `donations.status` | Success page: re-checks the transaction with NabooPay if still pending | Donor (owner) |
 | query | `donations.mine` | Donor's history with proof links and refund/deletion status | Donor |
-| mutation | `donations.requestRefund` | Request refund while funds are held | Donor |
+| mutation | `donations.requestRefund` | Request a refund (net amount) while funds are held; confirms the receiving number | Donor |
 | query | `donations.forCause` | Donations/aggregates for a structure's cause | Structure |
 
 ### Proofs
@@ -94,7 +97,8 @@ Everything else requires a session. **Donors must be logged in to view and donat
 | query | `bloodAlerts.forDonor` | Alerts matching the donor's blood type + commune | Donor (opted-in) |
 | mutation | `bloodAlerts.respond` | Confirm a visit slot | Donor (opted-in) |
 | query | `bloodAlerts.forHospital` | A hospital's alerts + responders | Hospital |
-| mutation | `bloodAlerts.create` | Create an alert (types, units, urgency, communes) | Moderator; Hospital only if `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` |
+| mutation | `bloodAlerts.create` | Create and send an alert (types, units, urgency, communes) | Hospital |
+| mutation | `moderation.closeAlert` | Close or disable any alert | Moderator |
 | mutation | `bloodAlerts.confirmDonation` | Mark a donor as donated; stock +1 | Hospital |
 | mutation | `bloodAlerts.close` | Close an alert | Hospital |
 | mutation | `bloodAlerts.sendThanks` | Send thank-you to confirmed donors | Hospital |
@@ -112,7 +116,8 @@ Everything else requires a session. **Donors must be logged in to view and donat
 | mutation | `moderation.decidePayoutAccount` | Approve / refuse a payout-account change | Moderator |
 | mutation | `moderation.setFeatured` | Pick (or clear) the weekly "Coup de cœur" | Moderator |
 | mutation | `moderation.liftSuspension` | Lift a structure's auto-suspension | Moderator |
-| mutation | `moderation.issueAssistedReset` | Issue a 30-min reset link for a donor (WhatsApp-assisted) | Moderator |
+| mutation | `moderation.decideExtension` | Approve / refuse a cause-deadline extension or proof delay (reason) | Moderator |
+| query | `moderation.payouts` | Payout queue status, NabooPay balance, reconciliation alerts | Moderator |
 
 ## Error Responses
 
@@ -136,6 +141,7 @@ Functions throw a structured application error; the client maps it to a French u
 | `NOT_FOUND` | Resource missing | Unknown cause/alert id |
 | `CONFLICT` | State disallows action | Donating to a non-active cause; refund after release |
 | `PAYMENT_FAILED` | Provider rejected/failed | Checkout or webhook failure |
+| `OTP_INVALID` | Wrong or expired SMS code | Signup, 2FA or reset |
 | `RATE_LIMITED` | Too many requests | Abusive client |
 
 ## Pagination Shape
@@ -163,7 +169,8 @@ Request the next page by passing `continueCursor` back as the cursor.
 | Proof submission | 5 / hour / structure |
 | General reads | 120 / min / session |
 
-| One-time code send | 3 / 10 min / user |
+| SMS code send | 3 / 10 min / phone number |
+| Calls to NabooPay | < 100 / 60 s / endpoint (NabooPay's own limit) |
 | Password reset request | 3 / hour / email |
 
 Implemented with `@convex-dev/rate-limiter` (DT-19). Numbers are first-pass defaults; tune against NabooPay limits and real traffic.

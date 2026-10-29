@@ -13,6 +13,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "name": "Aminata Diop",      // required
   "phone": "+221771234567",    // required, E.164
   "password": "••••••••",      // required
+  "otpCode": "583014",         // required — sent by otp.send({ purpose: "donor_signup", phone })
   "bloodProfile": {            // optional — opt-in only, off by default
     "optIn": true,
     "bloodType": "O+",         // one of A±,B±,AB±,O±, or "unknown"
@@ -24,7 +25,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 ```
 **Response (success) — 200**
 ```json
-{ "userId": "usr_01H…", "role": "donor", "session": "sess_…" }
+{ "userId": "usr_01H…", "role": "donor", "phoneVerified": true }   // then signIn("password") creates the session
 ```
 **Response (error)**
 ```json
@@ -46,7 +47,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "payout": {                                      // required — verified by the moderator with the documents
     "method": "wave",                             // orange_money | wave
     "accountNumber": "+221771234567",             // E.164
-    "holderName": "Khadija Sow"
+    "holderName": "Khadija Sow"                   // the responsible's own name (phase 1)
   }
 }
 ```
@@ -59,7 +60,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 { "error": { "code": "VALIDATION", "message": "Le mot de passe doit comporter au moins 12 caractères.", "field": "password" } }
 ```
 
-### Sign-in (Convex Auth) + `mfa.verifyCode`
+### Sign-in (Convex Auth) + `otp.verifyLogin`
 Sign-in uses Convex Auth's client call; there is no custom `auth.login` mutation.
 
 ```ts
@@ -67,9 +68,9 @@ await signIn("password", { flow: "signIn", email: "+221771234567" /* phone for d
 ```
 Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequired: true`):
 
-**`mfa.sendCode` request** `{}` → **response** `{ "channel": "email", "expiresAt": 1761750000000 }`
+**`otp.send` request** `{ "purpose": "login_2fa" }` → **response** `{ "channel": "sms", "to": "+22177•••4567", "expiresAt": 1761750000000 }`
 
-**`mfa.verifyCode` request**
+**`otp.verifyLogin` request**
 ```json
 { "code": "428913" }   // required, 6 digits; 10-min expiry; 5 attempts max
 ```
@@ -79,7 +80,7 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
 ```
 **Response (error)**
 ```json
-{ "error": { "code": "UNAUTHENTICATED", "message": "Code incorrect ou expiré.", "field": "code" } }
+{ "error": { "code": "OTP_INVALID", "message": "Code incorrect ou expiré.", "field": "code" } }
 ```
 
 ---
@@ -209,7 +210,7 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
   "fee": 150,
   "platformFee": 0,              // 0 until the revenue model is decided
   "net": 4850,                   // what the structure receives at release
-  "checkoutUrl": "https://pay.naboopay.com/…",
+  "checkoutUrl": "https://checkout.naboopay.com/checkout/550e8400-…",
   "status": "pending"
 }
 ```
@@ -220,24 +221,26 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
 
 ### `POST /payments/naboopay/webhook` (Convex httpAction, signed)
 > Field names below are placeholders: the real payload and signature header follow NabooPay's documentation (Sprint 4 spike, DT-3).
-**Request** (from provider)
+**Request** (from NabooPay, API v2 webhook — header `X-Signature: <hex HMAC-SHA256 of the raw body>`)
 ```json
 {
-  "providerTxnId": "NB-93f1…",   // required — used for idempotency
-  "donationId": "don_…",
-  "status": "succeeded",         // succeeded | failed
-  "amount": 5000,
-  "method": "wave",
-  "signature": "…"               // verified against the webhook secret
+  "order_id": "550e8400-e29b-41d4-a716-446655440000",  // = donations.providerTxnId (stored before redirect); idempotency key
+  "transaction_status": "paid",       // paid | paid_and_blocked — both mean paid
+  "amount": 5000,                     // must equal the donation amount
+  "fees": 150,                        // actual NabooPay fee → stored on the donation
+  "selected_payment_method": "wave",
+  "currency": "XOF",
+  "paid_at": "2026-11-15T10:35:00Z"
 }
 ```
+NabooPay only calls this on success and retries 3 times, 5 minutes apart; pending donations are also re-checked with `GET /transactions/{order_id}` (success page + 10-minute cron).
 **Response (success) — 200**
 ```json
 { "ok": true }
 ```
 **Response (error)**
 ```json
-{ "error": { "code": "PAYMENT_FAILED", "message": "Signature de webhook invalide.", "field": null } }
+HTTP 401 with an empty body when the signature is missing or invalid (nothing is recorded).
 ```
 
 ### query `donations.mine`
@@ -258,7 +261,7 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
       "date": 1760313600000,
       "status": "held",                                   // pending | held | released | refunded | failed
       "proof": { "available": true, "proofId": "prf_…", "itemCount": 5 },
-      "refund": { "eligible": true, "estimatedAmount": 9700, "request": null },   // eligible only while held; request: null | { status, refundAmount }
+      "refund": { "eligible": true, "estimatedAmount": 9700 /* net */, "request": null },   // eligible only while held; request: null | { status, refundAmount }
       "causeDeleted": null                                // or { reason, outcome: "refunded"|"paidOut" }
     }
   ],
@@ -270,7 +273,7 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
 ### mutation `donations.requestRefund`
 **Request**
 ```json
-{ "donationId": "don_…", "reason": "Je me suis trompé de montant." }  // reason ≥ 5 chars
+{ "donationId": "don_…", "reason": "Je me suis trompé de montant.", "receivingPhone": "+221771234567" }  // reason ≥ 5 chars; phone defaults to the verified one
 ```
 **Response (success) — 200**
 ```json
@@ -359,11 +362,11 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
 { "ok": true, "message": "Venue confirmée. L'hôpital voit votre prénom et votre groupe, pas votre adresse." }
 ```
 
-### mutation `bloodAlerts.create` (moderator; hospital only when `BLOOD_ALERTS_HOSPITAL_SELF_SERVE`)
+### mutation `bloodAlerts.create` (hospital)
 **Request**
 ```json
 {
-  "hospitalId": "str_…",          // required
+  // hospitalId comes from the session
   "bloodTypes": ["O+"],           // required, ≥ 1
   "level": "vitale",              // required
   "unitsNeeded": 10,              // required
@@ -453,7 +456,7 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
 ```
 **Response (success) — 200**
 ```json
-{ "ok": true, "refundAmount": 9700, "message": "9 700 FCFA remboursés à Ousmane Ba sur Wave." }
+{ "ok": true, "refundAmount": 9700, "payoutStatus": "queued", "message": "Remboursement de 9 700 FCFA (montant net) en cours vers Ousmane Ba sur Wave." }
 ```
 
 ### mutation `moderation.setFeatured`
@@ -464,4 +467,24 @@ Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequ
 **Response (success) — 200**
 ```json
 { "ok": true, "message": "« Lait infantile pour 32 nourrissons » est le Coup de cœur de la semaine." }
+```
+
+### mutation `extensions.request`
+**Request**
+```json
+{ "kind": "cause_deadline", "targetId": "cau_…", "requestedUntil": 1765756800000, "reason": "Livraison du fournisseur retardée." }  // kind: cause_deadline | proof_deadline; ≤ 30 days later
+```
+**Response (success) — 200**
+```json
+{ "requestId": "ext_…", "status": "pending", "message": "Demande de prolongation envoyée au modérateur." }
+```
+
+### mutation `moderation.decideExtension`
+**Request**
+```json
+{ "requestId": "ext_…", "decision": "approve", "reason": "Retard fournisseur justifié." }  // approve | refuse; reason required on refuse
+```
+**Response (success) — 200**
+```json
+{ "ok": true, "newDate": 1765756800000, "message": "Prolongation accordée. Les donateurs ont été informés." }
 ```

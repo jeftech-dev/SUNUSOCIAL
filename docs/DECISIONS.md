@@ -2,15 +2,15 @@
 
 | | |
 |---|---|
-| **Last Updated** | 29 October 2026 |
-| **Status** | Authoritative. If another document disagrees with this log, this log is correct and the other document is a bug |
+| **Last Updated** | 29 October 2026 (rev. 2: second round of board answers and the NabooPay API review) |
+| **Status** | Authoritative. If another document disagrees with this log, this log wins and the other document is a bug |
 
-Two kinds of decisions are recorded here:
+Two kinds of entries:
 
-- **Board decisions (`DB-*`)**: made by SUNUSOCIAL and passed on by the project owner.
-- **Technical decisions (`DT-*`)**: made by JefTech to close gaps found in `PROJECT_REVIEW.md`.
+- **Board decisions (`DB-*`)**: made by SUNUSOCIAL and relayed by the project owner.
+- **Technical decisions (`DT-*`)**: made by JefTech.
 
-Product questions that are still open are listed in `BOARD_QUESTIONS.md` (in French, for the board). Until the board answers one, the code uses the **interim default** given for it below. Each default is a single config value, so changing it later doesn't require a refactor.
+Product questions that are still open live in `BOARD_QUESTIONS.md` (French). Each has an **interim default** in code, held in a single config value (§3).
 
 ---
 
@@ -18,14 +18,36 @@ Product questions that are still open are listed in `BOARD_QUESTIONS.md` (in Fre
 
 | ID | Decision | Consequences for the build |
 |---|---|---|
-| **DB-1** | **NabooPay is the payment provider** (3% fee, Orange Money + Wave, no card). SycaPay is dropped | One real provider adapter (`naboopay`) plus a `mock` adapter for local work and tests. Every "SycaPay branch" (refund hidden, deletion refund disabled, `fundControl: direct`) is removed |
-| **DB-2** | **Funds are held** (escrow) until the cause's release condition is met | Donations go `pending → held → released` (or `refunded`). Refund requests and deletion refunds are always possible while funds are held |
-| **DB-3** | **Structures are verified from documents only.** The moderator approves or refuses each one (no physical visit) | One validation step in the `Structures à valider` queue. The moderator checks the récépissé/agrément **and the payout account** (DT-5). The "Vérifié" badge means "documents approved by a moderator" |
-| **DB-4** | **Lump-sum payout.** At release, everything held for the cause is paid out in one transfer | `releaseFunds(causeId)` makes a single payout per cause. No partial or staged payouts |
-| **DB-5** | **Every cause has a deadline**, including causes with a monetary goal, so money is never held too long. Release happens at the goal **or** the deadline, whichever comes first; at the deadline everything collected is released, even if the goal wasn't reached | `causes.deadline` is required for every cause. Reaching the goal closes the cause and releases funds immediately (DT-24). The maximum allowed duration is still open (`BOARD_QUESTIONS.md` Q5); interim default `MAX_CAUSE_DURATION_DAYS = 90` |
-| **DB-6** | **The moderator curates the "Coup de cœur de la semaine"** | New mutation `moderation.setFeatured(causeId)`, with a control in the moderation console. Only one active cause can be featured at a time; setting a new one clears the old one. The feed shows nothing in that slot when no cause is featured |
+| **DB-1** | **NabooPay** is the payment provider (Orange Money + Wave, no card). SycaPay is dropped | One real adapter (`naboopay`) plus a `mock` adapter for development and tests |
+| **DB-2** | **Funds are held** until the cause's release condition is met | Donations go `pending → held → released` or `refunded`. A held donation can be refunded. How funds are held with NabooPay: DT-3 |
+| **DB-3** | **Structures are verified on documents only.** The moderator approves or refuses; there is no physical visit | One validation step that covers the documents **and** the payout account (DT-5) |
+| **DB-4** | **Lump-sum payout** at release | One payout per cause (DT-4) |
+| **DB-5** | **Every cause has a deadline**, including causes with a monetary goal. Funds are released at the goal or the deadline, whichever comes first | `causes.deadline` is required for every cause |
+| **DB-6** | **The moderator curates the "Coup de cœur de la semaine"** | `moderation.setFeatured`. Only one cause is featured at a time |
+| **DB-7** | **SMS is required** for: (a) the 2FA code of structures, hospitals and moderators; (b) **verifying a donor's phone number at signup**; (c) donor password recovery; (d) blood alerts; (e) important notifications. The provider, budget and sender ID are still open | SMS becomes a **launch dependency**: donor signup can't work without it. Development uses a `console` SMS provider that logs the codes (DT-2) |
+| **DB-8** | **Sessions last at most 1 week** | Convex Auth session total duration = 7 days, for every role (DT-27) |
+| **DB-9** | **Donor activity is logged** (signup, logins, donations, profile changes, refund requests) so each donor is a verified, traceable person | Covered by the activity/audit log (DT-18) |
+| **DB-10** | **Hospitals send blood alerts themselves** (board Q2 → option A) | `bloodAlerts.create` is available to verified hospitals. Moderators can close or disable any alert. Rate limit: 20 per hour per hospital |
+| **DB-11** | **A cause lasts at most 30 days.** A structure can request an extension, which the moderator approves or refuses | `MAX_CAUSE_DURATION_DAYS = 30`. Extension requests get their own moderation queue (DT-30) |
+| **DB-12** | **A proof is mandatory for every funded cause**, due 7 days after the payout. The structure can ask for a delay (sursis), which the moderator approves or refuses. A missed deadline auto-suspends the structure | `proofDeadlines` is always enforced. Delay requests use the same extension flow (DT-30) |
+| **DB-13** | **Refunds return the net amount** (the donation minus the NabooPay fee) | Refunds are paid out with NabooPay **payouts**, not its refund endpoint, because that endpoint only does full refunds (DT-7) |
+| **DB-14** | **Minimum donation: 500 FCFA for now**, to be studied with the board | `MIN_DONATION = 500` |
+| **DB-15** | **Payout account:** the responsible person chooses Orange Money or Wave and gives the number and their own name. **Structure onboarding has 2 phases**: phase 1 at signup, phase 2 later to collect the structure's full information | `structures.payout` holds the responsible's account. `onboardingPhase` is tracked. What phase 2 collects, and what it unlocks, is open (`BOARD_QUESTIONS.md`) |
 
-**Superseded:** every `[OPEN]` / `[HYPOTHESIS]` marker about the provider, fund control, verification depth, payout cadence, deadline-based release and featured curation in `context.md`, `PRD.md` and `ARCHITECTURE.md`.
+### ⚠️ Correction to the money flow, from the NabooPay API review
+
+The original brief said funds go "directly to the structure, with no SUNUSOCIAL-held central account". **NabooPay doesn't work that way.**
+
+1. Every payment is credited to the **merchant's main NabooPay account**, and the merchant is SUNUSOCIAL.
+2. Payouts and refunds are then sent **from that account** to mobile-money wallets.
+
+So donations pass through **SUNUSOCIAL's NabooPay merchant account** until they are paid out. That is what makes holding funds possible, but it also has consequences:
+
+- **Legal.** SUNUSOCIAL temporarily holds donors' money.
+- **Accounting.** The app's ledger must match the NabooPay balance at all times.
+- **KYB.** An unverified NabooPay organisation is capped at **200,000 XOF per month**, so SUNUSOCIAL must complete NabooPay's business verification (KYB) before launch.
+
+This has been added to `BOARD_QUESTIONS.md` for the board to acknowledge.
 
 ---
 
@@ -34,211 +56,238 @@ Product questions that are still open are listed in `BOARD_QUESTIONS.md` (in Fre
 ### Authentication & accounts
 
 **DT-1 — Auth library: Convex Auth.**
-- Use `@convex-dev/auth` with the Password provider rather than hand-rolled sessions.
-- Donors sign in with their **phone number in E.164 format** as the account identifier.
-- Structures, hospitals and moderators sign in with their **email**.
-- The library hashes passwords (Scrypt) and manages sessions (JWT + refresh token). The env vars are `JWT_PRIVATE_KEY` and `JWKS`, set in Convex. `AUTH_SECRET` is removed.
-- The `role` stays on `users` and is read server-side only.
+- `@convex-dev/auth` with the Password provider.
+- Donors sign in with their phone number (E.164); structures, hospitals and moderators with their email.
+- The library hashes passwords (Scrypt) and manages sessions. The env vars are `JWT_PRIVATE_KEY` and `JWKS`, set in Convex.
+- The role is stored on `users` and read server-side only.
 
-**DT-2 — Second factor for structures, hospitals and moderators.**
-- After the password is accepted, the server sends a 6-digit one-time code. Only a hash of the code is stored, in `twoFactorCodes`; it expires after 10 minutes and allows at most 5 attempts.
-- The session is marked `mfaVerifiedAt` once the code is accepted. `requireRole()` rejects these roles until that is set.
-- **Channel:** codes are sent by **email (Resend)** until the board approves SMS. After that, they go by SMS to the responsible person's phone.
-- Switching channels means changing `OTP_CHANNEL=email|sms`. No code changes.
+**DT-2 — One-time codes, sent by SMS.** A single `otp` module covers every code-based flow:
+
+| Purpose | Who | When |
+|---|---|---|
+| `donor_signup` | Donor | The account is created only after the code is verified, which sets `phoneVerifiedAt` |
+| `login_2fa` | Structure / hospital / moderator | Every login. Sets `authSessions.mfaVerifiedAt`; `requireRole()` rejects the session until then |
+| `password_reset` | Donor | Code sent to the verified phone, then a new password |
+
+- Codes are 6 digits, stored only as a hash, expire after 10 minutes, and allow 5 attempts. Sending is rate-limited to 3 per 10 minutes per number.
+- `SMS_PROVIDER=console|<provider>`: `console` logs codes in development and preview; production refuses `console`.
+- Organisations reset their password through an **email link** (Resend), because they have a professional email.
 
 **DT-15 — Password reset.**
-- **Structures, hospitals, moderators:** a reset link by email (single use, valid 30 minutes).
-- **Donors, until SMS is approved:** reset is assisted by staff. The donor contacts SUNUSOCIAL on WhatsApp. A moderator checks their identity (name plus the amount of a recent donation), then generates a single-use reset link valid 30 minutes from the console. The link is sent back on WhatsApp, and the action is written to the audit log.
-- **Donors, once SMS is approved:** self-service reset with an SMS code.
-- The "Mot de passe oublié ?" link points to the right flow depending on `OTP_CHANNEL`.
+- Donors: an SMS code (DT-2).
+- Structures, hospitals and moderators: a single-use email link, valid 30 minutes, followed by the SMS 2FA at the next login.
+- Reset requests never reveal whether an account exists.
+- *(Supersedes the WhatsApp-assisted reset in rev. 1, which is no longer needed now that SMS is required.)*
 
-**DT-20 — The first moderator account.**
-- Created with an internal mutation, `admin.createModerator`, run by the lead developer through `npx convex run`.
-- There is no public signup for moderators, and no role selector.
+**DT-20 — The first moderator.** Created by the lead developer with `npx convex run admin:createModerator`. There is no public moderator signup.
 
 **DT-27 — Session lifetime.**
-- Convex Auth defaults: 7-day total lifetime, refresh tokens with inactivity expiry.
-- The moderation guard also rejects any moderator session older than 12 hours.
+- Convex Auth `session.totalDurationMs` = 7 days for every role (DB-8). Access JWTs are short-lived (library default) and renewed with refresh tokens within that week.
+- Logging out, or changing the password, ends all of that user's sessions.
 
-### Payments
+### Payments: NabooPay API v2 (checked against `.claude/skills/naboopay`)
 
-**DT-3 — Payment webhook.**
-- A Convex **`httpAction`** at `POST /payments/naboopay/webhook`, declared in `convex/http.ts`. There is no Next.js proxy route.
-- It verifies the signature with `NABOOPAY_WEBHOOK_SECRET`, then calls the internal mutation `payments.recordPayment`.
-- The mutation dedupes on `providerTxnId` (unique index).
-- **Sprint 4 spike:** confirm NabooPay's real signature scheme, its escrow/hold API, how payouts are made, and its refund API against their documentation before writing the adapter. JefTech raises any gap directly with NabooPay.
+**DT-3 — Receiving payments and holding funds.**
 
-**DT-4 — Provider adapter.**
-- The `PaymentProvider` interface is kept: `createCheckout`, `verifyWebhook`, `releaseFunds`, `refund`.
-- Implementations: `naboopay` and `mock`. The mock completes payments instantly and is used in development, preview deploys and e2e tests.
-- Selected with `PAYMENT_PROVIDER=naboopay|mock`. Production refuses to start with `mock`.
+*Creating the payment:*
+- `donations.createCheckout` calls `POST /transactions` with:
+  - `method_of_payment: ["wave", "orange_money"]`;
+  - one product line (the cause title, `price = amount`, `quantity = 1`);
+  - `customer` = the donor (name and verified phone);
+  - `fees_customer_side: false`, so the fee is deducted from what SUNUSOCIAL receives;
+  - `success_url` / `error_url` built from our own donation id, with no percent-encoded characters.
+- The NabooPay `order_id` is stored on the donation **before** the donor is redirected.
 
-**DT-5 — Where each structure gets paid.** New field `structures.payout`:
+*Confirming it:*
+- The webhook is a Convex **`httpAction`** at `POST /payments/naboopay/webhook`. It:
+  1. reads the raw body with `await request.text()`;
+  2. checks `X-Signature`, which must equal the hex HMAC-SHA256 of that body keyed with `NABOOPAY_WEBHOOK_SECRET`, using a constant-time comparison; otherwise it returns 401;
+  3. parses the JSON;
+  4. accepts `transaction_status` `paid` **or** `paid_and_blocked`;
+  5. checks that `amount` matches the donation;
+  6. calls `payments.recordPayment` (idempotent on `order_id`);
+  7. answers 2xx within 5 seconds and moves slow work to the scheduler.
+- **Missed webhooks.** NabooPay only sends a webhook when a payment succeeds, and gives up after 3 retries. So:
+  - the success page checks `GET /transactions/{order_id}` directly;
+  - a cron every 10 minutes does the same for donations still `pending` after 5 minutes;
+  - a donation still unpaid after 2 hours is cancelled with `DELETE /transactions/{order_id}` and marked `failed`.
 
-| Field | Meaning |
+*Holding the funds:*
+- **The hold is implemented in our app**: the money stays in SUNUSOCIAL's main NabooPay account, and the app's ledger records which cause each amount belongs to.
+- NabooPay's `is_escrow` flag is **not** used. It must be enabled per account, and its API documentation has no release endpoint.
+- The Sprint 4 spike asks NabooPay whether escrow plus a documented release would be better. If so, we switch the adapter and nothing else changes.
+
+**DT-4 — Payouts (release and refunds).**
+
+*How payouts are made:*
+- Every outgoing transfer goes through a `payouts` table processed by a **single worker**, because NabooPay allows one payout at a time per organisation and answers `409` otherwise. The worker uses `@convex-dev/workpool` with `maxParallelism: 1`.
+- Each payout row records: `kind` (`release` | `refund`), `amount`, `method`, `phone`, `name`, `status`, NabooPay's `order_id`, and `attempts`.
+
+*What happens on each outcome:*
+
+| Outcome | Action |
 |---|---|
-| `method` | `orange_money` \| `wave` |
-| `accountNumber` | E.164 |
-| `holderName` | Name on the account |
-| `naboopayRecipientId?` | The structure's recipient id at NabooPay |
-| `verifiedAt?` | When a moderator approved this account |
-| `verifiedBy?` | Which moderator approved it |
+| `409` (another payout running) | Wait a few seconds and retry the same payout |
+| Timeout or `5xx` | **Never resend automatically.** Mark the payout `unknown`, then reconcile with `GET /payouts?recipient_phone=…` |
+| `payout_status: pending` (amounts > 2,000,000 XOF go to NabooPay manual review) | Mark it `pending_review` and poll until it completes |
+| Insufficient balance | The worker checks `GET /accounts` (the `main` account) first. If the balance is short, it stops and alerts the moderators instead of failing halfway |
 
-- The account is collected at signup. The moderator checks it together with the documents (DB-3); a structure can't publish until the account is verified.
-- **Changing the payout account sends it back to moderator review.** Payouts are blocked until it is re-approved, and the change is written to the audit log. This guards against account takeovers that redirect funds.
-- Whether the account must be in the structure's own name is still open (`BOARD_QUESTIONS.md` Q9). Interim default: the responsible person's name is accepted.
+- Every outcome is written to the audit log.
+
+*Two API keys, least privilege:*
+- `NABOOPAY_CHECKOUT_KEY` (scope `checkout`) for transactions.
+- `NABOOPAY_PAYOUT_KEY` (scope `payout`) for payouts.
+
+*Adapter:* `PaymentProvider` (`createCheckout`, `verifyWebhook`, `getTransaction`, `cancelTransaction`, `payout`, `getPayout`, `listPayouts`, `getBalance`) with `naboopay` and `mock` implementations. Production refuses `mock`.
+
+**DT-5 — The structure's payout account (DB-15).**
+- `structures.payout = { method: orange_money | wave, accountNumber (E.164), holderName (the responsible), verifiedAt?, verifiedBy? }`.
+- It is collected in onboarding phase 1 and verified by the moderator together with the documents.
+- **A change goes back to moderator review**, and payouts are blocked until it is approved. The change is audit-logged.
 
 **DT-6 — Money arithmetic.**
 
 | Rule | Value |
 |---|---|
-| Units | Integer FCFA everywhere |
-| Fee | `fee = Math.round(amount × 0.03)` |
-| Platform fee | `platformFee = 0`. This is a separate line kept for the revenue-model decision (`BOARD_QUESTIONS.md` Q3) |
-| Net to structure | `net = amount − fee − platformFee` |
-| Invariant | `fee + platformFee + net = amount`, enforced by a unit test |
+| Units | Integer XOF/FCFA everywhere. NabooPay requires totals > 10; our minimum is 500 |
+| Shown before payment | `estimatedFee = Math.round(amount × 0.03)` and the estimated net |
+| Stored once paid | NabooPay's **actual** `fees` from the webhook or `GET /transactions`. If it differs from the estimate, we log it |
+| Platform fee | `platformFee = 0` until the revenue model is decided (`PLATFORM_FEE_RATE`) |
+| Net to structure | `net = amount − fees − platformFee` |
+| Invariant | `fees + platformFee + net = amount`, enforced by a unit test |
 
-- `causes.raised` holds the **gross** amount. The progress bar and the goal check both use gross.
-- The create-cause wizard and the cause page show an estimated net ("≈ X FCFA reçus par la structure").
-- `donorCount` goes up only on a donor's first confirmed donation to that cause, checked with the index `donations_by_cause_donor`.
-- Minimum donation: interim `MIN_DONATION = 500` (the smallest preset), see `BOARD_QUESTIONS.md` Q8.
+- `causes.raised` is the **gross** amount and drives the progress bar and the goal check.
+- The release payout is `Σ net` of the cause's held donations.
+- `donorCount` goes up only on a donor's first confirmed gift to that cause (index `donations_by_cause_donor`).
 
-**DT-7 — Refunds.**
-- The money returned and the fees follow `REFUND_FEE_POLICY`, which is open (`BOARD_QUESTIONS.md` Q7). Interim default: the donor gets back the **net** amount, because the provider fee has already been charged.
-- The moderation screen shows exactly how much will be refunded.
+**DT-7 — Refunds (DB-13).**
+- An approved refund queues a `refund` payout of **`net`** to the donor's verified phone, on the method they paid with (`selected_payment_method`).
+- The refund form lets the donor confirm the receiving number, which defaults to their verified phone.
+- NabooPay's `GET /refund/{order_id}` is **not** used: it can only refund the full amount, and as a `GET` it is easy to trigger by accident.
 
 **DT-24 — When funds are released.**
-- **At the goal:** when `raised ≥ goal`, `payments.recordPayment` schedules `payments.releaseCause` straight away (`ctx.scheduler.runAfter(0, …)`). The cause becomes `closed` and accepts no more donations.
-- **At the deadline:** an hourly cron, `payments.releaseDue`, releases causes whose deadline has passed.
-- **Overshoot:** a donation that pushes `raised` past the goal is accepted in full.
-- Release is idempotent: it is guarded by `fundsReleasedAt`.
+- **Goal reached:** `recordPayment` schedules `payments.releaseCause` straight away. The cause closes and stops accepting donations.
+- **Deadline passed:** an hourly cron releases due causes.
+- `releaseCause` queues one `release` payout to the verified account, marks the donations `released`, sets `fundsReleasedAt`, and creates the proof deadline (DB-12). It is idempotent, and it is skipped while a payout-account change is pending.
 
 ### Data model
 
-**DT-8 — Cause lifecycle.** `status` takes these values:
+**DT-8 — Cause statuses:** `pending_review` | `active` | `refused` | `withdrawn` | `closed` | `deleted`, plus the timestamps `submittedAt`, `approvedAt`, `closedAt`, `fundsReleasedAt`.
 
-| Status | Label shown | Notes |
-|---|---|---|
-| `pending_review` | "En modération" | The "Soumise" step on the timeline is the `createdAt` date |
-| `active` | "Active" | |
-| `refused` | "Refusée" | Shows the refusal reason |
-| `withdrawn` | — | Withdrawn by the structure while in review; no donations possible |
-| `closed` | "Clôturée" | Funds released |
-| `deleted` | — | Deletion approved by a moderator |
+**DT-17 — Notifications.**
+- A `notifications` table holds in-app notifications.
+- `notify.send` also sends an SMS (important events, blood alerts) and an email (organisations).
 
-New timestamps: `submittedAt`, `approvedAt`, `closedAt`, `fundsReleasedAt`.
+**DT-18 — Activity / audit log (DB-9).** An append-only `auditLog` table; rows are never edited or deleted. It records:
+- **Moderation and money:** every decision, payout, refund, payout-account change and extension decision.
+- **Donor activity:** `auth.signup`, `auth.login`, `donation.create`, `donation.paid`, `profile.update`, `refund.request`, `blood.optIn`.
+- **Organisation logins.**
 
-**DT-17 — In-app notifications.**
-- A `notifications` table: `userId`, `kind`, `title`, `body`, `link`, `readAt`, `createdAt`.
-- The internal action `notify.send` writes the in-app row, then sends email or SMS according to the user's role, their preferences, and the SMS flag.
+Each row keeps the IP and user-agent when available. Donor login events are kept for 12 months, then purged by a cron (data minimisation).
 
-**DT-18 — Audit log.**
-- An `auditLog` table: `actorId`, `action`, `targetTable`, `targetId`, `details`, `createdAt`.
-- Written on every moderation decision, every payout and refund, every payout-account change, and every assisted password reset.
-- Rows are never edited or deleted.
+**DT-21 — Migrations.** `@convex-dev/migrations` for backfills, `convex/seed.ts` for seeds.
 
-**DT-21 — Migrations.**
-- Schema changes are deployed by `npx convex deploy`.
-- Data backfills use `@convex-dev/migrations`.
-- Seeds are internal mutations under `convex/seed.ts`.
-- There are no numbered migration files.
+**DT-22 — Regions and communes.** One static `lib/geo.ts`, shared by Next.js and Convex. Interim data: the prototype's 8 regions.
 
-**DT-22 — Regions and communes.**
-- One static source of truth: `lib/geo.ts`, imported by both Next.js and Convex. The `geo` table is removed.
-- Interim data is the prototype's 8 regions. The official list of all 14 is still open (`BOARD_QUESTIONS.md` Q4).
+**DT-25 — Proof deadlines (DB-12).**
+- A `proofDeadlines` row is created on every release and on every deletion payout, due 7 days later, always enforced.
+- The suspension cron sets `structures.suspendedAt` when a deadline passes without a validated proof.
+- An approved delay moves `dueAt`. A moderator can lift a suspension.
 
-**DT-25 — Proof deadline after release.**
-- The schema stores `proofs.dueAt` for every released cause.
-- Auto-suspension is enforced for **deletion payouts** (already decided).
-- For causes that were funded normally, it is behind the flag `ENFORCE_PROOF_DEADLINE_ON_RELEASE` (default `false`) until the board answers `BOARD_QUESTIONS.md` Q6.
+**DT-30 — Extension requests (DB-11, DB-12).** A table `extensionRequests`:
+
+| Field | Values |
+|---|---|
+| `kind` | `cause_deadline` \| `proof_deadline` |
+| `targetId`, `requestedUntil`, `reason`, `status`, `moderatorReason`, `decidedBy` | |
+
+- Each request can extend by at most `MAX_EXTENSION_DAYS = 30`.
+- They appear in a new moderation queue, **"Demandes de prolongation"**.
+- For a cause, a longer deadline means funds are held longer. That is shown to the moderator, and the cause's donors are notified.
+
+**DT-31 — Structure onboarding phases (DB-15).**
+- `structures.onboardingPhase: 1 | 2` and `profileCompletedAt?`.
+- Phase 1 is the current signup: organisation, type, location, responsible, documents, payout account.
+- The phase 2 fields, and whether phase 2 is required before the first payout, are open (`BOARD_QUESTIONS.md`). Until then the gate `REQUIRE_PHASE2_BEFORE_PAYOUT` stays `false`.
 
 ### Frontend & design
 
-**DT-9 — Moderation runs on its own subdomain.**
-- Same Next.js app, served at `moderation.<domain>`. `middleware.ts` routes by host:
-  - The moderation host only serves the `app/moderation` route group.
-  - The main host returns 404 for `/moderation/*`.
-- Locally: `http://moderation.localhost:3000`.
-- Auth cookies are scoped to each host, so a donor or structure session can never reach moderation.
+**DT-9 — Moderation subdomain.**
+- The same Next.js app serves `moderation.<domain>`. `middleware.ts` routes by host; the main host returns 404 for `/moderation/*`.
+- Cookies are scoped to each host.
 
-**DT-10 — Styling stack.**
-- **Tailwind CSS + shadcn/ui** (Radix primitives), themed with the charte's tokens.
-- **The charte graphique wins:** Montserrat for headings, Inter for body text, the charte palette, and the charte's logo rules.
-- The `prototype/_ds` "Industry" package is reference material only. Its Barlow fonts, steel accent, blueprint corner marks and duotone images are **not** used.
+**DT-10 — Styling.**
+- Tailwind CSS + shadcn/ui, themed with the charte (Montserrat / Inter, charte palette).
+- `prototype/_ds` "Industry" is reference only.
 
 **DT-11 — Accessible brand colours.**
 
 | Token | Colour | Use |
 |---|---|---|
 | `--brand-blue` | `#174a7c` | Primary surfaces and links |
-| `--brand-orange` | `#de7d28` | Decoration, icons, illustration; text on it must be dark `#1e293b` (4.9:1) |
-| `--brand-orange-strong` | `#a9561a` | Orange CTA buttons with white text (5.2:1 on white, 4.9:1 on the cream `#faf7f2` background) |
+| `--brand-orange` | `#de7d28` | Decoration; any text on it must be dark `#1e293b` (4.9:1) |
+| `--brand-orange-strong` | `#a9561a` | White-text CTA buttons (5.2:1) |
 | `--brand-green` | `#529e3b` | Badges and icons |
 | `--brand-green-strong` | `#3b7a29` | Green text (5.3:1) |
 | `--text` | `#1e293b` | Body text |
-
-Every new colour pair is checked with the `contrast-checker` skill.
 
 **DT-12 — Upload limits.**
 
 | File type | Limit |
 |---|---|
-| Images | ≤ 5 MB, resized on the client to at most 2048 px on the longest side before upload |
+| Images | ≤ 5 MB, resized on the client to ≤ 2048 px |
 | PDF | ≤ 5 MB |
-| Video (proof dossiers only) | ≤ 50 MB and ≤ 90 seconds |
+| Video | ≤ 50 MB and ≤ 90 seconds |
 
-- Files go to Convex storage through upload URLs.
-- File URLs are only returned by queries that have checked the caller's access.
-- Récépissés/agréments are visible **only to moderators**.
+Récépissés and agréments are visible to moderators only.
 
 **DT-28 — Framework versions.** Latest stable Next.js (App Router), React 19, TypeScript in strict mode, Node 20 LTS.
 
 ### Trust & safety
 
-**DT-13 — Auto-flagging proofs (MVP).** A `"use node"` action runs on every submitted dossier. Each check flags an item, or the whole dossier, with a reason in French:
+**DT-13 — Proof auto-flags.** A `"use node"` action checks each new dossier:
 
 | Check | Flag raised when… |
 |---|---|
-| **Duplicate image** | A 64-bit perceptual hash (dHash, computed with `sharp`) is within Hamming distance ≤ 6 of any image already published, on any cause |
-| **Photo date** | The EXIF `DateTimeOriginal` is missing, or earlier than the cause's `createdAt` |
-| **Invoice reference** | The same invoice or delivery-note `ref` from the same supplier was already used in another dossier |
-| **Spend vs. received** | The spend total differs from the net received by more than 5% (whole dossier) |
+| Duplicate image | Its dHash is within Hamming distance ≤ 6 of an image already published |
+| Photo date | The EXIF date is missing, or earlier than the cause's creation date |
+| Invoice reference | The same invoice ref from the same supplier was already used |
+| Spend vs. received | The spend total differs from the net received by more than 5% |
 
-- Videos are not analysed in the MVP.
-- Flags are advisory. The moderator decides.
+Flags are advisory; the moderator decides.
 
-**DT-19 — Rate limiting.** Done with `@convex-dev/rate-limiter`, at the limits in `API_DESIGN.md`.
+**DT-19 — Rate limiting.** `@convex-dev/rate-limiter`. Calls to NabooPay must also stay under its limit of 100 requests per 60 s per endpoint, so the pending-payment poller works in batches.
 
-**DT-26 — Who creates blood alerts.**
-- `bloodAlerts.create` accepts moderators. It accepts hospitals only when `BLOOD_ALERTS_HOSPITAL_SELF_SERVE=true` (default `false`) until the board answers `BOARD_QUESTIONS.md` Q2.
-- Both screens get built: the moderation form and the hospital `/hopital/alerte` page.
+**DT-26 — Blood alerts (DB-10).**
+- Verified hospitals create, close and thank on their own alerts.
+- Moderators see every alert and can close or disable one.
+- The SMS fan-out runs through `notify.send`, batched to stay within the SMS provider's limits.
 
 ### Delivery
 
-**DT-16 — Email.**
-- Provider: **Resend**.
-- Env vars: `RESEND_API_KEY`, `EMAIL_FROM` (on SUNUSOCIAL's own domain).
-- Used for: 2FA codes until SMS is approved, password resets for organisations, and organisation and moderation notifications.
+**DT-16 — Email.** Resend (`RESEND_API_KEY`, `EMAIL_FROM`), used for organisation password resets and organisation and moderation notifications.
 
 **DT-23 — Testing & CI.**
-- **Tests:** Vitest + `convex-test` for backend logic (money invariants, status transitions, authz, release and refund paths), and Playwright e2e for the main donation flow using the `mock` provider.
-- **CI:** GitHub Actions runs `lint`, `typecheck`, `test` and `npm audit --audit-level=high` on every PR into `develop`/`main`.
+- Vitest + `convex-test` for the backend: money invariants, status transitions, authz, release/refund/payout worker with a mocked NabooPay (409, timeout and `pending` cases included).
+- Playwright e2e for the donation flow with the `mock` provider.
+- GitHub Actions runs lint, typecheck, test and `npm audit` on every PR.
 
-**DT-29 — The "SMS pending" preview.**
-- While `SMS_ENABLED=false`, any screen that would send an SMS shows the in-app notification plus an SMS preview labelled "en attente de validation" (the same behaviour as the prototype).
+**DT-29 — Before an SMS provider is chosen.** In development and preview, `SMS_PROVIDER=console`. Production cannot launch without a real provider (DB-7).
 
 ---
 
-## 3. Feature flags and config introduced by this log
+## 3. Config values
 
-| Name | Default | Changes when… |
+| Name | Value | Notes |
 |---|---|---|
-| `PAYMENT_PROVIDER` | `naboopay` (prod), `mock` (dev/preview) | — |
-| `OTP_CHANNEL` | `email` | Board approves SMS → `sms` |
-| `SMS_ENABLED` | `false` | Board approves SMS |
-| `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` | `false` | Board answers Q2 |
-| `ENFORCE_PROOF_DEADLINE_ON_RELEASE` | `false` | Board answers Q6 |
-| `MAX_CAUSE_DURATION_DAYS` | `90` | Board answers Q5 |
-| `MIN_DONATION` | `500` | Board answers Q8 |
-| `PLATFORM_FEE_RATE` | `0` | Board answers Q3 |
-| `REFUND_FEE_POLICY` | `refund_net` | Board answers Q7 |
+| `PAYMENT_PROVIDER` | `naboopay` (prod), `mock` (dev/preview) | |
+| `SMS_PROVIDER` | `console` (dev/preview) → real provider | Waiting on the board: provider, budget, sender ID |
+| `MAX_CAUSE_DURATION_DAYS` | `30` | Decided (DB-11) |
+| `MAX_EXTENSION_DAYS` | `30` | Technical cap per extension request |
+| `PROOF_DUE_DAYS` | `7` | Decided (DB-12) |
+| `MIN_DONATION` | `500` | Interim, to be studied with the board (DB-14) |
+| `PLATFORM_FEE_RATE` | `0` | Waiting on the revenue model |
+| `REQUIRE_PHASE2_BEFORE_PAYOUT` | `false` | Waiting on the phase 2 definition |
+| `SESSION_TOTAL_DAYS` | `7` | Decided (DB-8) |
+
+*Removed since rev. 1:* `OTP_CHANNEL` (codes always go by SMS), `SMS_ENABLED`, `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` (decided: hospitals), `ENFORCE_PROOF_DEADLINE_ON_RELEASE` (decided: always), `REFUND_FEE_POLICY` (decided: net).

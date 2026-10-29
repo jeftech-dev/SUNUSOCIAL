@@ -2,124 +2,130 @@
 
 | | |
 |---|---|
-| **Date** | 29 October 2026 (revised after the board's answers) |
-| **Scope** | Whole repository: docs, design, prototype |
+| **Date** | 29 October 2026 (rev. 3: second round of board answers, skills installed, NabooPay API reviewed) |
+| **Scope** | Whole repository: docs, design, prototype, `.claude/skills` |
 | **Audience** | Developers joining the build, and the project owner |
-| **Companion docs** | `DECISIONS.md` (everything decided, authoritative) · `BOARD_QUESTIONS.md` (what the board still has to answer, in French) |
+| **Companion docs** | `DECISIONS.md` (authoritative) · `BOARD_QUESTIONS.md` (open questions, in French) · root `CLAUDE.md` (entry point for agents) |
 
 ---
 
 ## 1. Where the project stands
 
-**None of the production app exists yet.** The repo holds a complete pre-build package. As of this revision, the core product and technical decisions are taken.
-
 | Area | State | Notes |
 |---|---|---|
-| Product definition | ✅ Done | `context.md` + `PRD.md`, updated with the board's decisions |
-| Decisions | ✅ Logged | `DECISIONS.md`: 6 board decisions (DB-1…6) and 29 technical decisions (DT-1…29) |
-| Architecture, schema, API, security | ✅ Aligned | Rewritten for NabooPay with funds held, Convex Auth, payout accounts, audit log |
+| Product definition | ✅ Done | `context.md` + `PRD.md`, aligned with both rounds of board answers |
+| Decisions | ✅ Logged | `DECISIONS.md`: 15 board decisions, 31 technical decisions, all config values |
+| Architecture, schema, API, security | ✅ Aligned | NabooPay API v2 (checked against the `naboopay` skill), SMS codes, payout worker, extension requests, activity log |
 | Plan | ✅ Updated | `IMPLEMENTATION_ROADMAP.md`: 8 one-week sprints, all 📋 Planned |
-| Design | ✅ Delivered | Charte PDF + logo + clickable prototype (`prototype/`) |
-| Open product questions | 🟠 13 left | `BOARD_QUESTIONS.md`: none of them blocks Sprint 1 |
+| Agent setup | ✅ Done | Root `CLAUDE.md` + 10 skills in `.claude/skills/` |
+| Design | ✅ Delivered | Charte PDF + logo + prototype. ⚠️ The prototype is now **out of date** (§5) |
+| Open board questions | 🟠 10 | `BOARD_QUESTIONS.md`, ready to send |
 | Code, CI, tests | ❌ Not started | |
 
-**Decided by the board:**
-- NabooPay is the payment provider, and funds are held until the cause ends.
-- Structures are verified from their documents only, approved or refused by a moderator.
-- The structure is paid in one lump sum.
-- Every cause has a deadline, and funds are released at the goal or the deadline, whichever comes first.
-- The moderator curates the weekly "Coup de cœur".
+---
+
+## 2. Skills: what was in `SunuSkill.zip`
+
+The zip held 11 skills. I read every `SKILL.md`, the scripts and the reference files before adding them.
+
+### ✅ Added to `.claude/skills/` (10)
+
+| Skill | Notes |
+|---|---|
+| `naboopay` | **Key skill.** Covers NabooPay API v2: transactions, webhooks, payouts, error handling. Reading it changed the payment design (§3) |
+| `convex` | ⚠️ An **index only**. It points to sub-skills that aren't in the zip (see below) |
+| `convex-functions` | Queries, mutations, actions, `httpAction`, validators |
+| `shadcn-ui` | Large reference (~1,900 lines plus references) |
+| `vercel-react-best-practices` | |
+| `vercel-composition-patterns` | |
+| `web-design-guidelines` | Downloads Vercel's guidelines from GitHub each time it runs (normal) |
+| `contrast-checker` | Its `allowed-tools` lists an `accesslint` MCP server that isn't installed. It still works by computing ratios directly |
+| `create-pull-request` | |
+| `design-audit` | |
+
+### ❌ Not added: `vercel-deploy`
+
+Its `scripts/deploy.sh` packs the **whole project folder** and uploads it to a third-party "claimable deploy" endpoint (`claude-skills-deploy.vercel.com`).
+- It excludes only `node_modules` and `.git`, so a local `.env.local` with the NabooPay and SMS keys **would be uploaded too**.
+- Deployments should go through the SUNUSOCIAL Vercel project's Git integration instead.
+
+### ➕ Worth adding later
+
+The `convex` index points to these sub-skills, which are missing:
+- **High value:** `convex-http-actions`, `convex-file-storage`, `convex-cron-jobs`, `convex-schema-validator`, `convex-security-check`, `convex-best-practices`.
+- **Useful:** `convex-migrations`.
+
+If they're available from the same source, drop them into `.claude/skills/`. There's no skill for Convex Auth; its documentation is enough.
 
 ---
 
-## 2. Skills for the repo (`.claude/skills/`)
+## 3. What the NabooPay API review changed
 
-Claude Code only loads project skills from **`.claude/skills/<name>/SKILL.md`**. A top-level `skills/` folder isn't read. This verdict is based on the folder names in the two screenshots; skim each `SKILL.md` before copying it in.
-
-### ✅ Core: add these 8
-
-| Skill | Why |
-|---|---|
-| **`naboopay`** | **The most important one.** NabooPay is now the provider, and Sprint 4 starts with a spike on its API (DT-3) |
-| `convex` | The whole backend: schema, functions, crons, file storage |
-| `convex-functions` | Validators, internal functions, `httpAction` webhooks, scheduling |
-| `shadcn-ui` | Tailwind + shadcn/ui is now the styling decision (DT-10) |
-| `vercel-react-best-practices` | Next.js App Router / React patterns |
-| `vercel-composition-patterns` | Shared component architecture |
-| `web-design-guidelines` | UI and accessibility review |
-| `contrast-checker` | The charte's orange needed a darker shade (DT-11); check every new colour pair |
-
-### 🟡 Optional
-
-| Skill | When to add it |
-|---|---|
-| `domain-modeling` | Useful in Sprint 1 to pin down the cause, donation and refund state machines. Keep it if it's a generic modelling skill |
-| `grill-with-docs` | Useful for challenging a plan or PR against `DECISIONS.md` before building. A personal review habit rather than project knowledge |
-| `vercel-deploy` | Only if agents deploy from the CLI. With Vercel's Git integration it isn't needed |
-| `create-pull-request` | If agents will open PRs into `develop` |
-| `design-audit` | For the Sprint 8 polish pass |
-
-### ❌ Leave out
-
-| Skill(s) | Reason |
-|---|---|
-| `Doc-bundle` | It generated the original docs, which have since been edited by hand and reconciled with `DECISIONS.md`. **Re-running it would overwrite those edits.** Keep it at user level for future projects |
-| `lab-workflow`, `lecture-notes-builder` (and their `.zip` copies) | Unrelated to this project |
-| `grilling` | Superseded by `grill-with-docs` for this repo |
-| All `expo-*`, `building-native-ui`, `native-data-fetching`, `use-dom`, `upgrading-expo`, `vercel-react-native-skills` | Native apps are Phase 2 |
-| `bencium-*`, `agentic-ux-…`, `ui-ux-pro-max`, `frontend-design`, `ui-typography`, `use-of-color`, `figma-implement-design` | The design is fixed by the charte and the prototype. These would invite redesigns, and there is no Figma |
-| `mcp-builder`, `skill-creator`, `find-skills`, `artifacts-builder`, `agent-md-refactor` | Personal agent tooling |
-| `skills-lock.json` | Only if you install with the `skills` CLI. In that case, regenerate it for the kept set |
-| **`synced`** | ❓ Can't tell from the name. What does it do? |
-
-Next step: copy the core 8 skills, then add a short root `CLAUDE.md` pointing agents to `DECISIONS.md`, `TECHNICAL_ROADMAP.md` and `context.md`.
-
----
-
-## 3. Contradictions found in the first review — all resolved
-
-| # | Topic | Resolution |
+| Finding (from the `naboopay` skill) | Impact | Where it's handled |
 |---|---|---|
-| C1 | Org/moderator login | `context.md` updated: email + password ≥ 12 chars + one-time code |
-| C2 | 2FA depended on unapproved SMS | Codes go by email (Resend) until SMS is approved. `OTP_CHANNEL` switches the channel (DT-2) |
-| C3 | Who creates blood alerts | Moderator now. Hospital self-serve is built behind a flag (DT-26). Final answer: board Q2 |
-| C4 | Sprint numbering | PRD timeline aligned with the roadmap |
-| C5 | 5 MB cap vs video proofs | Images and PDFs ≤ 5 MB, video ≤ 50 MB / 90 s (DT-12) |
-| C6 | "Separate URL" vs `/moderation` path | `moderation.<domain>` subdomain, host-routed in middleware (DT-9) |
-| C7 | Industry design system vs charte | The charte wins. Industry is reference only (DT-10) |
-| C8 | Proof deadline for normal causes | Tracked for every release. Enforcement for normal causes is behind a flag (DT-25). Final answer: board Q6 |
+| Payments land in **SUNUSOCIAL's merchant account**; structures are paid by **payouts** | The original "no central account" assumption was wrong: SUNUSOCIAL temporarily holds donor funds | DECISIONS §1 correction, board Q4 |
+| Organisations not yet verified (KYB) are capped at **200,000 XOF/month** | Launch blocker until SUNUSOCIAL completes KYB | Board Q4 + Q7 |
+| `is_escrow` needs per-account activation and has **no documented release endpoint** | The hold is done in the app ledger (funds stay in the main account) | DT-3 |
+| Refunds: **full amount only**, sent through a `GET` request | The board decided on net refunds, so refunds are made as **payouts** | DB-13, DT-7 |
+| **One payout at a time** (409), **no idempotency key**, > 2M XOF goes to manual review | A single-flight payout worker that never resends after a timeout, plus reconciliation | DT-4 |
+| Webhooks are sent **only on success**, with 3 retries 5 minutes apart, signed with `X-Signature` HMAC | Success page + cron re-check pending payments; raw-body verification | DT-3 |
+| The actual `fees` come back in the webhook | Store the real fee, not the 3% estimate | DT-6 |
+| Separate API key scopes | Separate `checkout` and `payout` keys | DT-4, `.env.example` |
 
-## 4. Technical gaps — all resolved in `DECISIONS.md`
+---
 
-| Gap | Decision |
-|---|---|
-| No payout destination for structures | `structures.payout`, verified by the moderator; changes are re-reviewed and block payouts (DT-5) |
-| Custom auth, Argon2 in mutations | Convex Auth (DT-1) |
-| Webhook location unclear | Convex `httpAction` in `convex/http.ts` (DT-3) |
-| Numbered migrations | `@convex-dev/migrations` + seeds (DT-21) |
-| Money rounding, gross vs net, `donorCount` | DT-6 |
-| `pending` hides two statuses; withdraw vs delete | New status set (DT-8) |
-| Auto-flagging had no spec | dHash, EXIF, invoice-ref and spend checks (DT-13) |
-| Donor password reset without OTP | WhatsApp-assisted reset now, SMS later (DT-15) |
-| No email provider | Resend (DT-16) |
-| No notifications table, audit log, rate limiter, admin bootstrap | DT-17, DT-18, DT-19, DT-20 |
-| Geo data in two places | A single `lib/geo.ts` (DT-22) |
-| No testing or CI | Vitest + convex-test + Playwright + GitHub Actions (DT-23) |
-| White-on-orange contrast at 2.97:1 | `#a9561a` for CTA buttons, 5.2:1 (DT-11) |
-| Goal reached early: what happens? | Cause closes and funds are released at once (DT-24) |
+## 4. Decisions from this round (summary)
 
-## 5. What remains with the board
+**SMS is required** for:
+- the 2FA code of structures, hospitals and moderators;
+- verifying a donor's phone at signup;
+- donor password recovery;
+- blood alerts and important notifications.
 
-See **`BOARD_QUESTIONS.md`**, written in French and ready to send. In short:
-- **High priority:** SMS (Q1), who sends blood alerts (Q2), revenue model (Q3), commune list (Q4), CDP declaration (Q10), legal status (Q11).
-- **Medium priority:** maximum cause duration, proof deadline for every cause, refund fees, payout-account holder name, legal documents, domain and accounts.
-- **Low priority:** minimum donation amount.
+**Everything else decided in this round:**
+- Sessions last at most 7 days.
+- Donor activity is logged.
+- Hospitals send their own blood alerts.
+- A cause lasts at most 30 days, with extensions approved by a moderator.
+- A proof is mandatory for every funded cause, with delays approved by a moderator.
+- Refunds return the net amount.
+- The minimum donation is 500 FCFA for now.
+- The payout account is the responsible's OM/Wave number and name, with a second onboarding phase.
 
-Every open rule has an interim default behind a config value (`DECISIONS.md` §3), so **Sprints 1–5 can run in full without waiting.** Going live with real money still needs Q3, Q7, Q9, Q11 and the NabooPay merchant account.
+All of this is reflected across the docs. The rev. 1 interim measures that no longer apply are gone: email codes, the WhatsApp-assisted reset, the 12-hour moderator sessions and the feature flags.
 
-## 6. Next actions
+---
 
-1. Send `BOARD_QUESTIONS.md` to Ngoné Gueye.
-2. Copy the 8 core skills into `.claude/skills/` and add a root `CLAUDE.md`.
-3. Ask NabooPay for sandbox access and API docs (escrow, payouts, refunds, webhook signature) ahead of the Sprint 4 spike.
-4. Start Sprint 1.
+## 5. What remains
+
+### Waiting on the board: send `BOARD_QUESTIONS.md`
+
+| # | Question | Blocks |
+|---|---|---|
+| Q1 | SMS provider, budget, sender ID | **Launch**: donor signup needs SMS |
+| Q2 | Revenue model | The fee line shown to donors |
+| Q3 | List of the 14 regions and their communes | Signups, alerts |
+| Q4 | Acknowledge the NabooPay money flow + start KYB | Collecting more than 200k XOF/month |
+| Q5 | Content and gating of onboarding phase 2 | Payouts, if phase 2 becomes mandatory |
+| Q6 | Review the 500 FCFA minimum | Nothing |
+| Q7–Q9 | Legal status, CDP declaration, legal documents | NabooPay KYB, blood module, go-live |
+| Q10 | Domain, WhatsApp, accounts, first moderator | Go-live |
+
+### Waiting on JefTech / the project owner
+1. **NabooPay:** create the SUNUSOCIAL organisation and get sandbox keys (`checkout` scope + `payout` scope). Ask them:
+   - whether escrow has a release API;
+   - whether payouts have any fees;
+   - what the transaction limits are.
+2. **Accounts:** Vercel, Convex and Resend in SUNUSOCIAL's name.
+3. **Optional:** add the missing Convex sub-skills (§2).
+4. **Update the prototype** before showing it to the client again. It still has:
+   - the NabooPay/SycaPay toggle;
+   - the moderator creating blood alerts;
+   - no SMS code step at donor signup;
+   - no extension or delay requests;
+   - a Specifications register that lists decisions as "À valider" when they are now decided.
+
+### Ready to build now
+**Sprints 1 to 5 can start immediately.** Development uses `PAYMENT_PROVIDER=mock` and `SMS_PROVIDER=console`, so nothing waits on the board until go-live.
+
+To go live with real money, these still have to be in place: Q1, Q2, Q4/Q7 (KYB), the NabooPay live keys, the domain, and the first moderator.

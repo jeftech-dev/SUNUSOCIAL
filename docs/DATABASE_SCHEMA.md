@@ -4,7 +4,7 @@
 |---|---|
 | **Database** | Convex (document database). The shapes below are the logical model; the authoritative source is `convex/schema.ts` |
 | **Naming convention** | Tables: plural `camelCase` (`causes`, `bloodAlerts`). Fields: `camelCase`. IDs: Convex `Id<"table">`. Amounts: integer **FCFA**. Timestamps: epoch ms (`number`) |
-| **Last Updated** | 29 October 2026. Reflects `DECISIONS.md` (NabooPay with funds held, Convex Auth, payout accounts, audit log) |
+| **Last Updated** | 29 October 2026 (rev. 2). Reflects `DECISIONS.md`: NabooPay API v2 with funds held in the app ledger, SMS codes, payout worker, extensions, activity log |
 
 > Convex documents are typed through `defineSchema` / `defineTable` with `v.*` validators. The "Type / Constraints" columns describe those validators. Foreign keys are `v.id("table")` references. There is no SQL-level cascade: deletes and state transitions are handled in mutations.
 
@@ -23,32 +23,33 @@ The base account. Data specific to structures and hospitals lives in `structures
 | `phone` | string | E.164; unique for donors | Donor login identifier; the responsible's phone for organisations |
 | `email` | string | unique when present | Login identifier for organisations, hospitals and moderators |
 | `structureId` | Id<"structures"> | optional | Set for `structure`/`hospital` accounts |
+| `phoneVerifiedAt` | number | required for donors | Set when the signup SMS code is verified (DB-7) |
 | `disabled` | boolean | default false | Account blocked by a moderator |
 | `createdAt` | number | required | Epoch ms |
 
-### twoFactorCodes
-One-time codes for structure, hospital and moderator logins (DT-2).
+### otpCodes
+SMS one-time codes (DT-2).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `userId` | Id<"users"> | FK | Who the code belongs to |
-| `sessionId` | Id<"authSessions"> | FK | The session the code unlocks |
+| `purpose` | string | `donor_signup`\|`login_2fa`\|`password_reset` | |
+| `phone` | string | E.164 | Where the code was sent |
+| `userId` | Id<"users"> | optional | Not set for `donor_signup`, because the account doesn't exist yet |
+| `sessionId` | Id<"authSessions"> | optional | For `login_2fa`: the session the code unlocks |
 | `codeHash` | string | required | Hash of the 6-digit code. The plaintext is never stored |
-| `channel` | string | `email`\|`sms` | Where it was sent |
 | `attempts` | number | max 5 | Failed attempts so far |
 | `expiresAt` | number | now + 10 min | |
 | `usedAt` | number | optional | |
 
-`authSessions` is extended with `mfaVerifiedAt?: number`. `requireRole()` rejects sessions of structures, hospitals and moderators until it is set.
+`authSessions` is extended with `mfaVerifiedAt?: number`. `requireRole()` rejects sessions of structures, hospitals and moderators until it is set. Sessions last at most 7 days (DB-8).
 
 ### passwordResets
-Single-use reset tokens: email links for organisations, and assisted resets for donors issued by a moderator (DT-15).
+Single-use email reset tokens for **organisations** (DT-15). Donors reset with an SMS code (`otpCodes`, purpose `password_reset`).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `userId` | Id<"users"> | FK | |
 | `tokenHash` | string | required | |
-| `issuedBy` | Id<"users"> | optional | The moderator, for an assisted donor reset |
 | `expiresAt` | number | now + 30 min | |
 | `usedAt` | number | optional | |
 
@@ -79,11 +80,13 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `email` | string | required | Professional email |
 | `receiptNo` | string | optional | Récépissé or agrément number |
 | `receiptFileId` | Id<"_storage"> | required | Uploaded document. **Moderators only** |
-| `payout` | object | required | `{ method: "orange_money"\|"wave", accountNumber (E.164), holderName, naboopayRecipientId?, verifiedAt?, verifiedBy? }`. See DT-5 |
+| `payout` | object | required | `{ method: "orange_money"\|"wave", accountNumber (E.164), holderName (the responsible), verifiedAt?, verifiedBy? }`. See DT-5 |
 | `payoutPending` | object | optional | A requested change to the payout account, waiting for moderator review. While it is set, payouts are blocked |
 | `status` | string | `pending`\|`approved`\|`refused` | Validation state (documents + payout account, DB-3) |
 | `refusalReason` | string | optional | Shown to the structure if refused |
 | `suspendedAt` | number | optional | Set by an auto-suspension (missed proof deadline); cleared by a moderator |
+| `onboardingPhase` | number | `1`\|`2`, default 1 | Phase 2 collects the full structure profile (fields pending the board, DT-31) |
+| `profileCompletedAt` | number | optional | When phase 2 was completed and validated |
 | `createdAt` | number | required | |
 
 ### causes
@@ -96,7 +99,8 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `bannerFileId` | Id<"_storage"> | required | Banner image |
 | `endType` | string | `date`\|`goal` | Kind of end condition |
 | `goalAmount` | number | integer > 0 | Target in FCFA, compared with gross `raised` |
-| `deadline` | number | **required for every cause**; ≤ submission + `MAX_CAUSE_DURATION_DAYS` | Release happens at the goal or this date, whichever comes first (DB-5) |
+| `deadline` | number | **required for every cause**; ≤ submission + 30 days | Release happens at the goal or this date, whichever comes first (DB-5, DB-11). Moved only by an approved extension |
+| `extensionCount` | number | default 0 | Approved extensions so far |
 | `urgency` | string | `normal`\|`urgent` | |
 | `raised` | number | default 0 | Gross FCFA collected (denormalised from held/released donations) |
 | `donorCount` | number | default 0 | Distinct donors, incremented only on a donor's first confirmed gift |
@@ -107,7 +111,7 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `approvedAt` | number | optional | |
 | `closedAt` | number | optional | |
 | `fundsReleasedAt` | number | optional | Set once, when the lump-sum payout is made (idempotency guard) |
-| `payoutTxnId` | string | optional | NabooPay payout reference |
+| `releasePayoutId` | Id<"payouts"> | optional | The lump-sum release payout |
 
 ### donations
 | Column | Type | Constraints | Description |
@@ -115,12 +119,13 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `causeId` | Id<"causes"> | FK | |
 | `donorId` | Id<"users"> | FK | Tied to a known phone number |
 | `amount` | number | integer ≥ `MIN_DONATION` | Gross FCFA |
-| `fee` | number | `round(amount × 0.03)` | NabooPay fee |
+| `fee` | number | NabooPay's actual `fees` once paid (3% estimate before) | NabooPay fee |
 | `platformFee` | number | default 0 | SUNUSOCIAL share. Stays 0 until the revenue model is decided |
 | `net` | number | `amount − fee − platformFee` | What the structure receives |
 | `method` | string | `orange_money`\|`wave` | No card |
 | `provider` | string | `naboopay`\|`mock` | |
-| `providerTxnId` | string | unique once set | Idempotency key for webhooks |
+| `providerTxnId` | string | unique once set | The NabooPay `order_id`, stored **before** the redirect. Idempotency key for webhooks and status checks |
+| `paidMethod` | string | optional | NabooPay `selected_payment_method`. A refund is sent back on this method |
 | `status` | string | `pending`\|`held`\|`released`\|`refunded`\|`failed` | |
 | `createdAt` | number | required | |
 
@@ -133,7 +138,9 @@ Possible while the donation is `held`.
 | `donorId` | Id<"users"> | FK | |
 | `reason` | string | required, ≥ 5 chars | The donor's reason |
 | `status` | string | `pending`\|`refunded`\|`rejected` | Moderator decision (final) |
-| `refundAmount` | number | optional | The amount actually returned (per `REFUND_FEE_POLICY`) |
+| `receivingPhone` | string | E.164 | Defaults to the donor's verified phone |
+| `refundAmount` | number | optional | The donation's **net** amount (DB-13) |
+| `payoutId` | Id<"payouts"> | optional | The refund payout |
 | `decidedBy` | Id<"users"> | optional | Moderator |
 | `createdAt` | number | required | |
 
@@ -159,8 +166,8 @@ Created whenever funds reach a structure: on release (DT-25) and on a deletion p
 | `causeId` | Id<"causes"> | FK, unique | |
 | `structureId` | Id<"structures"> | FK | |
 | `reason` | string | `release`\|`deletion_payout` | |
-| `dueAt` | number | + 7 days | |
-| `enforced` | boolean | | `true` for `deletion_payout`. For `release`, follows `ENFORCE_PROOF_DEADLINE_ON_RELEASE` |
+| `dueAt` | number | + 7 days | Moved only by an approved delay (sursis) |
+| `enforced` | boolean | always `true` | Every funded cause owes a proof (DB-12) |
 | `metAt` | number | optional | Set when the proof is validated |
 
 ### proofItems
@@ -192,6 +199,38 @@ Individual items in a dossier, stored separately so each can be flagged on its o
 | `decidedBy` | Id<"users"> | optional | |
 | `createdAt` | number | required | |
 
+### payouts
+Every outgoing transfer (structure releases and donor refunds), processed **one at a time** by the payout worker (DT-4).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `kind` | string | `release`\|`refund` | |
+| `targetId` | string | required | Cause id (release) or refund-request id (refund) |
+| `amount` | number | integer > 10 | Net amount sent |
+| `method` | string | `orange_money`\|`wave` | |
+| `phone` | string | E.164 | Recipient wallet |
+| `name` | string | required | Recipient name |
+| `status` | string | `queued`\|`sending`\|`completed`\|`pending_review`\|`unknown`\|`failed` | `pending_review`: over 2,000,000 XOF, under NabooPay review. `unknown`: timeout or 5xx, must be reconciled and never resent blindly |
+| `providerOrderId` | string | optional | NabooPay payout `order_id` |
+| `attempts` | number | default 0 | Incremented on `409` retries only |
+| `error` | string | optional | Last NabooPay error message |
+| `createdAt` / `completedAt` | number | | |
+
+### extensionRequests
+Cause-deadline extensions (DB-11) and proof delays, or sursis (DB-12). Each is decided by a moderator (DT-30).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `kind` | string | `cause_deadline`\|`proof_deadline` | |
+| `targetId` | string | required | Cause id, or proofDeadline id |
+| `structureId` | Id<"structures"> | FK | |
+| `requestedUntil` | number | ≤ current date + 30 days | |
+| `reason` | string | required, ≥ 10 chars | The structure's reason |
+| `status` | string | `pending`\|`approved`\|`refused` | |
+| `moderatorReason` | string | required on refuse | |
+| `decidedBy` | Id<"users"> | optional | |
+| `createdAt` | number | required | |
+
 ### notifications
 In-app notifications (DT-17).
 
@@ -206,15 +245,16 @@ In-app notifications (DT-17).
 | `createdAt` | number | required | |
 
 ### auditLog
-Append-only record of sensitive actions (DT-18). Rows are never edited or deleted.
+Append-only record of sensitive actions **and donor activity** (DB-9, DT-18). Rows are never edited or deleted; donor login events are purged after 12 months.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `actorId` | Id<"users"> | optional | `null` means a system job (cron, webhook) |
-| `action` | string | required | e.g. `structure.approve`, `cause.refuse`, `funds.release`, `refund.decide`, `payout.change`, `password.assistedReset`, `featured.set` |
+| `action` | string | required | e.g. `auth.signup`, `auth.login`, `donation.create`, `donation.paid`, `profile.update`, `refund.request`, `structure.approve`, `cause.refuse`, `extension.decide`, `funds.release`, `payout.sent`, `payout.change`, `featured.set` |
 | `targetTable` | string | required | |
 | `targetId` | string | required | |
 | `details` | object | optional | Amounts, reasons, before/after values |
+| `ip` / `userAgent` | string | optional | When available |
 | `createdAt` | number | required | |
 
 ### bloodAlerts
@@ -227,10 +267,11 @@ Append-only record of sensitive actions (DT-18). Rows are never edited or delete
 | `unitsCollected` | number | default 0 | Confirmed donations |
 | `targetCommunes` | array<string> | ≥ 1; within the hospital's region | Targeting |
 | `estimatedRecipients` | number | required | Preview: "X donneurs notifiés" |
-| `channels` | object | `{ inApp, sms }` | `sms` only sends when `SMS_ENABLED` |
+| `channels` | object | `{ inApp, sms }` | SMS is sent to opted-in donors with `smsOptIn` |
 | `closed` | boolean | default false | |
 | `thanksMessage` | string | optional | The hospital's thank-you |
-| `createdBy` | Id<"users"> | required | Moderator, or the hospital when self-serve is enabled |
+| `createdBy` | Id<"users"> | required | The hospital user (DB-10) |
+| `closedBy` | Id<"users"> | optional | Hospital, or a moderator who closed or disabled it |
 | `createdAt` | number | required | |
 
 ### bloodResponses
@@ -255,7 +296,7 @@ Each hospital's reserves by blood group.
 | `updatedAt` | number | required | |
 
 ### Reference data — regions and communes
-These are **not a table**. Regions and communes are a static list in `lib/geo.ts`, imported by both Next.js and Convex (DT-22). Validators check every `region`/`commune` value against it. Interim data is the prototype's 8 regions; the official list of all 14 is pending (`BOARD_QUESTIONS.md` Q4).
+These are **not a table**. Regions and communes are a static list in `lib/geo.ts`, imported by both Next.js and Convex (DT-22). Validators check every `region`/`commune` value against it. Interim data is the prototype's 8 regions; the official list of all 14 is pending (`BOARD_QUESTIONS.md` Q3).
 
 ## Indexes
 
@@ -265,7 +306,8 @@ These are **not a table**. Regions and communes are a static list in `lib/geo.ts
 
 CREATE INDEX users_by_phone              ON users (phone);
 CREATE INDEX users_by_email              ON users (email);
-CREATE INDEX twoFactor_by_session        ON twoFactorCodes (sessionId);
+CREATE INDEX otp_by_phone_purpose        ON otpCodes (phone, purpose);
+CREATE INDEX otp_by_session              ON otpCodes (sessionId);
 CREATE INDEX resets_by_token             ON passwordResets (tokenHash);
 CREATE INDEX donorProfiles_by_user       ON donorProfiles (userId);
 CREATE INDEX donorProfiles_by_type_commune ON donorProfiles (bloodOptIn, bloodType, commune); -- blood alert targeting
@@ -286,6 +328,10 @@ CREATE INDEX proofItems_by_proof         ON proofItems (proofId);
 CREATE INDEX proofItems_by_ref           ON proofItems (supplier, ref);      -- reused invoice detection
 CREATE INDEX proofDeadlines_by_due       ON proofDeadlines (metAt, dueAt);   -- suspension cron
 CREATE INDEX deletions_by_status         ON deletionRequests (status);
+CREATE INDEX payouts_by_status           ON payouts (status, createdAt);     -- worker + reconciliation
+CREATE INDEX extensions_by_status        ON extensionRequests (status);
+CREATE INDEX donations_by_status_created ON donations (status, createdAt);   -- pending re-check cron
+CREATE INDEX audit_by_actor              ON auditLog (actorId, createdAt);
 CREATE INDEX notifications_by_user       ON notifications (userId, readAt);
 CREATE INDEX audit_by_target             ON auditLog (targetTable, targetId);
 CREATE INDEX alerts_by_hospital          ON bloodAlerts (hospitalId, closed);
@@ -312,6 +358,8 @@ CREATE INDEX stock_by_hospital           ON bloodStock (hospitalId, bloodType);
 - **users 1—N notifications**.
 - **structures (hospital) 1—N bloodAlerts**, and **bloodAlerts 1—N bloodResponses**.
 - **structures (hospital) 1—N bloodStock**: one row per blood group per hospital.
+- **causes 1—0..1 payouts** (release) and **refundRequests 1—0..1 payouts** (refund).
+- **causes / proofDeadlines 1—N extensionRequests**.
 - **auditLog** points to any table through `targetTable` + `targetId`.
 
 ## Access Control
@@ -326,6 +374,8 @@ POLICY causes_read_donor      ON causes          USING (status IN ('active','clo
 POLICY donations_read_owner   ON donations       USING (donorId = auth.userId());
 POLICY proofs_read_public     ON proofs          USING (status = 'validated');
 
+-- Payouts are written only by internal functions (release, refund decision, worker).
+
 -- Structures read/write only their own rows; a suspended structure cannot create causes.
 POLICY causes_write_owner     ON causes          USING (structureId = auth.structureId() AND structure.suspendedAt IS NULL);
 POLICY proofs_write_owner     ON proofs          USING (structureId = auth.structureId());
@@ -335,14 +385,15 @@ POLICY proofs_write_owner     ON proofs          USING (structureId = auth.struc
 POLICY receipt_read_mod       ON _storage(receiptFileId) USING (auth.role() = 'moderator');
 
 -- Hospitals manage only their own alerts and stock; creating alerts also requires the self-serve flag.
-POLICY alerts_write_owner     ON bloodAlerts     USING (hospitalId = auth.structureId() AND auth.role() = 'hospital' AND flag('BLOOD_ALERTS_HOSPITAL_SELF_SERVE'));
+POLICY alerts_write_owner     ON bloodAlerts     USING (hospitalId = auth.structureId() AND auth.role() = 'hospital');
+POLICY alerts_close_mod       ON bloodAlerts     USING (auth.role() = 'moderator');   -- close/disable only
 POLICY stock_write_owner      ON bloodStock      USING (hospitalId = auth.structureId());
 
 -- Donor blood data is health data: owner only; hospitals see first name + group via bloodResponses.
 POLICY donor_blood_private    ON donorProfiles   USING (userId = auth.userId());
 
--- Moderators (separate subdomain, MFA-verified, session ≤ 12 h) read all queues and write decisions.
-POLICY moderation_all         ON (structures, causes, proofs, deletionRequests, refundRequests, bloodAlerts, passwordResets)
+-- Moderators (separate subdomain, MFA-verified) read all queues and write decisions.
+POLICY moderation_all         ON (structures, causes, proofs, deletionRequests, refundRequests, extensionRequests, payouts)
                               USING (auth.role() = 'moderator' AND session.mfaVerifiedAt IS NOT NULL);
 
 -- Audit log: insert-only from server code; readable by moderators.

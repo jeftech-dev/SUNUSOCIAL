@@ -44,20 +44,22 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 #### Sprint 2 — Authentication
 **Goal:** all four account types can register and log in with the right rules.
-**Deliverable:** signup/login works for donor (phone, no OTP) and structure/hospital (email + one-time code); moderator login on its own subdomain; password reset.
+**Deliverable:** donor signup with SMS phone verification and phone + password login; structure/hospital/moderator login with SMS code; moderator login on its own subdomain; password reset; activity log.
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | Convex Auth setup; donor register/login (phone + password, no OTP) | `feat` | `convex/auth.ts`, `app/(auth)/*` | 📋 |
+| 1 | Convex Auth setup (7-day sessions); donor register (SMS code) + login (phone + password) | `feat` | `convex/auth.ts`, `app/(auth)/*` | 📋 |
 | 2 | Structure/hospital register (+ récépissé upload + payout account) → pending | `feat` | `convex/auth.ts`, `app/(auth)/inscription` | 📋 |
-| 3 | One-time code step (email via Resend; SMS-ready via `OTP_CHANNEL`) | `feat` | `convex/mfa.ts`, `convex/notify.ts` | 📋 |
+| 3 | `otp` module (signup / 2FA / reset) + SMS adapter (`console` provider until the real one is chosen) | `feat` | `convex/otp.ts`, `lib/sms/*` | 📋 |
 | 4 | Role resolution + server guards + route guards | `feat` | `convex/lib/guards.ts`, `lib/authz.ts`, route-group layouts | 📋 |
-| 4b | Password reset: email link (orgs) + assisted reset token (donors) | `feat` | `convex/passwordReset.ts`, `app/(auth)/mot-de-passe` | 📋 |
+| 4b | Password reset: SMS code (donors) + email link (orgs) | `feat` | `convex/passwordReset.ts`, `app/(auth)/mot-de-passe` | 📋 |
+| 4c | Activity/audit log (donor signup, logins, profile changes) | `feat` | `convex/audit.ts` | 📋 |
 | 5 | Blood opt-in profile fields at signup | `feat` | `convex/auth.ts`, signup form | 📋 |
 | 6 | Moderation subdomain (middleware host routing) + moderator login + `admin.createModerator` | `feat` | `middleware.ts`, `app/moderation/*`, `convex/admin.ts` | 📋 |
 
 **Definition of Done:**
-- [ ] Donor login requires no OTP; a donor must be logged in to reach the feed.
+- [ ] A donor account only exists once its phone is verified by SMS code; login is phone + password; a donor must be logged in to reach the feed.
+- [ ] Sessions expire after 7 days; logins are in the activity log.
 - [ ] New structures/hospitals land in `pending` and cannot publish.
 - [ ] The moderation subdomain rejects non-moderator and non-MFA sessions; the main host 404s `/moderation/*`.
 - [ ] Passwords hashed; no secrets in client bundle.
@@ -131,14 +133,17 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
 | 1 | `causes.requestDeletion` + `moderation.decideDeletion` (refund/payout, reason) | `feat` | `convex/causes.ts`, `convex/moderation.ts`, `app/moderation/*` | 📋 |
-| 2 | `donations.requestRefund` + `moderation.decideRefund` (while held, final, `REFUND_FEE_POLICY`) | `feat` | `convex/donations.ts`, `convex/moderation.ts` | 📋 |
+| 2 | `donations.requestRefund` + `moderation.decideRefund` (while held, final, net amount paid out to the donor) | `feat` | `convex/donations.ts`, `convex/moderation.ts` | 📋 |
+| 2b | Payout worker (single-flight, 409 retry, no auto-resend on timeout, reconciliation, balance check) | `infra` | `convex/payouts.ts` | 📋 |
+| 2c | Extension requests (cause deadline, proof delay) + moderation queue | `feat` | `convex/extensions.ts`, `app/moderation/*` | 📋 |
 | 3 | Payout-account change flow (`requestPayoutChange` → `decidePayoutAccount`, payouts blocked meanwhile) | `feat` | `convex/structures.ts`, `convex/moderation.ts` | 📋 |
 | 4 | Release: `releaseCause` (goal, scheduled) + deadline cron + proof deadlines + suspension cron | `infra` | `convex/crons.ts`, `convex/payments.ts` | 📋 |
 | 5 | Donor dashboard: deleted-cause notice, refund status | `feat` | `app/(donor)/profil` | 📋 |
 
 **Definition of Done:**
 - [ ] Deletion arbitration records a reason visible to structure + donors; payout triggers a 7-day proof deadline + auto-suspend.
-- [ ] Refund only while held; decision is final; refunded amount follows `REFUND_FEE_POLICY`.
+- [ ] Refund only while held; decision is final; the net amount is paid out to the donor's verified phone.
+- [ ] Payouts never run in parallel and are never resent automatically after a timeout.
 - [ ] Every cause releases in one payout at goal or deadline, whichever comes first; release is idempotent and blocked while a payout change is pending.
 
 ---
@@ -149,16 +154,16 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `blood.createAlert` (types, units, communes, estimate) — moderator screen + hospital screen behind flag | `feat` | `convex/blood.ts`, `app/moderation/alertes`, `app/(hospital)/hopital/alerte` | 📋 |
+| 1 | `blood.createAlert` (types, units, communes, estimate) from the hospital dashboard; moderator view/close | `feat` | `convex/blood.ts`, `app/(hospital)/hopital/alerte`, `app/moderation/alertes` | 📋 |
 | 2 | Donor `/sang`: matching alerts, opt-in profile, respond to slot | `feat` | `app/(donor)/sang/page.tsx`, `components/blood/*` | 📋 |
 | 3 | Hospital dashboard + stock edit + confirm attendee (stock +1) | `feat` | `app/(hospital)/hopital/page.tsx`, `convex/blood.ts` | 📋 |
 | 4 | Close alert + thank-you message (P2) | `feat` | `app/(hospital)/hopital/alerte`, `convex/blood.ts` | 📋 |
-| 5 | In-app + SMS notification wiring (SMS gated on provider) | `feat` | `convex/blood.ts`, SMS action | ⏸ |
+| 5 | In-app + SMS fan-out (batched; real SMS once the provider is chosen) | `feat` | `convex/blood.ts`, `convex/notify.ts` | 📋 |
 
 **Definition of Done:**
 - [ ] Alerts reach only compatible, opted-in donors in targeted communes; addresses never shared.
 - [ ] Donor can confirm a slot; hospital confirms attendees and stock updates.
-- [ ] SMS path ready behind a flag pending the SMS provider decision.
+- [ ] SMS fan-out works with the console provider and is ready for the real one.
 
 ---
 
@@ -185,10 +190,12 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 ## Full Feature Checklist
 
-- [ ] Donor account (phone + password, no OTP) — Sprint 2
+- [ ] Donor account (SMS-verified phone + password) — Sprint 2
 - [ ] Structure/hospital signup + récépissé upload + pending validation — Sprint 2
 - [ ] One-time code for org/hospital/moderator — Sprint 2 (email; SMS ⏸ pending board)
-- [ ] Password reset (email / assisted) — Sprint 2
+- [ ] Password reset (SMS for donors / email for orgs) — Sprint 2
+- [ ] Activity log — Sprint 2
+- [ ] Extension requests (cause deadline, proof delay) — Sprint 6
 - [ ] Moderator separate-platform login — Sprint 2
 - [ ] Causes feed with categories + filters — Sprint 3
 - [ ] Weekly "Coup de cœur" featured — Sprint 3
