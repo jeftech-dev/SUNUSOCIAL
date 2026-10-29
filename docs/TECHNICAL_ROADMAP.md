@@ -1,6 +1,6 @@
 # SUNUSOCIAL — Technical Roadmap
 
-A code-level map of the SUNUSOCIAL codebase for developers and AI coding agents, to read before writing code. Stack: **Next.js (App Router) + React + TypeScript + Convex**, deployed on Vercel. Amounts are integer **FCFA**.
+A code-level map of the SUNUSOCIAL codebase for developers and AI coding agents, to read before writing code. Stack: **Next.js (App Router) + React 19 + TypeScript + Convex (+ Convex Auth) + Tailwind CSS/shadcn/ui**, deployed on Vercel. Payments: **NabooPay** (funds held). Amounts are integer **FCFA**. Decisions referenced as `DB-*`/`DT-*` are in `DECISIONS.md`.
 
 ---
 
@@ -9,10 +9,12 @@ A code-level map of the SUNUSOCIAL codebase for developers and AI coding agents,
 ```text
 sunusocial/
 ├── app/                              # Next.js App Router
-│   ├── layout.tsx                    # root layout, Convex provider, fonts (Montserrat/Inter)
+│   ├── layout.tsx                    # root layout, Convex Auth provider, fonts (Montserrat/Inter)
+│   ├── globals.css                   # Tailwind + charte tokens (DT-10, DT-11)
 │   ├── page.tsx                      # 01 public landing
 │   ├── (auth)/
-│   │   ├── connexion/page.tsx        # 02 login (donor phone / org email)
+│   │   ├── connexion/page.tsx        # 02 login (donor phone / org email) + one-time code step
+│   │   ├── mot-de-passe/page.tsx     # password reset (email link / assisted-reset token)
 │   │   └── inscription/page.tsx      # 02 signup (donor / structure / hospital)
 │   ├── (donor)/                      # donor-session route group
 │   │   ├── causes/page.tsx           # 03 feed (categories, filters, featured)
@@ -26,12 +28,16 @@ sunusocial/
 │   ├── (hospital)/
 │   │   ├── hopital/page.tsx          # 09 hospital dashboard + 09b stock
 │   │   └── hopital/alerte/page.tsx   # 10 emit alert + 10b thank donors
-│   └── moderation/                   # separate platform (own URL), own layout
-│       ├── layout.tsx                # moderator-only guard
+│   └── moderation/                   # separate platform, served on moderation.<domain> (DT-9)
+│       ├── layout.tsx                # moderator-only guard (MFA-verified, session ≤ 12 h)
 │       ├── page.tsx                  # Mod 01 login
 │       ├── file/page.tsx             # Mod 02 queues
-│       └── [resource]/[id]/page.tsx  # Mod 03–07 review screens
+│       ├── [resource]/[id]/page.tsx  # Mod 03–07 review screens
+│       ├── coup-de-coeur/page.tsx    # pick the weekly featured cause (DB-6)
+│       └── alertes/page.tsx          # create blood alerts (moderator; DT-26)
+├── middleware.ts                     # host-based routing: moderation subdomain ↔ app (DT-9)
 ├── components/                       # shared presentational + interactive components
+│   ├── ui/                           # shadcn/ui primitives (generated, themed)
 │   ├── cause/CauseCard.tsx
 │   ├── cause/DonationModal.tsx       # presets, provider fee line, net, success state
 │   ├── cause/ProgressBar.tsx
@@ -40,23 +46,34 @@ sunusocial/
 │   ├── common/VerifiedBadge.tsx
 │   └── common/WhatsAppButton.tsx
 ├── convex/                           # backend: schema + functions
-│   ├── schema.ts                     # all tables (see DATABASE_SCHEMA.md)
-│   ├── auth.ts                       # register/login/session/blood profile
+│   ├── schema.ts                     # all tables + ...authTables (see DATABASE_SCHEMA.md)
+│   ├── auth.ts                       # Convex Auth config (Password provider) + register/blood profile
+│   ├── auth.config.ts                # Convex Auth JWT config
+│   ├── mfa.ts                        # one-time code issue/verify (DT-2)
+│   ├── passwordReset.ts              # email + assisted reset tokens (DT-15)
+│   ├── http.ts                       # httpRouter: auth routes + NabooPay webhook (DT-3)
 │   ├── causes.ts                     # list/get/create/update/withdraw/requestDeletion
 │   ├── donations.ts                  # checkout/history/refund request
-│   ├── payments.ts                   # provider webhook + release sweep (action/mutation)
-│   ├── proofs.ts                     # submit/get/feed + auto-flag
+│   ├── payments.ts                   # recordPayment, releaseCause, releaseDue, refunds
+│   ├── proofs.ts                     # submit/get/feed
+│   ├── proofChecks.ts                # "use node": dHash, EXIF, invoice-ref, spend checks (DT-13)
 │   ├── structures.ts                 # dashboard + profile
 │   ├── blood.ts                      # alerts/responses/stock/thanks
-│   ├── moderation.ts                 # queues + decisions
-│   ├── geo.ts                        # regions/communes reference
-│   └── crons.ts                      # scheduled: auto-release, proof-deadline suspend
+│   ├── moderation.ts                 # queues + decisions + setFeatured + payout verification
+│   ├── notify.ts                     # in-app + email (+ SMS when enabled) (DT-17)
+│   ├── audit.ts                      # append-only audit log helper (DT-18)
+│   ├── admin.ts                      # internal: createModerator (DT-20)
+│   ├── seed.ts                       # dev/preview seed data
+│   ├── migrations.ts                 # @convex-dev/migrations backfills
+│   ├── convex.config.ts              # components: rate-limiter, migrations
+│   └── crons.ts                      # scheduled: deadline release (hourly), proof-deadline suspend
 ├── lib/
-│   ├── money.ts                      # fee/net math per provider; FCFA formatting
+│   ├── money.ts                      # fee/net math (DT-6); FCFA formatting
+│   ├── config.ts                     # typed access to product flags (DECISIONS.md §3)
 │   ├── providers/index.ts            # provider adapter selector (PAYMENT_PROVIDER)
-│   ├── providers/naboopay.ts         # escrow/hold + refund
-│   ├── providers/sycapay.ts          # direct payout, no escrow
-│   ├── geo.ts                        # region→commune lists (14 regions in prod)
+│   ├── providers/naboopay.ts         # checkout, webhook verify, hold, lump-sum payout, refund
+│   ├── providers/mock.ts             # instant-success provider for dev/preview/e2e
+│   ├── geo.ts                        # region→commune lists — single source, shared with Convex (DT-22)
 │   ├── strings.fr.ts                 # centralized French UI copy
 │   └── authz.ts                      # client-side route-role helpers
 ├── hooks/
@@ -64,6 +81,8 @@ sunusocial/
 │   ├── useDonation.ts                # modal state + checkout
 │   ├── useProofDossier.ts            # dossier viewer state
 │   └── useBloodAlerts.ts             # donor/hospital alert views (live)
+├── tests/                            # Vitest (convex-test) unit + Playwright e2e (DT-23)
+├── .github/workflows/ci.yml          # lint, typecheck, test, npm audit
 ├── public/                           # static assets (logos from design/)
 ├── .env.example
 ├── package.json
@@ -78,22 +97,25 @@ export type Role = "donor" | "structure" | "hospital" | "moderator";
 export type Category = "Santé" | "Alimentation" | "Matériel";
 export type Urgency = "normal" | "urgent";
 export type Method = "orange_money" | "wave";
-export type Provider = "naboopay" | "sycapay";
-export type CauseStatus = "pending" | "active" | "closed" | "refused" | "deleted";
+export type Provider = "naboopay" | "mock";
+export type CauseStatus = "pending_review" | "active" | "refused" | "withdrawn" | "closed" | "deleted";
 export type DonationStatus = "pending" | "held" | "released" | "refunded" | "failed";
 export type BloodType = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-" | "unknown";
 export type EndType = "date" | "goal";
 
 // Entities (one per DB table; Id<T> is Convex's branded id)
-export interface User { _id: Id<"users">; role: Role; name: string; phone?: string; email?: string; structureId?: Id<"structures">; createdAt: number; }
+export interface User { _id: Id<"users">; role: Role; name: string; phone?: string; email?: string; structureId?: Id<"structures">; disabled: boolean; createdAt: number; }
 export interface DonorProfile { _id: Id<"donorProfiles">; userId: Id<"users">; bloodOptIn: boolean; bloodType?: BloodType; region?: string; commune?: string; smsOptIn: boolean; updatedAt: number; }
-export interface Structure { _id: Id<"structures">; name: string; type: string; region: string; commune: string; contactName: string; phone: string; email: string; receiptNo?: string; receiptFileId: Id<"_storage">; status: "pending" | "approved" | "refused"; refusalReason?: string; suspended: boolean; createdAt: number; }
-export interface Cause { _id: Id<"causes">; structureId: Id<"structures">; title: string; description: string; category: Category; bannerFileId: Id<"_storage">; endType: EndType; goalAmount: number; deadline: number; urgency: Urgency; raised: number; donorCount: number; status: CauseStatus; refusalReason?: string; featured: boolean; fundsReleased: boolean; createdAt: number; }
-export interface Donation { _id: Id<"donations">; causeId: Id<"causes">; donorId: Id<"users">; amount: number; fee: number; net: number; method: Method; provider: Provider; providerTxnId: string; status: DonationStatus; createdAt: number; }
+export interface PayoutAccount { method: Method; accountNumber: string; holderName: string; naboopayRecipientId?: string; verifiedAt?: number; verifiedBy?: Id<"users">; }
+export interface Structure { _id: Id<"structures">; name: string; type: string; region: string; commune: string; contactName: string; phone: string; email: string; receiptNo?: string; receiptFileId: Id<"_storage">; payout: PayoutAccount; payoutPending?: PayoutAccount; status: "pending" | "approved" | "refused"; refusalReason?: string; suspendedAt?: number; createdAt: number; }
+export interface Cause { _id: Id<"causes">; structureId: Id<"structures">; title: string; description: string; category: Category; bannerFileId: Id<"_storage">; endType: EndType; goalAmount: number; deadline: number; urgency: Urgency; raised: number; donorCount: number; status: CauseStatus; refusalReason?: string; featuredAt?: number; submittedAt: number; approvedAt?: number; closedAt?: number; fundsReleasedAt?: number; payoutTxnId?: string; }
+export interface Donation { _id: Id<"donations">; causeId: Id<"causes">; donorId: Id<"users">; amount: number; fee: number; platformFee: number; net: number; method: Method; provider: Provider; providerTxnId: string; status: DonationStatus; createdAt: number; }
 export interface SpendLine { label: string; amount: number; }
-export interface Proof { _id: Id<"proofs">; causeId: Id<"causes">; structureId: Id<"structures">; report: string; spend: SpendLine[]; status: "submitted" | "validated" | "escalated"; validatedAt?: number; dueAt?: number; createdAt: number; }
-export interface ProofItem { _id: Id<"proofItems">; proofId: Id<"proofs">; kind: "photo" | "video" | "invoice" | "delivery_note"; fileId?: Id<"_storage">; caption?: string; supplier?: string; ref?: string; lines?: SpendLine[]; durationSec?: number; flagged: boolean; flagReason?: string; }
-export interface RefundRequest { _id: Id<"refundRequests">; donationId: Id<"donations">; donorId: Id<"users">; reason: string; status: "pending" | "refunded" | "rejected"; decidedBy?: Id<"users">; createdAt: number; }
+export interface Proof { _id: Id<"proofs">; causeId: Id<"causes">; structureId: Id<"structures">; report: string; spend: SpendLine[]; status: "submitted" | "validated" | "escalated"; dossierFlags: string[]; validatedAt?: number; createdAt: number; }
+export interface ProofDeadline { _id: Id<"proofDeadlines">; causeId: Id<"causes">; structureId: Id<"structures">; reason: "release" | "deletion_payout"; dueAt: number; enforced: boolean; metAt?: number; }
+export interface Notification { _id: Id<"notifications">; userId: Id<"users">; kind: string; title: string; body: string; link?: string; readAt?: number; createdAt: number; }
+export interface ProofItem { _id: Id<"proofItems">; proofId: Id<"proofs">; kind: "photo" | "video" | "invoice" | "delivery_note"; fileId?: Id<"_storage">; caption?: string; supplier?: string; ref?: string; lines?: SpendLine[]; durationSec?: number; phash?: string; exifTakenAt?: number; flagged: boolean; flagReason?: string; }
+export interface RefundRequest { _id: Id<"refundRequests">; donationId: Id<"donations">; donorId: Id<"users">; reason: string; status: "pending" | "refunded" | "rejected"; refundAmount?: number; decidedBy?: Id<"users">; createdAt: number; }
 export interface DeletionRequest { _id: Id<"deletionRequests">; causeId: Id<"causes">; structureReason: string; status: "pending" | "approved" | "maintained"; fundOutcome?: "refund" | "payout"; moderatorReason?: string; decidedBy?: Id<"users">; createdAt: number; }
 export interface BloodAlert { _id: Id<"bloodAlerts">; hospitalId: Id<"structures">; bloodTypes: BloodType[]; level: string; unitsNeeded: number; unitsCollected: number; targetCommunes: string[]; estimatedRecipients: number; channels: { inApp: boolean; sms: boolean }; closed: boolean; thanksMessage?: string; createdBy: Id<"users">; createdAt: number; }
 export interface BloodResponse { _id: Id<"bloodResponses">; alertId: Id<"bloodAlerts">; donorId: Id<"users">; bloodType: BloodType; commune: string; slot: string; donated: boolean; createdAt: number; }
@@ -111,7 +133,7 @@ export type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: ApiErro
 export interface PaginatedResponse<T> { page: T[]; isDone: boolean; continueCursor: string | null; }
 
 // Derived view type used by the donation modal
-export interface FeeBreakdown { amount: number; provider: Provider; feeRate: number; fee: number; net: number; fundControl: "held" | "direct"; }
+export interface FeeBreakdown { amount: number; provider: Provider; feeRate: number; fee: number; platformFeeRate: number; platformFee: number; net: number; }
 ```
 
 ## 3. Function Signatures
@@ -132,14 +154,17 @@ export const requestDeletion: Mutation<{ causeId: Id<"causes">; reason: string }
 // convex/donations.ts  (checkout is an action — external side effect)
 export const createCheckout: Action<CreateDonationInput, { donationId: Id<"donations">; checkoutUrl: string } & FeeBreakdown>;
 export const mine: Query<{ cursor?: string | null; limit: number }, PaginatedResponse<DonationHistoryView>>;
-export const requestRefund: Mutation<{ donationId: Id<"donations">; reason: string }, { requestId: Id<"refundRequests"> }>; // NabooPay only
+export const requestRefund: Mutation<{ donationId: Id<"donations">; reason: string }, { requestId: Id<"refundRequests"> }>; // only while status = held
 export const forCause: Query<{ causeId: Id<"causes"> }, { total: number; count: number }>;
 ```
 
 ```typescript
 // convex/payments.ts
-export const webhook: Action<{ providerTxnId: string; donationId: Id<"donations">; status: "succeeded" | "failed"; amount: number; signature: string }, { ok: boolean }>;
-export const releaseDue: InternalMutation<{}, { released: number }>;            // cron: release at goal/deadline (NabooPay)
+// convex/http.ts: POST /payments/naboopay/webhook → httpAction: verify signature, then:
+export const recordPayment: InternalMutation<{ providerTxnId: string; donationId: Id<"donations">; status: "succeeded" | "failed"; amount: number }, { ok: boolean; duplicate: boolean }>;
+export const releaseCause: InternalAction<{ causeId: Id<"causes"> }, { released: boolean }>;   // goal reached (scheduled) or deadline (cron); one lump-sum payout; idempotent
+export const releaseDue: InternalMutation<{}, { scheduled: number }>;           // hourly cron: schedules releaseCause for causes past deadline
+export const refundDonation: InternalAction<{ donationId: Id<"donations">; amount: number }, { ok: true }>;
 ```
 
 ```typescript
@@ -170,35 +195,50 @@ export const decideStructure: Mutation<{ structureId: Id<"structures">; decision
 export const decideCause: Mutation<{ causeId: Id<"causes">; decision: "approve" | "refuse"; reason?: string }, { ok: true }>;
 export const decideProof: Mutation<{ proofId: Id<"proofs">; decision: "validate" | "escalate" }, { ok: true }>;
 export const decideDeletion: Mutation<{ requestId: Id<"deletionRequests">; decision: "approve" | "maintain"; reason: string; fundOutcome?: "refund" | "payout" }, { ok: true }>;
-export const decideRefund: Mutation<{ requestId: Id<"refundRequests">; decision: "refunded" | "rejected" }, { ok: true }>;
+export const decideRefund: Mutation<{ requestId: Id<"refundRequests">; decision: "refunded" | "rejected" }, { ok: true; refundAmount?: number }>;
+export const decidePayoutAccount: Mutation<{ structureId: Id<"structures">; decision: "approve" | "refuse"; reason?: string }, { ok: true }>;
+export const setFeatured: Mutation<{ causeId: Id<"causes"> | null }, { ok: true }>;                 // DB-6; null clears
+export const liftSuspension: Mutation<{ structureId: Id<"structures">; reason: string }, { ok: true }>;
+export const issueAssistedReset: Mutation<{ userId: Id<"users"> }, { resetUrl: string; expiresAt: number }>; // DT-15, donors only
 ```
 
 ```typescript
-// convex/auth.ts
-export const registerDonor: Mutation<{ name: string; phone: string; password: string; bloodProfile?: Partial<DonorProfile> }, { userId: Id<"users">; session: string }>;
-export const registerOrganization: Mutation<{ organizationName: string; type: string; region: string; commune: string; responsiblePhone: string; email: string; password: string; receiptFileId: Id<"_storage"> }, { structureId: Id<"structures">; status: "pending" }>;
-export const login: Mutation<{ identifier: string; password: string; twoFactorCode?: string }, { userId: Id<"users">; role: Role; session: string; twoFactorRequired: boolean }>;
-export const me: Query<{}, { user: User; profile?: DonorProfile } | null>;
+// convex/auth.ts — Convex Auth (DT-1). Sign-in uses the library's signIn("password", …) flow;
+// these are the app-specific mutations around it.
+export const { auth, signIn, signOut, store } = convexAuth({ providers: [Password({ profile: /* phone for donors, email for orgs */ })] });
+export const registerDonor: Mutation<{ name: string; phone: string; password: string; bloodProfile?: Partial<DonorProfile> }, { userId: Id<"users"> }>;
+export const registerOrganization: Mutation<{ organizationName: string; type: string; region: string; commune: string; responsiblePhone: string; email: string; password: string; receiptFileId: Id<"_storage">; payout: Omit<PayoutAccount, "naboopayRecipientId" | "verifiedAt" | "verifiedBy"> }, { structureId: Id<"structures">; status: "pending" }>;
+export const me: Query<{}, { user: User; profile?: DonorProfile; mfaRequired: boolean } | null>;
 export const updateBloodProfile: Mutation<Partial<DonorProfile>, { ok: true }>;
 
-// lib/auth guards (server helpers used inside functions)
-export function requireRole(ctx: Ctx, role: Role): asserts ctx is AuthedCtx;
-export function requireOwner(ctx: Ctx, structureId: Id<"structures">): void;
+// convex/mfa.ts (DT-2)
+export const sendCode: Action<{}, { channel: "email" | "sms"; expiresAt: number }>;
+export const verifyCode: Mutation<{ code: string }, { ok: true }>;      // sets authSessions.mfaVerifiedAt
+
+// convex/passwordReset.ts (DT-15)
+export const requestEmailReset: Action<{ email: string }, { ok: true }>;  // always ok (no account enumeration)
+export const resetWithToken: Mutation<{ token: string; newPassword: string }, { ok: true }>;
+
+// convex/structures.ts
+export const requestPayoutChange: Mutation<{ payout: Omit<PayoutAccount, "naboopayRecipientId" | "verifiedAt" | "verifiedBy"> }, { ok: true }>; // → payoutPending, payouts blocked
+
+// convex/lib/guards.ts (server helpers used inside functions)
+export async function requireRole(ctx: Ctx, ...roles: Role[]): Promise<AuthedUser>;   // also checks disabled, MFA for org/hospital/moderator, 12 h cap for moderators
+export async function requireOwner(ctx: Ctx, structureId: Id<"structures">): Promise<void>;
 ```
 
 ```typescript
 // lib/money.ts
-export const PROVIDER_RATE: Record<Provider, number>;                 // naboopay: 0.03, sycapay: 0.015
-export function computeFee(amount: number, provider: Provider): FeeBreakdown;
+export const PROVIDER_RATE: Record<Provider, number>;                 // naboopay: 0.03, mock: 0.03
+export function computeFee(amount: number, provider: Provider, platformFeeRate?: number): FeeBreakdown; // fee = Math.round(amount*rate); fee + platformFee + net === amount
 export function formatFCFA(amount: number): string;                   // "4 500 FCFA"
 
 // lib/providers/index.ts  (adapter interface, selected by PAYMENT_PROVIDER)
 export interface PaymentProvider {
   createCheckout(input: { donationId: string; amount: number; method: Method }): Promise<{ checkoutUrl: string; providerTxnId: string }>;
   verifyWebhook(payload: unknown, signature: string): boolean;
-  releaseFunds(causeId: string): Promise<void>;                       // no-op for sycapay
-  refund(donationId: string): Promise<void>;                          // throws CONFLICT for sycapay
-  readonly supportsEscrow: boolean;
+  releaseFunds(input: { causeId: string; amount: number; payout: PayoutAccount }): Promise<{ payoutTxnId: string }>; // one lump-sum payout (DB-4)
+  refund(input: { donationId: string; providerTxnId: string; amount: number }): Promise<{ refundTxnId: string }>;
 }
 ```
 
@@ -228,10 +268,13 @@ Donate (core loop)
         → lib/providers.createCheckout()       [Orange Money / Wave]
         → insert donations row (status: pending)
     ← { checkoutUrl }                     → browser redirects to provider
-  provider → HTTP webhook → convex action payments.webhook
+  NabooPay → POST /payments/naboopay/webhook (convex/http.ts httpAction)
         → lib/providers.verifyWebhook(signature)
-        → dedupe on providerTxnId
-        → mutation: donations.status = held|released; causes.raised += amount; donorCount bump
+        → internal mutation payments.recordPayment
+            → dedupe on providerTxnId
+            → donations.status = held; causes.raised += amount; donorCount bump on first gift
+            → if raised ≥ goal: scheduler.runAfter(0, payments.releaseCause)
+            → notify donor (donation_confirmed)
   ← live query causes.get pushes new progress → ProgressBar animates for all viewers
 ```
 
@@ -241,26 +284,30 @@ Submit proof
     → add ≥ 5 items (upload to Convex _storage) + report + spend
   "Envoyer la preuve"                     → convex mutation proofs.submit
         → validate items ≥ 5, report ≥ 10 chars
-        → run auto-flag (image similarity / metadata) → proofItems.flagged
         → insert proofs (status: submitted)
+        → scheduler → proofChecks.run ("use node": dHash, EXIF, invoice ref, spend vs net) → proofItems.flagged
   ← appears in moderation.queues.proofs (live)
   moderator validates → proofs.status = validated
   ← proofs.publicFeed + donations.mine[].proof.available = true  (donor dashboard)
 ```
 
 ```text
-Auto fund release (NabooPay)
+Fund release (DB-4, DB-5)
+  goal reached → payments.recordPayment schedules payments.releaseCause immediately
   convex/crons.ts (hourly) → payments.releaseDue
-    → query causes where status=active AND (raised ≥ goal OR now ≥ deadline) AND NOT fundsReleased
-    → lib/providers.releaseFunds(causeId)   [no-op under sycapay]
-    → causes.fundsReleased = true; status = closed; donations.status = released
+    → causes where status=active AND now ≥ deadline → schedule releaseCause
+  payments.releaseCause
+    → skip if fundsReleasedAt set, or structure.payoutPending set (payout blocked)
+    → lib/providers.releaseFunds({ amount: Σ net of held donations, payout })   [one transfer]
+    → causes.fundsReleasedAt, payoutTxnId, status = closed; donations.status = released
+    → insert proofDeadlines (reason: release, dueAt +7 d, enforced per flag); auditLog funds.release
 ```
 
 ```text
 Blood alert
-  (prototype) moderation OR hopital/alerte/page.tsx → blood.createAlert
+  moderation/alertes (or hopital/alerte when BLOOD_ALERTS_HOSPITAL_SELF_SERVE) → blood.createAlert
     → match donorProfiles where bloodOptIn AND bloodType ∈ types AND commune ∈ targetCommunes
-    → estimatedRecipients; send in-app + SMS
+    → estimatedRecipients; notify.send in-app (+ SMS only when SMS_ENABLED)
   donor app/(donor)/sang/page.tsx (useBloodAlerts) sees matching alert
     → "Je peux donner" → blood.respond(slot)
   hospital confirms attendee → blood.confirmDonation
@@ -274,9 +321,11 @@ Blood alert
 | File | Purpose |
 |------|---------|
 | `convex/schema.ts` | All tables + indexes (DATABASE_SCHEMA.md) |
-| `convex/auth.ts`, `causes.ts`, `donations.ts`, `payments.ts`, `proofs.ts`, `structures.ts`, `blood.ts`, `moderation.ts`, `geo.ts`, `crons.ts` | Backend functions |
-| `lib/money.ts`, `lib/providers/{index,naboopay,sycapay}.ts` | Fee math + payment adapter |
-| `lib/geo.ts`, `lib/strings.fr.ts`, `lib/authz.ts` | Reference data, French copy, guards |
+| `convex/{auth,mfa,passwordReset,http,causes,donations,payments,proofs,proofChecks,structures,blood,moderation,notify,audit,admin,seed,migrations,crons}.ts` | Backend functions |
+| `lib/money.ts`, `lib/config.ts`, `lib/providers/{index,naboopay,mock}.ts` | Fee math, flags, payment adapter |
+| `lib/geo.ts`, `lib/strings.fr.ts`, `lib/authz.ts` | Reference data, French copy, client route helpers |
+| `middleware.ts` | Host-based routing for the moderation subdomain |
+| `tests/**`, `.github/workflows/ci.yml` | Tests and CI |
 | `components/cause/*`, `components/proof/*`, `components/blood/*`, `components/common/*` | UI, ported from the prototype screens |
 | `hooks/useCauses.ts`, `useDonation.ts`, `useProofDossier.ts`, `useBloodAlerts.ts` | Client data hooks |
 | `app/**` pages | All screens (see §1) |
@@ -321,23 +370,24 @@ app/moderation/[resource]/[id]/page.tsx
 | Cause feed + filters | Convex (live) | `useCauses` |
 | Cause progress (`raised`) | Convex `causes` (denormalized) | live query → `ProgressBar` |
 | Donation modal (amount, method, fee) | Local component state | `useDonation` |
-| Active payment provider | Env `PAYMENT_PROVIDER` (+ prototype localStorage toggle) | `lib/providers` + server |
+| Active payment provider | Env `PAYMENT_PROVIDER` (`naboopay` \| `mock`) | `lib/providers` (server only) |
+| Product flags | Env (DECISIONS.md §3) | `lib/config.ts` |
 | Proof dossier draft | Local until submit | `useProofDossier` |
 | Blood alerts | Convex (live) | `useBloodAlerts` |
 | Moderation queues | Convex (live) | `moderation.queues` |
 
 ## 7. Build Order
 
-1. **Repo + tooling** — scaffold Next.js (App Router, TS strict), add Convex, ESLint/Prettier, `.env.example`.
-2. **Types** — `types.ts` (§2) and the Convex `schema.ts`; run `npx convex dev` to generate `_generated`.
-3. **Reference data** — `lib/geo.ts` + `convex/geo.ts` seed (regions/communes); `lib/strings.fr.ts`; `lib/money.ts`.
-4. **Auth** — `convex/auth.ts` (register/login/session/blood profile) + `lib/authz.ts` + auth pages.
+1. **Repo + tooling** — scaffold Next.js (App Router, TS strict), Tailwind + shadcn/ui with charte tokens, Convex, ESLint/Prettier, Vitest, CI workflow.
+2. **Types** — `types.ts` (§2) and the Convex `schema.ts` (with `authTables`); run `npx convex dev` to generate `_generated`.
+3. **Reference data** — `lib/geo.ts`, `lib/strings.fr.ts`, `lib/money.ts` (+ invariant tests), `lib/config.ts`, `convex/seed.ts`.
+4. **Auth** — Convex Auth, `mfa.ts`, `passwordReset.ts`, guards, `middleware.ts` (moderation subdomain), auth pages, `admin.createModerator`.
 5. **Causes read path** — `causes.list/get/featured` + feed and detail pages + `CauseCard`, `ProgressBar`, `VerifiedBadge`.
-6. **Payment adapter** — `lib/providers/*`, `donations.createCheckout`, `payments.webhook`; `DonationModal` + success state.
+6. **Payment adapter** — NabooPay API spike (signature, hold, payout, refund); `lib/providers/{naboopay,mock}`, `donations.createCheckout`, `http.ts` webhook + `payments.recordPayment`; `DonationModal` + success state.
 7. **Structure path** — `causes.create/update/withdraw`, org dashboard + create-cause wizard; status timeline.
-8. **Proofs** — `proofs.submit/get/feed` + auto-flag; `ProofGallery`; donor dashboard proof access.
-9. **Moderation** — `moderation.*` + queues and review screens; separate layout + role guard.
+8. **Proofs** — `proofs.submit/get/feed` + `proofChecks`; `ProofGallery`; donor dashboard proof access.
+9. **Moderation** — `moderation.*` + queues, review screens, payout verification, Coup de cœur picker, audit log, notifications.
 10. **Deletions & refunds** — `requestDeletion`, `requestRefund`, `decideDeletion`, `decideRefund`; fund-fate logic.
-11. **Fund release cron** — `crons.ts` + `payments.releaseDue`; proof-deadline suspension cron.
+11. **Fund release** — `payments.releaseCause` (goal) + `crons.ts`/`releaseDue` (deadline); proof-deadline suspension cron.
 12. **Blood module** — `blood.*`, donor `/sang`, hospital dashboard/alert/thanks.
-13. **Edge cases & polish** — empty/loading/error states, responsive pass at 375px, French copy review, accessibility focus states.
+13. **Edge cases & polish** — empty/loading/error states, responsive pass at 375px, French copy review, accessibility focus states, Playwright e2e on the donate flow.

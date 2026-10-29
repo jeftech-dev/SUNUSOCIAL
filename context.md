@@ -3,7 +3,8 @@
 > Single source of truth for generating the SUNUSOCIAL documentation bundle.
 > Everything here is decided unless marked **[OPEN]** (pending SUNUSOCIAL board decision)
 > or **[HYPOTHESIS]** (a working assumption to validate).
-> Last updated: 28 October 2026.
+> Last updated: 29 October 2026. Decisions taken since the first version are logged in
+> `docs/DECISIONS.md`; remaining board questions are in `docs/BOARD_QUESTIONS.md`.
 
 ---
 
@@ -56,9 +57,11 @@ There are **three** distinct user types, each with a separate experience:
 
 - **Donor:** phone number + password. Signup adds a name. **No OTP** (dropped to avoid SMS
   cost and infrastructure dependency).
-- **Organization:** phone number + name + password. Signup also collects organization name,
-  type, location, and a récépissé ministériel document upload.
-- **Moderator:** separate platform, email + password, no role selector.
+- **Organization / hospital:** professional email + password (≥ 12 characters) + two-factor code
+  (validated 12/10/2026). Signup also collects organization name, type, region → commune,
+  responsible's phone, a récépissé ministériel / agrément upload, and a payout account
+  (Orange Money or Wave). The code is sent by email until SMS is approved, then by SMS.
+- **Moderator:** separate platform (own subdomain), email + password + two-factor code, no role selector.
 
 Note: donors must be logged in to see and donate to causes — the account exists so each
 donation can be tied to a known phone number.
@@ -106,9 +109,11 @@ donation can be tied to a known phone number.
 
 ---
 
-## 8. Payment provider — the central open decision **[OPEN]**
+## 8. Payment provider — **decided: NabooPay**
 
-The board is choosing between two providers. The prototype simulates both via a toggle.
+The board chose **NabooPay** (29/10/2026), with **funds held** until the cause's release
+condition. SycaPay is dropped. The comparison below is kept for history; the prototype's
+provider toggle no longer reflects a live option.
 
 | | NabooPay | SycaPay |
 |---|---|---|
@@ -127,20 +132,20 @@ risk, not on billing.
 ~338M FCFA capital, processes 10–15 billion FCFA/month, references include Ecobank, VISA,
 Orange Money, Allianz.
 
-**Fund release rule (agreed for prototype):**
-- Time-limited cause: at the deadline, **everything collected is released to the structure
-  automatically**, even if only 1% of the goal was reached.
-- Release is **automatic**, not manual (no moderator action to release funds).
-- **[HYPOTHESIS]** A monetary-goal cause that never reaches its goal would otherwise hold funds
-  forever under escrow. Proposed fix: every cause also carries a deadline; monetary causes
-  release at the goal OR the deadline, whichever comes first. Needs board validation.
+**Fund release rule (decided):**
+- **Every cause has a deadline**, even when its end condition is a monetary goal, so money is
+  never held too long.
+- Release happens at the goal **or** the deadline, whichever comes first. At the deadline,
+  **everything collected is released**, even if only 1% of the goal was reached.
+- Release is **automatic** (no moderator action) and paid in **one lump sum** per cause.
+- Open: the maximum allowed duration of a cause (`docs/BOARD_QUESTIONS.md` Q5).
 
 ---
 
 ## 9. Money flow (agreed)
 
-- Funds go **directly to the structure** (there is no SUNUSOCIAL-held central account), with
-  escrow applied at the provider level if NabooPay is chosen.
+- Funds go **directly to the structure's verified payout account** (there is no SUNUSOCIAL-held
+  central account); NabooPay holds them until release, then pays them out in one transfer.
 - **Only monetary donations** for the MVP. There is **no logistics for in-kind donations**
   (food, materials delivered physically) yet.
 - SUNUSOCIAL takes a **percentage** to cover maintenance (not profit). **[OPEN]** Whether to
@@ -158,8 +163,9 @@ A secondary module. Hospitals act like structures but, instead of financial caus
   sang" (off by default). If on, the donor provides **residency** (Pikine, Mbour, Plateau,
   Autre) and **blood type** (A+, A−, B+, B−, AB+, AB−, O+, O−, or "Je ne connais pas mon groupe").
   Blood type is health data — hence opt-in, editable later, with a short explanation.
-- **Alert creation:** for the prototype, the **moderator** creates alerts (final decision on
-  whether hospitals self-serve belongs to SUNUSOCIAL). The form takes hospital name, hospital
+- **Alert creation:** for now the **moderator** creates alerts; whether hospitals can send
+  alerts themselves is a board question (`docs/BOARD_QUESTIONS.md` Q2). Both screens are
+  built; hospital self-serve sits behind a flag. The form takes hospital name, hospital
   city, blood type needed, urgency level. Shows "X donneurs compatibles seront notifiés" before
   sending; active-alerts list with a "Clôturer l'alerte" action.
 - **Donor receives:** informational only, no in-app action. In-app notification + SMS.
@@ -181,7 +187,9 @@ detail page and in the footer.
 - **Frontend/Hosting:** Next.js on Vercel (Pro).
 - **Backend/Database:** Convex (Pro), chosen partly for real-time updates (live progress bars,
   blood alert notifications).
-- **Payments:** NabooPay or SycaPay (see §8).
+- **Payments:** NabooPay (see §8).
+- **Auth:** Convex Auth; **styling:** Tailwind CSS + shadcn/ui themed with the charte;
+  **email:** Resend. Full list of technical decisions in `docs/DECISIONS.md`.
 - Mobile-first, fully responsive. French throughout.
 
 ---
@@ -189,19 +197,23 @@ detail page and in the footer.
 ## 13. Branding
 
 A charte graphique and logo have been delivered by the client. The design must be a **full
-rebrand built from the charte**, not a recolor of an earlier prototype. Design system base:
-"Industry" (structured, clean, serious-but-warm), with the charte's own colors/type layered on.
+rebrand built from the charte**, not a recolor of an earlier prototype. **The charte wins**:
+Montserrat / Inter, the charte palette and logo rules. The "Industry" package in
+`prototype/_ds/` is reference only — its fonts, steel accent and blueprint frames are not used.
+For accessibility, white text on orange uses the darker `#a9561a` (see `docs/DECISIONS.md` DT-11).
 
 ---
 
-## 14. Open items to resolve (summary)
+## 14. Decisions and open items
 
-1. **[OPEN]** Final payment provider: NabooPay vs SycaPay (board decision, pending SycaPay doc review).
-2. **[OPEN]** Revenue model: percentage on donations vs. organization subscription.
-3. **[OPEN]** Blood alert notification channel: SMS validation (cost + dedicated number).
-4. **[OPEN]** Who creates blood alerts long-term: hospitals vs. moderator.
-5. **[OPEN]** Organization document verification: document-only vs. physical visit.
-6. **[HYPOTHESIS]** Deadline-based release for monetary causes to avoid funds held forever.
+**Decided by the board (29/10/2026):** NabooPay; funds held until release; document-only
+structure verification by the moderator; lump-sum payout; every cause has a deadline (release
+at goal or deadline); "Coup de cœur" curated by the moderator.
+
+**Still open** — see `docs/BOARD_QUESTIONS.md`: SMS (provider, budget, sender ID), who sends
+blood alerts, revenue model, official commune list, maximum cause duration, proof deadline for
+all funded causes, refund fees, minimum donation, payout-account holder, CDP declaration,
+legal status, legal documents, domain/WhatsApp/accounts.
 
 ---
 
