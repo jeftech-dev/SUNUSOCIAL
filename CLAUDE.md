@@ -25,4 +25,4 @@ French-language web platform (Senegal) connecting donors with verified social st
 - Local env: `PAYMENT_PROVIDER=mock`, `SMS_PROVIDER=console` (codes appear in the Convex logs).
 
 ## Workflow
-Branch off `develop` (`feat/`, `fix/`, `chore/`, `infra/`), Conventional Commits, PR into `develop`. See `CONTRIBUTING.md`.
+Branch off `dev` (`feat/`, `fix/`, `chore/`, `infra/`), Conventional Commits, PR into `dev`. See `CONTRIBUTING.md`.

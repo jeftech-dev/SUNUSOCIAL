@@ -20,7 +20,7 @@
 | Agent setup | ✅ Done | Root `CLAUDE.md` + 15 skills in `.claude/skills/` |
 | Design | ✅ Delivered | Charte PDF + logo + prototype (updated to the 29/10 decisions in rev. 5) |
 | Open board questions | 🟠 9 + setup checklist | `BOARD_QUESTIONS.md`: questions Q1–Q9 + part E (what SUNUSOCIAL creates and sends us), ready to send |
-| Repo setup | ✅ Done | PR + issue templates, `.editorconfig`, `.nvmrc` (Node 20), `.gitattributes`, VS Code recommendations, `develop` branch |
+| Repo setup | ✅ Done | PR + issue templates, `.editorconfig`, `.nvmrc` (Node 20), `.gitattributes`, VS Code recommendations, `dev` branch |
 | Code, CI, tests | ❌ Not started | Sprint 1 |
 
 ---

@@ -6,16 +6,16 @@ Thanks for building SUNUSOCIAL. This is a small team (JefTech: lead/CTO, Bachir 
 
 ```text
 main          # production — always deployable; protected; deploys to Vercel prod
-develop       # integration branch — features merge here first
+dev           # integration branch — features merge here first
 feat/<slug>   # one branch per feature            e.g. feat/donation-modal
 fix/<slug>    # bug fixes                          e.g. fix/progress-bar-rounding
 chore/<slug>  # tooling, deps, config             e.g. chore/convex-upgrade
 infra/<slug>  # deployment / env / CI             e.g. infra/vercel-preview
 ```
 
-- Branch off `develop` for everyday work; open a PR back into `develop`.
-- `develop` → `main` is a release PR, reviewed by the lead developer.
-- Never commit directly to `main` or `develop`.
+- Branch off `dev` for everyday work; open a PR back into `dev`.
+- `dev` → `main` is a release PR, reviewed by the lead developer.
+- Never commit directly to `main` or `dev`.
 
 ## Commit Convention
 
@@ -36,14 +36,14 @@ Keep user-facing strings in **French**; keep code, comments, and commit messages
 ## Development Workflow
 
 1. Pick or open a task (see `docs/IMPLEMENTATION_ROADMAP.md` for the current sprint).
-2. Create a branch off `develop`: `git checkout -b feat/<slug>`.
+2. Create a branch off `dev`: `git checkout -b feat/<slug>`.
 3. Run the app locally — `npx convex dev` in one terminal, `npm run dev` in another (`PAYMENT_PROVIDER=mock`). Moderation is at `http://moderation.localhost:3000`.
 4. Build the feature. Keep changes scoped to one concern per PR.
 5. Validate: `npm run lint`, `npm run typecheck`, and any tests for the area you touched.
 6. Verify French copy renders correctly and the screen is responsive (test at 375px and desktop).
-7. Push and open a PR into `develop` with a short description and screenshots/GIFs for UI changes.
+7. Push and open a PR into `dev` with a short description and screenshots/GIFs for UI changes.
 8. Address review. The lead developer approves and merges.
-9. Releases: open `develop` → `main`; Vercel deploys on merge.
+9. Releases: open `dev` → `main`; Vercel deploys on merge.
 
 ## Code Standards
 
