@@ -21,7 +21,7 @@ Merci pour vos réponses. Voici ce que nous avons retenu, pour validation finale
 | Alertes de don de sang | **Les hôpitaux les envoient eux-mêmes** |
 | Preuve d'utilisation | **Obligatoire pour toute cause financée**, dans les 7 jours suivant le versement. La structure peut demander un **sursis** au modérateur. Sans preuve, le compte est suspendu automatiquement |
 | Remboursement d'un don | Le donateur récupère le **montant net**, c'est-à-dire le don moins les frais NabooPay |
-| Don minimum | **500 FCFA** à titre provisoire (voir Q4) |
+| Don minimum | **500 FCFA** à titre provisoire (voir Q6) |
 | Utilisation des SMS | Double authentification des structures, hôpitaux et modérateurs · **vérification du numéro des donateurs à l'inscription** · récupération du mot de passe des donateurs · alertes de sang · notifications importantes |
 | Durée des sessions | **1 semaine au maximum**, puis il faut se reconnecter |
 | Historique d'activité | Les actions des donateurs sont enregistrées : inscription, connexions, dons, modifications du profil |
