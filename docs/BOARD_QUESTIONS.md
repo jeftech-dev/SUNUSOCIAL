@@ -16,7 +16,7 @@ Merci pour vos réponses. Voici ce que nous avons retenu, pour validation finale
 | Gestion des fonds | Les fonds sont **bloqués** jusqu'à la fin de la cause, puis versés **en une seule fois** |
 | Durée des causes | **Toute cause a une date limite**, de **30 jours au maximum**. Les fonds sont versés à l'objectif atteint ou à la date limite, au premier des deux. Une structure peut demander une **prolongation**, que le modérateur accepte ou refuse |
 | Vérification des structures | **Sur documents uniquement**, validée ou refusée par le modérateur |
-| Compte de réception | Le **responsable** choisit Orange Money ou Wave et indique **son numéro et son nom** |
+| Compte de réception | Le **responsable** choisit Orange Money ou Wave et indique **son numéro et son nom**. Le numéro est **vérifié par un code SMS** à l'inscription, pour éviter toute erreur : un versement envoyé au mauvais numéro ne peut pas être récupéré |
 | Coup de cœur de la semaine | Choisi par le **modérateur** |
 | Alertes de don de sang | **Les hôpitaux les envoient eux-mêmes** |
 | Preuve d'utilisation | **Obligatoire pour toute cause financée**, dans les 7 jours suivant le versement. La structure peut demander un **sursis** au modérateur. Sans preuve, le compte est suspendu automatiquement |
@@ -26,7 +26,7 @@ Merci pour vos réponses. Voici ce que nous avons retenu, pour validation finale
 | Durée des sessions | **1 semaine au maximum**, puis il faut se reconnecter |
 | Historique d'activité | Les actions des donateurs sont enregistrées : inscription, connexions, dons, modifications du profil |
 
-Il reste les questions ci-dessous. Le développement peut avancer sans attendre, mais **le lancement en dépend**.
+Il reste les questions ci-dessous (parties A à C), et la liste de ce que SUNUSOCIAL doit créer et nous transmettre (partie E). Le développement peut avancer sans attendre, mais **le lancement en dépend**.
 
 ---
 
@@ -68,22 +68,14 @@ Le prototype couvre 8 régions. La version finale doit couvrir **les 14 régions
 
 ---
 
-### Q4 — Circuit de l'argent avec NabooPay (information importante)
-En étudiant l'API de NabooPay, nous avons constaté un point qui change la description du circuit des fonds :
+### Q4 — Circuit de l'argent : le compte NabooPay de SUNUSOCIAL
+**Note :** l'idée de départ était qu'il n'y ait « aucun compte central SUNUSOCIAL ». En pratique, NabooPay fonctionne avec **un compte marchand au nom de SUNUSOCIAL** :
+1. les dons y arrivent et y restent bloqués jusqu'à la fin de la cause ;
+2. la plateforme les verse ensuite **automatiquement** à la structure.
 
-1. Tous les dons arrivent d'abord sur **le compte marchand NabooPay de SUNUSOCIAL**.
-2. C'est depuis ce compte que la plateforme verse ensuite l'argent aux structures, ou rembourse les donateurs.
+Une fois ce compte configuré (voir la partie E), **aucune manipulation manuelle n'est nécessaire** : ni pour les versements aux structures, ni pour les remboursements. La plateforme vérifie aussi chaque jour que le solde du compte correspond aux dons en attente.
 
-C'est ce qui permet de **bloquer les fonds** comme vous l'avez décidé. Mais cela signifie que **SUNUSOCIAL détient temporairement l'argent des donateurs**, contrairement à l'idée de départ (« aucun compte central SUNUSOCIAL »).
-
-**Conséquences à valider :**
-- **Comptabilité :** le solde du compte NabooPay doit toujours correspondre aux dons en attente. La plateforme le vérifie automatiquement.
-- **Vérification NabooPay (KYB) :** tant que SUNUSOCIAL n'a pas fait vérifier son entreprise auprès de NabooPay, le compte est **limité à 200 000 FCFA par mois**. Il faut lancer cette vérification **dès maintenant** (voir Q7).
-- **Gros versements :** un versement de plus de 2 000 000 FCFA est vérifié manuellement par NabooPay, ce qui peut retarder le paiement de la structure.
-
-**À décider :** le bureau valide-t-il ce fonctionnement, et lance-t-il la vérification KYB auprès de NabooPay ?
-
----
+**À valider :** le bureau confirme-t-il ce fonctionnement ?
 
 ## B. Règles à préciser
 
@@ -93,6 +85,8 @@ C'est ce qui permet de **bloquer les fonds** comme vous l'avez décidé. Mais ce
 **À décider :**
 - Quelles informations demander en **phase 2** ? Par exemple : NINEA, statuts, adresse précise, photos des locaux, composition du bureau, compte au nom de la structure…
 - La phase 2 est-elle **obligatoire avant le premier versement**, ou peut-elle être complétée plus tard, et dans quel délai ?
+
+**Bon à savoir :** pour envoyer l'argent, NabooPay n'a besoin que du **moyen de paiement (Orange Money ou Wave) et du numéro**. Le nom n'est pas contrôlé par NabooPay. La phase 1 suffit donc pour payer une structure. La phase 2 sert à mieux connaître la structure, pas à la payer.
 
 **En attendant :** la phase 2 est prévue dans le système mais n'est pas obligatoire.
 
@@ -104,7 +98,7 @@ Nous partons sur **500 FCFA**, comme convenu. Le bureau souhaite-t-il revoir ce 
 ## C. Questions juridiques
 
 ### Q7 — Statut juridique de SUNUSOCIAL
-Quel est le statut juridique de SUNUSOCIAL (association, ONG, autre) ? Une autorisation est-elle nécessaire pour collecter des dons auprès du public ? NabooPay demandera ces documents pour la vérification KYB (Q4).
+Quel est le statut juridique de SUNUSOCIAL (association, ONG, autre) ? Une autorisation est-elle nécessaire pour collecter des dons auprès du public ? NabooPay demandera ces documents pour la vérification de l'entreprise (partie E).
 
 ### Q8 — Données personnelles et données de santé
 Le groupe sanguin est une **donnée de santé** (loi n° 2008-12). La plateforme enregistre aussi un **historique d'activité** des donateurs, et elle est hébergée **hors du Sénégal**.
@@ -118,16 +112,44 @@ Il faut, en français : des **conditions générales d'utilisation**, une **poli
 
 ---
 
-## D. Informations pratiques
+## D. Ce que JËFTECH prend en charge
 
-### Q10 — À nous transmettre
-- **Nom de domaine** souhaité (par ex. `sunusocial.sn`), et qui l'achète.
-- **Numéro WhatsApp** officiel.
-- **Adresse e-mail** d'envoi.
-- **Comptes Vercel, Convex et NabooPay** au nom de SUNUSOCIAL, avec JËFTECH invitée comme administrateur.
-- **Premier modérateur :** nom, e-mail et téléphone.
+**Vercel, Convex et Resend** (hébergement, base de données, e-mails) sont créés et administrés par JËFTECH. SUNUSOCIAL n'a rien à configurer. Comme prévu au contrat, les frais d'hébergement (environ 45 000 FCFA/mois) sont payés par SUNUSOCIAL : il suffit d'enregistrer **la carte de paiement de SUNUSOCIAL** sur ces comptes (voir E5).
 
 ---
+
+## E. Ce que SUNUSOCIAL doit créer et nous transmettre
+
+Ces éléments sont nécessaires au développement et à la mise en ligne, en plus des réponses aux questions ci-dessus.
+
+### E1 — Compte NabooPay (indispensable)
+Le compte doit être **au nom de SUNUSOCIAL** : JËFTECH ne peut pas le créer à sa place.
+
+1. **Créer le compte** de SUNUSOCIAL sur `platform.naboopay.com`, et **remplir le profil de l'entreprise** (secteur d'activité). Sans ce profil, NabooPay refuse toute opération.
+2. **Faire vérifier l'entreprise (KYB)** avec les documents juridiques de SUNUSOCIAL (voir Q7). **Tant que ce n'est pas fait, le compte est limité à 200 000 FCFA de dons par mois**, ce qui est insuffisant dès les premières causes.
+3. **Activer** sur le compte : **Wave**, **Orange Money** et les **versements (payouts)**.
+4. **Créer deux clés d'API**, d'abord en test puis en production, et nous les transmettre **de façon sécurisée** (jamais par WhatsApp ni par e-mail en clair ; nous proposerons un outil de partage) :
+   - une clé avec la permission **« checkout »**, pour encaisser les dons ;
+   - une clé avec la permission **« payout »**, pour verser l'argent aux structures et rembourser les donateurs.
+5. **Enregistrer l'adresse de notification (webhook)** que nous vous fournirons, et nous transmettre la **clé secrète** associée.
+6. **Cagnottes de plus de 2 000 000 FCFA :** chez NabooPay, tout versement au-delà de ce montant est **vérifié manuellement** avant d'être envoyé, ce qui peut retarder le paiement de la structure de quelques jours. Lors de la vérification KYB, **demandez à NabooPay** si ce plafond peut être relevé pour un compte vérifié, et quel est leur délai de vérification. De notre côté, la plateforme préviendra la structure quand un versement est en cours de vérification.
+
+### E2 — SMS
+Une fois le fournisseur choisi (Q1) : ouvrir le compte au nom de SUNUSOCIAL, **faire enregistrer le nom d'expéditeur** (par ex. « SUNUSOCIAL »), et nous transmettre la clé d'API de façon sécurisée.
+
+### E3 — Nom de domaine
+Le **nom de domaine** (par ex. `sunusocial.sn`), acheté au nom de SUNUSOCIAL, avec un **accès à la configuration DNS** pour JËFTECH. Il sert au site (`sunusocial.sn`), à l'espace de modération (`moderation.sunusocial.sn`) et à l'envoi des e-mails.
+
+### E4 — Contacts
+- Le **numéro WhatsApp** officiel de SUNUSOCIAL.
+- **Le premier modérateur :** nom, e-mail et téléphone. JËFTECH crée son compte, et il recevra ses codes de connexion par SMS.
+
+### E5 — Facturation de l'hébergement
+Une **carte de paiement au nom de SUNUSOCIAL**, à enregistrer sur Vercel et Convex (environ 45 000 FCFA/mois), ainsi que sur le fournisseur SMS.
+
+### E6 — Contenus
+- La **liste officielle des régions et communes** (Q3), si SUNUSOCIAL la fournit.
+- Les **textes légaux** (Q9), s'ils sont rédigés par le juriste de SUNUSOCIAL.
 
 ### Récapitulatif
 
@@ -136,10 +158,11 @@ Il faut, en français : des **conditions générales d'utilisation**, une **poli
 | Q1 | Fournisseur SMS, budget, expéditeur | Inscription des donateurs, connexions, alertes | 🔴 Haute |
 | Q2 | Modèle de revenus | Calcul des frais affiché | 🔴 Haute |
 | Q3 | Liste des 14 régions et communes | Inscriptions, alertes | 🔴 Haute |
-| Q4 | Circuit de l'argent et vérification KYB NabooPay | Encaissement au-delà de 200 000 FCFA/mois | 🔴 Haute |
+| Q4 | Validation du circuit de l'argent (compte NabooPay de SUNUSOCIAL) | Versements | 🔴 Haute |
 | Q5 | Phase 2 d'inscription des structures | Versements, si la phase 2 est rendue obligatoire | 🟠 Moyenne |
 | Q6 | Don minimum | — (500 FCFA en attendant) | 🟢 Basse |
-| Q7 | Statut juridique | Vérification NabooPay | 🔴 Haute |
+| Q7 | Statut juridique | Vérification NabooPay (E1) | 🔴 Haute |
 | Q8 | Déclaration CDP | Module don de sang | 🔴 Haute |
 | Q9 | CGU et politiques | Mise en ligne | 🟠 Moyenne |
-| Q10 | Domaine, WhatsApp, comptes, modérateur | Mise en ligne | 🟠 Moyenne |
+| E1 | Compte NabooPay, vérification KYB, clés d'API, webhook | Encaissement des dons | 🔴 Haute |
+| E2–E6 | SMS, domaine, contacts, carte de paiement, contenus | Mise en ligne | 🟠 Moyenne |

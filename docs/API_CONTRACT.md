@@ -47,7 +47,8 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "payout": {                                      // required — verified by the moderator with the documents
     "method": "wave",                             // orange_money | wave
     "accountNumber": "+221771234567",             // E.164
-    "holderName": "Khadija Sow"                   // the responsible's own name (phase 1)
+    "holderName": "Khadija Sow",                  // the responsible's own name (phase 1) — informational, not checked by NabooPay
+    "otpCode": "204817"                           // required — otp.send({ purpose: "payout_number", phone: accountNumber })
   }
 }
 ```

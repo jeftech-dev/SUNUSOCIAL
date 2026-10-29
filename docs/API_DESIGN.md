@@ -41,9 +41,9 @@ Everything else requires a session. **Donors must be logged in to view and donat
 ### Auth
 | Kind | Function | Description | Auth |
 |------|----------|-------------|------|
-| action | `otp.send` | Send an SMS code (purpose: `donor_signup` \| `login_2fa` \| `password_reset`) | Public / pre-MFA session |
+| action | `otp.send` | Send an SMS code (purpose: `donor_signup` \| `login_2fa` \| `password_reset` \| `payout_number`) | Public / pre-MFA session |
 | mutation | `auth.registerDonor` | Create donor (name, phone, password, SMS code) — phone verified | Public |
-| mutation | `auth.registerOrganization` | Create structure/hospital + upload récépissé + payout account; pending validation | Public |
+| mutation | `auth.registerOrganization` | Create structure/hospital + upload récépissé + payout account (number verified by SMS code); pending validation | Public |
 | action | `signIn("password")` / `signOut` | Convex Auth: phone+password (donor) or email+password (org/hospital/mod) | Public |
 | mutation | `otp.verifyLogin` | Verify the SMS code; marks the session MFA-verified | Org/hospital/mod session, pre-MFA |
 | mutation | `passwordReset.resetWithSmsCode` | Donor: new password with a valid SMS code | Public (code) |
@@ -88,7 +88,7 @@ Everything else requires a session. **Donors must be logged in to view and donat
 |------|----------|-------------|------|
 | query | `structures.me` | Dashboard stats for the signed-in structure | Structure |
 | mutation | `structures.update` | Edit profile | Structure |
-| mutation | `structures.requestPayoutChange` | Request a new payout account (blocks payouts until a moderator approves) | Structure |
+| mutation | `structures.requestPayoutChange` | Request a new payout account (SMS code on the new number + moderator approval; payouts blocked meanwhile) | Structure |
 | query | `notifications.mine` / mutation `notifications.markRead` | In-app notifications | Any session |
 
 ### Blood module

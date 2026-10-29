@@ -32,22 +32,15 @@ Product questions that are still open live in `BOARD_QUESTIONS.md` (French). Eac
 | **DB-12** | **A proof is mandatory for every funded cause**, due 7 days after the payout. The structure can ask for a delay (sursis), which the moderator approves or refuses. A missed deadline auto-suspends the structure | `proofDeadlines` is always enforced. Delay requests use the same extension flow (DT-30) |
 | **DB-13** | **Refunds return the net amount** (the donation minus the NabooPay fee) | Refunds are paid out with NabooPay **payouts**, not its refund endpoint, because that endpoint only does full refunds (DT-7) |
 | **DB-14** | **Minimum donation: 500 FCFA for now**, to be studied with the board | `MIN_DONATION = 500` |
-| **DB-15** | **Payout account:** the responsible person chooses Orange Money or Wave and gives the number and their own name. **Structure onboarding has 2 phases**: phase 1 at signup, phase 2 later to collect the structure's full information | `structures.payout` holds the responsible's account. `onboardingPhase` is tracked. What phase 2 collects, and what it unlocks, is open (`BOARD_QUESTIONS.md`) |
+| **DB-15** | **Payout account:** the responsible person chooses Orange Money or Wave and gives the number and their own name. **The number is verified by an SMS code** (agreed 29/10). **Structure onboarding has 2 phases**: phase 1 at signup, phase 2 later to collect the structure's full information | `structures.payout` holds the responsible's account. A NabooPay payout only needs the method and the number, so phase 1 is enough to pay a structure. `onboardingPhase` is tracked. What phase 2 collects, and what it unlocks, is open (`BOARD_QUESTIONS.md` Q5) |
 
-### ⚠️ Correction to the money flow, from the NabooPay API review
+### Note: the money flow goes through SUNUSOCIAL's NabooPay account
 
-The original brief said funds go "directly to the structure, with no SUNUSOCIAL-held central account". **NabooPay doesn't work that way.**
+The original brief said there would be "no SUNUSOCIAL-held central account". NabooPay works with **one merchant account in SUNUSOCIAL's name**:
+1. Every donation is credited to that account and held there.
+2. Structures are paid, and donors refunded, through **payouts** from that account.
 
-1. Every payment is credited to the **merchant's main NabooPay account**, and the merchant is SUNUSOCIAL.
-2. Payouts and refunds are then sent **from that account** to mobile-money wallets.
-
-So donations pass through **SUNUSOCIAL's NabooPay merchant account** until they are paid out. That is what makes holding funds possible, but it also has consequences:
-
-- **Legal.** SUNUSOCIAL temporarily holds donors' money.
-- **Accounting.** The app's ledger must match the NabooPay balance at all times.
-- **KYB.** An unverified NabooPay organisation is capped at **200,000 XOF per month**, so SUNUSOCIAL must complete NabooPay's business verification (KYB) before launch.
-
-This has been added to `BOARD_QUESTIONS.md` for the board to acknowledge.
+Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everything is **automatic**. A daily reconciliation keeps the app ledger and the NabooPay balance in step (DT-4). The board is asked to acknowledge this in `BOARD_QUESTIONS.md` Q4.
 
 ---
 
@@ -66,6 +59,7 @@ This has been added to `BOARD_QUESTIONS.md` for the board to acknowledge.
 | Purpose | Who | When |
 |---|---|---|
 | `donor_signup` | Donor | The account is created only after the code is verified, which sets `phoneVerifiedAt` |
+| `payout_number` | Structure / hospital | Proves control of the OM/Wave payout number, at signup and on every change (DT-5) |
 | `login_2fa` | Structure / hospital / moderator | Every login. Sets `authSessions.mfaVerifiedAt`; `requireRole()` rejects the session until then |
 | `password_reset` | Donor | Code sent to the verified phone, then a new password |
 
@@ -141,9 +135,11 @@ This has been added to `BOARD_QUESTIONS.md` for the board to acknowledge.
 *Adapter:* `PaymentProvider` (`createCheckout`, `verifyWebhook`, `getTransaction`, `cancelTransaction`, `payout`, `getPayout`, `listPayouts`, `getBalance`) with `naboopay` and `mock` implementations. Production refuses `mock`.
 
 **DT-5 — The structure's payout account (DB-15).**
-- `structures.payout = { method: orange_money | wave, accountNumber (E.164), holderName (the responsible), verifiedAt?, verifiedBy? }`.
-- It is collected in onboarding phase 1 and verified by the moderator together with the documents.
-- **A change goes back to moderator review**, and payouts are blocked until it is approved. The change is audit-logged.
+- `structures.payout = { method: orange_money | wave, accountNumber (E.164), holderName (the responsible), phoneVerifiedAt?, verifiedAt?, verifiedBy? }`.
+- **What NabooPay needs:** a payout only requires `selected_payment_method`, the amount and the recipient phone. The name is optional and NabooPay does not check it against the wallet holder. So the number is enough to pay, and **a wrong number sends money to a stranger, irreversibly**.
+- **The number is therefore verified by an SMS code** (OTP purpose `payout_number`) at signup, which proves the responsible controls that SIM. The name is stored as information for the moderator and is passed to NabooPay as the recipient name.
+- The moderator approves the account together with the documents.
+- **Changing the account** requires an SMS code on the **new** number **and** a moderator re-approval. Payouts are blocked meanwhile, and the change is audit-logged.
 
 **DT-6 — Money arithmetic.**
 
@@ -271,6 +267,19 @@ Flags are advisory; the moderator decides.
 - Vitest + `convex-test` for the backend: money invariants, status transitions, authz, release/refund/payout worker with a mocked NabooPay (409, timeout and `pending` cases included).
 - Playwright e2e for the donation flow with the `mock` provider.
 - GitHub Actions runs lint, typecheck, test and `npm audit` on every PR.
+
+**DT-32 — Who creates and owns which account.**
+
+| Account | Created and administered by | Owner / billing |
+|---|---|---|
+| Vercel, Convex, Resend | **JefTech** | Billed to **SUNUSOCIAL's card** (contract: the client pays the infrastructure directly) |
+| NabooPay | **SUNUSOCIAL** (merchant account, KYB, API keys, webhook) | SUNUSOCIAL |
+| SMS provider | SUNUSOCIAL (sender ID registration) | SUNUSOCIAL |
+| Domain + DNS | SUNUSOCIAL | SUNUSOCIAL; JefTech gets DNS access |
+
+- Keys are shared through a secrets manager, never by chat or plain email.
+- Production secrets live only in the Vercel and Convex environments.
+- The full checklist for SUNUSOCIAL is in `BOARD_QUESTIONS.md` part E.
 
 **DT-29 — Before an SMS provider is chosen.** In development and preview, `SMS_PROVIDER=console`. Production cannot launch without a real provider (DB-7).
 

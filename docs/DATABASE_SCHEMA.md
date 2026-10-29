@@ -32,7 +32,7 @@ SMS one-time codes (DT-2).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `purpose` | string | `donor_signup`\|`login_2fa`\|`password_reset` | |
+| `purpose` | string | `donor_signup`\|`login_2fa`\|`password_reset`\|`payout_number` | |
 | `phone` | string | E.164 | Where the code was sent |
 | `userId` | Id<"users"> | optional | Not set for `donor_signup`, because the account doesn't exist yet |
 | `sessionId` | Id<"authSessions"> | optional | For `login_2fa`: the session the code unlocks |
@@ -80,7 +80,7 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `email` | string | required | Professional email |
 | `receiptNo` | string | optional | Récépissé or agrément number |
 | `receiptFileId` | Id<"_storage"> | required | Uploaded document. **Moderators only** |
-| `payout` | object | required | `{ method: "orange_money"\|"wave", accountNumber (E.164), holderName (the responsible), verifiedAt?, verifiedBy? }`. See DT-5 |
+| `payout` | object | required | `{ method: "orange_money"\|"wave", accountNumber (E.164), holderName (the responsible), phoneVerifiedAt, verifiedAt?, verifiedBy? }`. The number is verified by SMS code (DT-5) |
 | `payoutPending` | object | optional | A requested change to the payout account, waiting for moderator review. While it is set, payouts are blocked |
 | `status` | string | `pending`\|`approved`\|`refused` | Validation state (documents + payout account, DB-3) |
 | `refusalReason` | string | optional | Shown to the structure if refused |

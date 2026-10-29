@@ -89,7 +89,7 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 - [ ] A donor must be logged in to view and donate to causes.
 - [ ] Structure/hospital signup collects org name, type, region→commune, responsible phone, email, password (≥ 12 chars), and a document upload (PDF/JPG/PNG, ≤ 5 MB).
 - [ ] New structures/hospitals start in **pending validation** and cannot publish until approved.
-- [ ] Structure/hospital signup collects a payout account (method, number, holder name); the moderator verifies it with the documents, and changing it later sends it back to review.
+- [ ] Structure/hospital signup collects a payout account (method, number, the responsible's name); the number is verified by SMS code, the moderator approves it with the documents, and a later change needs a new SMS code plus moderator re-approval.
 - [ ] Structure/hospital/moderator login enforces an SMS one-time code at every login.
 - [ ] Sessions expire after at most 7 days.
 - [ ] "Mot de passe oublié ?" works: SMS code for donors; email link for organizations.
@@ -205,8 +205,8 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 - [ ] Q1 SMS provider, budget, sender ID.
 - [ ] Q2 Revenue model.
 - [ ] Q3 Official list of the 14 regions and their communes.
-- [ ] Q4 Acknowledge the NabooPay money flow (funds transit through SUNUSOCIAL's merchant account) and start NabooPay KYB.
+- [ ] Q4 Acknowledge the NabooPay money flow (funds held in SUNUSOCIAL's merchant account, paid out automatically).
 - [ ] Q5 Content and timing of the structure onboarding phase 2.
 - [ ] Q6 Review of the 500 FCFA minimum.
 - [ ] Q7–Q9 Legal status, CDP declaration, legal documents.
-- [ ] Q10 Domain, WhatsApp number, account ownership, first moderator.
+- [ ] Part E — what SUNUSOCIAL provides: NabooPay account (KYB, keys, webhook), SMS account, domain + DNS, WhatsApp, first moderator, billing card, content.

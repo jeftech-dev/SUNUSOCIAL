@@ -30,7 +30,7 @@
 |------|------------|--------|------------|
 | Forged payment webhook inflates funds / triggers payout | Medium | High | Verify provider signature; idempotency on `providerTxnId`; never trust client-reported payment status |
 | Fake structure collects donations | Medium | High | Document verification (documents + payout account) by a moderator before publishing; moderation of every cause; funds held until goal/deadline; proof-or-suspend rule |
-| Payout account swapped to divert funds | Medium | High | Payout changes go to `payoutPending` and block payouts until a moderator re-approves; audit-logged; MFA on structure logins |
+| Payout account swapped to divert funds, or mistyped | Medium | High | Payout number verified by SMS code at signup and on every change; changes go to `payoutPending` and block payouts until a moderator re-approves; audit-logged; MFA on structure logins |
 | Faked proof dossier | Medium | High | Auto-flags (perceptual-hash duplicates, EXIF date, reused invoice refs, spend vs. received — DT-13); moderator reviews full dossier; ≥ 5 items + invoices required; public visibility deters reuse |
 | Donor health data (blood type/commune) leaked | Low | High | Opt-in only, off by default; hospitals never see address; expose only first name + group on responses; access checks on `donorProfiles` |
 | Account takeover (structure/hospital/moderator) | Medium | High | Email + 12-char password + **SMS one-time code** at each login; rate-limited login and code entry; hashed passwords; separate moderation subdomain; sessions ≤ 7 days |
