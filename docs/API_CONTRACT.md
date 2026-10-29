@@ -44,7 +44,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "email": "contact@keurkhadija.sn",              // required, professional email
   "password": "••••••••••••",                     // required, ≥ 12 chars
   "receiptFileId": "file_…",                       // required — uploaded récépissé/agrément (PDF/JPG/PNG ≤ 5MB)
-  "payout": {                                      // required — verified by the moderator with the documents
+  "payout": {                                      // required for structures, omitted for hospitals — approved by the moderator with the documents
     "method": "wave",                             // orange_money | wave
     "accountNumber": "+221771234567",             // E.164
     "holderName": "Khadija Sow",                  // the responsible's own name (phase 1) — informational, not checked by NabooPay

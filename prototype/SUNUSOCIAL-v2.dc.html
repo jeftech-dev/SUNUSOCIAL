@@ -213,6 +213,18 @@ input,select,button,textarea{font-family:inherit}
           <div style="display:flex;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff"><span style="display:flex;align-items:center;gap:6px;padding:0 12px;background:#f6f7f9;border-right:1.5px solid #e2e8f0;font-size:14px;font-weight:600;color:#334155;white-space:nowrap">+221</span><input value="{{ phone }}" onChange="{{ onPhone }}" placeholder="77 123 45 67" style="flex:1;min-width:0;border:0;padding:13px 14px;font-size:15px;outline:none"></input></div>
         </label>
         </sc-if>
+        <sc-if value="{{ showPayout }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px;border:1.5px solid #f3dcc4;background:#fffaf5;border-radius:16px;padding:14px">
+            <span style="font-size:13px;font-weight:700;color:#1e293b">Compte de réception des fonds</span>
+            <div style="display:flex;gap:4px;background:#f3f4f7;border-radius:12px;padding:4px;align-self:flex-start">
+              <button onClick="{{ setOM }}" style="border:0;border-radius:9px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;background:{{ omBg }};color:{{ omFg }}">Orange Money</button>
+              <button onClick="{{ setWave }}" style="border:0;border-radius:9px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;background:{{ waveBg }};color:{{ waveFg }}">Wave</button>
+            </div>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155"><span>Numéro {{ payMethod }} du responsable</span><input value="{{ payPhone }}" onChange="{{ onPayPhone }}" placeholder="77 123 45 67" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#de7d28"></input></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Nom du responsable<input value="{{ payName }}" onChange="{{ onPayName }}" placeholder="Khadija Sow" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff" style-focus="border-color:#de7d28"></input></label>
+            <span style="font-size:12px;color:#5b6678;line-height:1.5">Les fonds de vos causes seront versés sur ce numéro. Il sera confirmé par un code SMS, puis vérifié par notre équipe.</span>
+          </div>
+        </sc-if>
         <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Mot de passe<input type="password" placeholder="••••••••" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none" style-focus="border-color:#174a7c"></input></label>
         <sc-if value="{{ showSecure }}" hint-placeholder-val="{{ false }}"><span style="display:flex;gap:8px;align-items:center;font-size:12px;color:#5b6678;margin-top:-6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#de7d28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>{{ secureNote }}</span></sc-if>
         <sc-if value="{{ showUpload }}" hint-placeholder-val="{{ false }}">
@@ -222,13 +234,20 @@ input,select,button,textarea{font-family:inherit}
               <span style="flex:none;width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#de7d28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span>
               <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600;color:#1e293b">{{ fileLabel }}</span><span style="font-size:12px;color:#8a94a6">PDF, JPG ou PNG · 5 Mo max.</span></span>
             </button>
-            <span style="align-self:flex-start;font-size:12px;font-weight:600;color:#b4601a;background:#fdf0e3;border-radius:999px;padding:4px 10px">Vérification en cours de définition</span>
+            <span style="align-self:flex-start;font-size:12px;font-weight:600;color:#3b7a29;background:#ebf5e6;border-radius:999px;padding:4px 10px">Vérifié par notre équipe de modération</span>
           </div>
         </sc-if>
         <sc-if value="{{ showHospitalNote }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;gap:10px;align-items:flex-start;background:#fbeceb;border-radius:14px;padding:12px 14px;font-size:13px;color:#7a1f19;line-height:1.5"><svg style="flex:none;margin-top:1px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b8322a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></svg><span>Les hôpitaux ne créent pas de cagnotte : ils publient des alertes quand un groupe sanguin manque, envoyées aux donneurs compatibles autour d'eux.</span></div>
         </sc-if>
         <sc-if value="{{ showHospitalLogin }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goHospital }}" style="align-self:flex-start;background:none;border:0;padding:0;font-size:13px;color:#b8322a;font-weight:600;cursor:pointer;margin-top:-6px">Vous êtes un hôpital ? Accéder à l'espace alertes →</button></sc-if>
+        <sc-if value="{{ showOtp }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;border:1.5px solid #cfe0f1;background:#f4f8fc;border-radius:16px;padding:14px">
+            <span style="font-size:13px;color:#334155;line-height:1.5">Un code à 6 chiffres a été envoyé par SMS au <b>{{ otpTarget }}</b>.</span>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Code reçu par SMS<input value="{{ otp }}" onChange="{{ onOtp }}" placeholder="••••••" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff;letter-spacing:.3em;font-weight:700" style-focus="border-color:#174a7c"></input></label>
+            <span style="font-size:12px;color:#8a94a6">Prototype : n'importe quel code à 6 chiffres est accepté. <button onClick="{{ resend }}" style="background:none;border:0;padding:0;color:#174a7c;font-weight:600;cursor:pointer;font-size:12px">{{ resendLabel }}</button></span>
+          </div>
+        </sc-if>
         <sc-if value="{{ isLoginMode }}" hint-placeholder-val="{{ true }}"><a href="#" style="font-size:13px;align-self:flex-end;margin-top:-8px">Mot de passe oublié ?</a></sc-if>
         <button onClick="{{ submit }}" style="margin-top:4px;background:{{ roleColor }};color:#fff;border:0;border-radius:999px;padding:16px;font-family:Montserrat,sans-serif;font-weight:700;font-size:16px;cursor:pointer;transition:background .5s,filter .2s" style-hover="filter:brightness(.9)">{{ submitLabel }}</button>
         <p style="margin:0;font-size:12px;color:#8a94a6;text-align:center">{{ legal }}</p>
@@ -256,7 +275,7 @@ const GEO = {
 };
 
 class Component extends DCLogic {
-  state = { region: 'Dakar', commune: 'Dakar-Plateau', screen: 'landing', role: 'donor', mode: 'login', name: '', phone: '', file: false, w: 1200 };
+  state = { region: 'Dakar', commune: 'Dakar-Plateau', screen: 'landing', role: 'donor', mode: 'login', name: '', phone: '', file: false, w: 1200, payMethod: 'Orange Money', payPhone: '', payName: '', otpSent: false, otp: '', resent: false };
   componentDidMount() {
     this._r = () => this.setState({ w: window.innerWidth });
     window.addEventListener('resize', this._r); this._r();
@@ -266,13 +285,18 @@ class Component extends DCLogic {
     if (h.startsWith('#auth')) this.setState({ screen: 'auth', role: h.includes('org') ? 'org' : 'donor', mode: h.includes('signup') ? 'signup' : 'login' });
   }
   componentWillUnmount() { window.removeEventListener('resize', this._r); if (this._ro) this._ro.disconnect(); }
-  auth(role, mode) { this.setState({ screen: 'auth', role, mode }); window.scrollTo(0, 0); }
+  auth(role, mode) { this.setState({ screen: 'auth', role, mode, otpSent: false, otp: '' }); window.scrollTo(0, 0); }
   renderVals() {
     const s = this.state, donor = s.role === 'donor', signup = s.mode === 'signup', wide = s.w >= 820;
     const B = '#174a7c', O = '#de7d28';
     const roleColor = donor ? B : O;
     const tab = on => ({ bg: on ? '#fff' : 'transparent', fg: on ? '#1e293b' : '#5b6678', sh: on ? '0 2px 8px -2px rgba(30,41,59,.2)' : 'none' });
     const tl = tab(!signup), ts = tab(signup);
+    const hospital = !donor && s.orgType === 'Hôpital (don de sang)';
+    const needsOtp = signup && !hospital, showOtp = needsOtp && s.otpSent;
+    const showPayout = !donor && signup && !hospital;
+    const extraH = (showPayout ? 450 : 0) + (showOtp ? (donor ? 150 : 205) : 0);
+    const om = s.payMethod === 'Orange Money';
     return {
       isLanding: s.screen === 'landing', isAuth: s.screen === 'auth',
       goLanding: () => { this.setState({ screen: 'landing' }); window.scrollTo(0, 0); },
@@ -296,33 +320,42 @@ class Component extends DCLogic {
       roleColor, ringColor: donor ? 'rgba(222,125,40,.45)' : 'rgba(23,74,124,.35)',
       pillX: donor ? '0%' : '100%',
       donorTabFg: donor ? '#fff' : '#5b6678', orgTabFg: donor ? '#5b6678' : '#fff',
-      setDonor: () => this.setState({ role: 'donor' }), setOrg: () => this.setState({ role: 'org' }),
-      setLogin: () => this.setState({ mode: 'login' }), setSignup: () => this.setState({ mode: 'signup' }),
+      setDonor: () => this.setState({ role: 'donor', otpSent: false, otp: '' }), setOrg: () => this.setState({ role: 'org', otpSent: false, otp: '' }),
+      setLogin: () => this.setState({ mode: 'login', otpSent: false, otp: '' }), setSignup: () => this.setState({ mode: 'signup', otpSent: false, otp: '' }),
       loginBg: tl.bg, loginFg: tl.fg, loginSh: tl.sh, signupBg: ts.bg, signupFg: ts.fg, signupSh: ts.sh,
       isWide: wide, isNarrow: !wide,
-      cardH: wide ? (donor ? (signup ? '880px' : '540px') : (signup ? (s.orgType === 'Hôpital (don de sang)' ? '1010px' : '910px') : '570px')) : 'auto',
+      cardH: wide ? ((donor ? (signup ? 880 : 540) : (signup ? (hospital ? 1150 : 910) : 570)) + extraH) + 'px' : 'auto',
       brandX: donor ? '100%' : '0%',
       formPos: wide ? 'absolute' : 'relative', formW: wide ? '50%' : '100%', formX: wide ? (donor ? '0%' : '100%') : '0%',
       brandKicker: donor ? 'Espace donateur' : 'Espace structure',
       brandTitle: donor ? 'Chaque franc, suivi jusqu’à la preuve.' : 'Publiez vos besoins, recevez des dons traçables.',
       brandText: donor ? 'Choisissez une cause vérifiée, donnez par Orange Money ou Wave, et recevez la preuve de réception publiée par la structure.' : 'Orphelinats, pouponnières, foyers, centres : soumettez vos causes, suivez leur modération et justifiez chaque réception auprès de vos donateurs.',
       formTitle: donor ? (signup ? 'Créer mon compte donateur' : 'Bon retour parmi nous') : (signup ? 'Inscrire ma structure' : 'Connexion structure ou hôpital'),
-      formSub: donor ? (signup ? 'Trente secondes, sans carte bancaire.' : 'Connectez-vous avec votre numéro et votre mot de passe.') : (signup ? 'Votre dossier sera vérifié par notre équipe avant la publication de vos causes.' : 'Connectez-vous avec votre e-mail professionnel et votre mot de passe.'),
+      formSub: donor ? (signup ? 'Trente secondes, sans carte bancaire. Votre numéro sera confirmé par SMS.' : 'Connectez-vous avec votre numéro et votre mot de passe.') : (signup ? 'Votre dossier sera vérifié par notre équipe avant la publication de vos causes.' : 'Connectez-vous avec votre e-mail professionnel et votre mot de passe.'),
       showEmail: !donor, showPhone: donor || signup, phoneLabel: donor ? 'Numéro de téléphone' : 'Téléphone du responsable', showSecure: !donor, secureNote: signup ? '12 caractères minimum · double authentification par SMS à chaque connexion' : 'Un code de vérification sera envoyé au téléphone du responsable',
       showName: donor && signup, showOrgFields: !donor && signup, showUpload: !donor && signup, isLoginMode: !signup,
       name: s.name, phone: s.phone,
       blood: s.blood || '?', addr: s.addr || '', onBlood: e => this.setState({ blood: e.target.value }), regions: Object.keys(GEO), communes: GEO[s.region || 'Dakar'], region: s.region, commune: s.commune,
       onRegion: e => { const r = e.target.value; this.setState({ region: r, commune: GEO[r][0] }); }, onCommune: e => this.setState({ commune: e.target.value }),
-      orgType: s.orgType || 'Orphelinat', onOrgType: e => this.setState({ orgType: e.target.value }),
+      orgType: s.orgType || 'Orphelinat', onOrgType: e => this.setState({ orgType: e.target.value, otpSent: false, otp: '' }),
+      showPayout, payMethod: s.payMethod, payPhone: s.payPhone, payName: s.payName,
+      setOM: () => this.setState({ payMethod: 'Orange Money' }), setWave: () => this.setState({ payMethod: 'Wave' }),
+      omBg: om ? '#fff' : 'transparent', omFg: om ? '#1e293b' : '#5b6678', waveBg: om ? 'transparent' : '#fff', waveFg: om ? '#5b6678' : '#1e293b',
+      onPayPhone: e => this.setState({ payPhone: e.target.value }), onPayName: e => this.setState({ payName: e.target.value }),
+      showOtp, otp: s.otp, onOtp: e => this.setState({ otp: e.target.value.replace(/\D/g, '').slice(0, 6) }),
+      otpTarget: '+221 ' + ((donor ? s.phone : s.payPhone) || '77 123 45 67'),
+      resend: () => this.setState({ resent: true }), resendLabel: s.resent ? 'Code renvoyé ✓' : 'Renvoyer le code',
       showHospitalNote: !donor && signup && s.orgType === 'Hôpital (don de sang)', showHospitalLogin: !donor && !signup,
       goHospital: () => { location.href = 'Hopital-v2.dc.html'; },
       onName: e => this.setState({ name: e.target.value }), onPhone: e => this.setState({ phone: e.target.value }),
       toggleFile: () => this.setState({ file: !s.file }),
       fileLabel: s.file ? 'recepisse_ministere_2026.pdf ✓' : 'Glissez votre fichier ou cliquez pour parcourir',
       fileBorder: s.file ? '#529e3b' : '#e7b98f', fileBg: s.file ? '#ebf5e6' : '#fffaf5',
-      submitLabel: signup ? (donor ? 'Créer mon compte' : 'Envoyer mon dossier') : 'Se connecter',
+      submitLabel: showOtp ? 'Vérifier le code et continuer' : (signup ? (needsOtp ? 'Recevoir le code par SMS' : 'Envoyer mon dossier') : 'Se connecter'),
       legal: signup ? 'En continuant, vous acceptez les conditions d’utilisation de SUNUSOCIAL.' : 'Vos données sont chiffrées et ne sont jamais revendues.',
       submit: () => {
+        if (needsOtp && !s.otpSent) { this.setState({ otpSent: true, otp: '', resent: false }); return; }
+        if (needsOtp && s.otp.length !== 6) return;
         if (donor) {
           try { if (signup) { localStorage.setItem('sunu_blood', s.blood || '?'); localStorage.setItem('sunu_addr', s.commune + ', ' + s.region); } localStorage.setItem('sunu_name', (s.name || 'Aminata Diop').trim()); if (s.phone) localStorage.setItem('sunu_phone', '+221 ' + s.phone); } catch (e) {}
           location.href = 'Donateur-v2.dc.html';

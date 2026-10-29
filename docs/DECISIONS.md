@@ -59,7 +59,7 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 | Purpose | Who | When |
 |---|---|---|
 | `donor_signup` | Donor | The account is created only after the code is verified, which sets `phoneVerifiedAt` |
-| `payout_number` | Structure / hospital | Proves control of the OM/Wave payout number, at signup and on every change (DT-5) |
+| `payout_number` | Structure (not hospitals) | Proves control of the OM/Wave payout number, at signup and on every change (DT-5) |
 | `login_2fa` | Structure / hospital / moderator | Every login. Sets `authSessions.mfaVerifiedAt`; `requireRole()` rejects the session until then |
 | `password_reset` | Donor | Code sent to the verified phone, then a new password |
 
@@ -135,6 +135,7 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 *Adapter:* `PaymentProvider` (`createCheckout`, `verifyWebhook`, `getTransaction`, `cancelTransaction`, `payout`, `getPayout`, `listPayouts`, `getBalance`) with `naboopay` and `mock` implementations. Production refuses `mock`.
 
 **DT-5 — The structure's payout account (DB-15).**
+- **Only structures that raise money have one.** Hospitals only send blood alerts and never receive funds, so they don't give a payout account and `structures.payout` is absent for them.
 - `structures.payout = { method: orange_money | wave, accountNumber (E.164), holderName (the responsible), phoneVerifiedAt?, verifiedAt?, verifiedBy? }`.
 - **What NabooPay needs:** a payout only requires `selected_payment_method`, the amount and the recipient phone. The name is optional and NabooPay does not check it against the wallet holder. So the number is enough to pay, and **a wrong number sends money to a stranger, irreversibly**.
 - **The number is therefore verified by an SMS code** (OTP purpose `payout_number`) at signup, which proves the responsible controls that SIM. The name is stored as information for the moderator and is passed to NabooPay as the recipient name.

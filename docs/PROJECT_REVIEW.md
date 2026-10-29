@@ -18,9 +18,10 @@
 | Architecture, schema, API, security | ✅ Aligned | NabooPay API v2 (checked against the `naboopay` skill), SMS codes, payout worker, extension requests, activity log |
 | Plan | ✅ Updated | `IMPLEMENTATION_ROADMAP.md`: 8 one-week sprints, all 📋 Planned |
 | Agent setup | ✅ Done | Root `CLAUDE.md` + 15 skills in `.claude/skills/` |
-| Design | ✅ Delivered | Charte PDF + logo + prototype. ⚠️ The prototype is now **out of date** (§5) |
+| Design | ✅ Delivered | Charte PDF + logo + prototype (updated to the 29/10 decisions in rev. 5) |
 | Open board questions | 🟠 9 + setup checklist | `BOARD_QUESTIONS.md`: questions Q1–Q9 + part E (what SUNUSOCIAL creates and sends us), ready to send |
-| Code, CI, tests | ❌ Not started | |
+| Repo setup | ✅ Done | PR + issue templates, `.editorconfig`, `.nvmrc` (Node 20), `.gitattributes`, VS Code recommendations, `develop` branch |
+| Code, CI, tests | ❌ Not started | Sprint 1 |
 
 ---
 
@@ -129,12 +130,7 @@ All of this is reflected across the docs. The rev. 1 interim measures that no lo
    - whether payouts have any fees;
    - whether the 2,000,000 XOF manual-review threshold can be raised for a verified account, and how long the review takes.
 3. Pick a **secrets-sharing tool** for the API keys (e.g. Bitwarden Send or 1Password).
-4. **Update the prototype** before showing it to the client again. It still has:
-   - the NabooPay/SycaPay toggle;
-   - the moderator creating blood alerts;
-   - no SMS step at donor signup or on the payout number;
-   - no extension or delay requests;
-   - a Specifications register that lists decided items as "À valider".
+4. ~~Update the prototype~~ **Done (rev. 5).** NabooPay only (provider toggle removed), SMS code at donor and structure signup, payout account for structures only, 30-day causes with extension and proof-delay requests (structure + moderator queue), net refunds, and the Specifications register rewritten with the 29/10 decisions. Tested in Chromium with Playwright.
 
 ### Ready to build now
 **Sprints 1 to 5 can start immediately.** Development uses `PAYMENT_PROVIDER=mock` and `SMS_PROVIDER=console`, so nothing waits on the board until go-live.

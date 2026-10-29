@@ -39,3 +39,6 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# skills CLI working dir (project skills live in .claude/skills)
+.agents/

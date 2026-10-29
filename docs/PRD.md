@@ -82,14 +82,14 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 ## 5. Feature Specifications
 
 ### 5.1 Accounts & Authentication — P0
-**Description.** Donors register with full name, phone (+221) and password; **the phone is verified by an SMS code** before the account is created, and donor activity is logged. Structures/hospitals register with organization name, type, region, commune, responsible's phone, professional email, password, a récépissé/agrément upload, and a **payout account** (the responsible chooses Orange Money or Wave and gives their number and name); they log in with email + password + an **SMS code**. A second onboarding phase later collects the structure's full information. Sessions last at most one week for every role. Moderators use a separate platform, email + password, no role selector.
+**Description.** Donors register with full name, phone (+221) and password; **the phone is verified by an SMS code** before the account is created, and donor activity is logged. Structures/hospitals register with organization name, type, region, commune, responsible's phone, professional email, password, a récépissé/agrément upload, and — for structures only, not hospitals — a **payout account** (the responsible chooses Orange Money or Wave and gives their number and name); they log in with email + password + an **SMS code**. A second onboarding phase later collects the structure's full information. Sessions last at most one week for every role. Moderators use a separate platform, email + password, no role selector.
 **Acceptance criteria**
 - [ ] Donor signup requires name, phone, password and a valid SMS code sent to that phone; login is phone + password (no code at login).
 - [ ] Donor activity (signup, logins, donations, profile changes, refund requests) is recorded in the activity log.
 - [ ] A donor must be logged in to view and donate to causes.
 - [ ] Structure/hospital signup collects org name, type, region→commune, responsible phone, email, password (≥ 12 chars), and a document upload (PDF/JPG/PNG, ≤ 5 MB).
 - [ ] New structures/hospitals start in **pending validation** and cannot publish until approved.
-- [ ] Structure/hospital signup collects a payout account (method, number, the responsible's name); the number is verified by SMS code, the moderator approves it with the documents, and a later change needs a new SMS code plus moderator re-approval.
+- [ ] **Structure** signup (not hospitals, which never receive funds) collects a payout account (method, number, the responsible's name); the number is verified by SMS code, the moderator approves it with the documents, and a later change needs a new SMS code plus moderator re-approval.
 - [ ] Structure/hospital/moderator login enforces an SMS one-time code at every login.
 - [ ] Sessions expire after at most 7 days.
 - [ ] "Mot de passe oublié ?" works: SMS code for donors; email link for organizations.

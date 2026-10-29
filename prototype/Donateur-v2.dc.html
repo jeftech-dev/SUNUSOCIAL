@@ -602,7 +602,7 @@ const LEVEL = { vitale: ['URGENCE VITALE', '#b8322a', '#fff'], urgente: ['URGENT
 const SLOTS = ["aujourd'hui entre 10 h et 12 h", "aujourd'hui entre 14 h et 16 h", 'demain entre 8 h et 10 h'];
 
 const PROV = { NabooPay: ['3 %', "Fonds conservés jusqu'à l'objectif ou la date limite, puis versés à la structure."], Sycapay: ['1,5 %', 'Chaque don est versé directement à la structure.'] };
-const readProv = () => { try { return localStorage.getItem('sunu_provider') === 'Sycapay' ? 'Sycapay' : 'NabooPay'; } catch (e) { return 'NabooPay'; } };
+const readProv = () => 'NabooPay'; // board decision 29/10/2026: NabooPay only (SycaPay dropped)
 const RKEY = 'sunu_refund_reqs';
 const readReqs = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch (e) { return []; } };
 const readDec = () => { try { return JSON.parse(localStorage.getItem('sunu_del_decisions') || '{}'); } catch (e) { return {}; } };

@@ -49,7 +49,7 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
 | 1 | Convex Auth setup (7-day sessions); donor register (SMS code) + login (phone + password) | `feat` | `convex/auth.ts`, `app/(auth)/*` | 📋 |
-| 2 | Structure/hospital register (+ récépissé upload + payout account) → pending | `feat` | `convex/auth.ts`, `app/(auth)/inscription` | 📋 |
+| 2 | Structure/hospital register (+ récépissé/agrément upload; payout account + SMS check for structures only) → pending | `feat` | `convex/auth.ts`, `app/(auth)/inscription` | 📋 |
 | 3 | `otp` module (signup / 2FA / reset) + SMS adapter (`console` provider until the real one is chosen) | `feat` | `convex/otp.ts`, `lib/sms/*` | 📋 |
 | 4 | Role resolution + server guards + route guards | `feat` | `convex/lib/guards.ts`, `lib/authz.ts`, route-group layouts | 📋 |
 | 4b | Password reset: SMS code (donors) + email link (orgs) | `feat` | `convex/passwordReset.ts`, `app/(auth)/mot-de-passe` | 📋 |
