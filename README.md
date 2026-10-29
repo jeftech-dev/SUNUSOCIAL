@@ -88,6 +88,7 @@ sunusocial/
 ├── .env.example              # environment variable template
 ├── docs/                     # documentation bundle (PRD, architecture, API, schema, security, roadmaps…)
 │   ├── DECISIONS.md          # authoritative decision log — wins over any other doc
+│   ├── PARCOURS.md           # every user flow and button in one chart (French), + points to decide
 │   └── BOARD_QUESTIONS.md    # open product questions for the SUNUSOCIAL board (French)
 ├── design/                   # charte graphique PDF + source logo
 ├── prototype/                # the clickable HTML prototype (reference for build), Netlify-deployable

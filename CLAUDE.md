@@ -7,6 +7,7 @@ French-language web platform (Senegal) connecting donors with verified social st
 2. `docs/TECHNICAL_ROADMAP.md` — file tree, types, function signatures, data flows, build order.
 3. `docs/DATABASE_SCHEMA.md` and `docs/API_CONTRACT.md` — tables and payloads.
 4. `docs/IMPLEMENTATION_ROADMAP.md` — current sprint.
+   `docs/PARCOURS.md` — every user flow, button and cross-role consequence in one chart (French). Build screens to match it.
 5. `docs/BOARD_QUESTIONS.md` — open product questions. Never invent an answer in code: use the interim default from `DECISIONS.md` §3.
 
 `prototype/` is the clickable HTML reference for screens and French copy — port from it; don't edit it while building features (it's only updated when a product decision changes, so the client demo stays accurate). It loads React/Babel from unpkg and is served as static files (Netlify config in `prototype/netlify.toml`). `prototype/_ds` ("Industry") is reference only; the charte graphique (`design/`) wins.

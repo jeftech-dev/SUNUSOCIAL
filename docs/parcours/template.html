@@ -1,0 +1,254 @@
+<title>Parcours SUNUSOCIAL</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one continuous swimlane — five lane columns with lifelines, every scenario a band read top to bottom; collapses to a list under 760px. */
+:root {
+  --bg: #f5f7fa; --surface: #ffffff; --fg: #1e293b; --muted: #5b6678; --line: #dfe4ec; --life: #cfd7e3;
+  --brand: #174a7c; --band: #eef2f7;
+  --lane-D: #174a7c; --lane-S: #a9561a; --lane-Y: #475569; --lane-M: #3b7a29; --lane-H: #a03b2a;
+  --tint-D: #e6eef7; --tint-S: #fbeee2; --tint-Y: #eceff3; --tint-M: #e7f2e3; --tint-H: #f8e7e4;
+  --warn: #8a5a00; --warn-bg: #fff4dc; --warn-line: #e8c46a;
+  --font-display: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1621; --surface: #162131; --fg: #e3e9f2; --muted: #9aa8bb; --line: #26354a; --life: #2c3d55;
+  --brand: #8fb8e6; --band: #1a2738;
+  --lane-D: #8fb8e6; --lane-S: #f0a564; --lane-Y: #aab6c6; --lane-M: #8fcf7b; --lane-H: #f09a8c;
+  --tint-D: #1c3047; --tint-S: #3a2a1b; --tint-Y: #222d3c; --tint-M: #1f3320; --tint-H: #3a2020;
+  --warn: #f3cf7a; --warn-bg: #33290f; --warn-line: #7a6022; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1621; --surface: #162131; --fg: #e3e9f2; --muted: #9aa8bb; --line: #26354a; --life: #2c3d55;
+  --brand: #8fb8e6; --band: #1a2738;
+  --lane-D: #8fb8e6; --lane-S: #f0a564; --lane-Y: #aab6c6; --lane-M: #8fcf7b; --lane-H: #f09a8c;
+  --tint-D: #1c3047; --tint-S: #3a2a1b; --tint-Y: #222d3c; --tint-M: #1f3320; --tint-H: #3a2020;
+  --warn: #f3cf7a; --warn-bg: #33290f; --warn-line: #7a6022; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+.wrap { max-width: 1240px; margin: 0 auto }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0 }
+header.top { padding-block: 32px 18px; display: grid; gap: 10px }
+header.top h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; color: var(--brand); letter-spacing: -.01em }
+header.top p { margin: 0; max-width: 70ch; color: var(--muted) }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted) }
+.stats b { color: var(--fg); font-variant-numeric: tabular-nums }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); align-items: center }
+.chipbtn { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--fg); white-space: nowrap }
+.chipbtn::before { content: "▶"; font-size: 9px; color: var(--muted) }
+.warnchip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line) }
+
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; background: var(--bg); padding-block: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-bottom: 1px solid var(--line) }
+.toolbar input[type=search] { flex: 1 1 220px; min-width: 0; font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg) }
+.roles { display: flex; flex-wrap: wrap; gap: 6px }
+.roles button, .toggle { font: 600 13px var(--font-body); padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer }
+.roles button[aria-pressed=true] { background: var(--c); border-color: var(--c); color: var(--surface) }
+.toggle[aria-pressed=true] { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn) }
+button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px }
+select { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); max-width: 100% }
+
+.lanehead { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--tb, 58px)); z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--bg); padding-block: 8px; border-bottom: 1px solid var(--line) }
+.lanehead div { text-align: center; font: 700 13px var(--font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--c) }
+.lanehead small { display: block; font: 500 11px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted) }
+.chart { position: relative }
+.lifelines { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(5, 1fr); pointer-events: none; z-index: 0 }
+.lifelines div { background: linear-gradient(90deg, transparent calc(50% - .5px), var(--life) calc(50% - .5px), var(--life) calc(50% + .5px), transparent calc(50% + .5px)) }
+.band { position: relative; z-index: 1; padding-block: 6px 18px; scroll-margin-top: 130px }
+.bandhead { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; background: var(--band); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-block: 10px 6px }
+.bandhead .id { font: 800 13px var(--font-display); color: var(--brand); font-variant-numeric: tabular-nums }
+.bandhead h3 { font-size: 16px; font-weight: 700 }
+.bandhead .grp { font-size: 12px; color: var(--muted); margin-left: auto }
+.bandhead .pre { flex-basis: 100%; font-size: 13px; color: var(--muted) }
+
+.row { display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; min-height: 34px; padding-block: 4px; transition: opacity .2s }
+.n { font: 700 10px var(--font-body); font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 4px }
+.act { margin-inline: 6px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 8px; padding: 6px 8px; font-size: 13px; line-height: 1.4; align-self: center }
+.arrow { position: relative; padding-bottom: 12px; text-align: center; font-size: 13px; line-height: 1.4 }
+.arrow .lbl { display: inline-block; max-width: 92%; padding-inline: 6px }
+.arrow .ln { position: absolute; bottom: 4px; height: 2px; background: var(--c) }
+.arrow .ln::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent }
+.arrow.right .ln::after { right: -2px; border-left: 7px solid var(--c); border-right: 0 }
+.arrow.left .ln::after { left: -2px; border-right: 7px solid var(--c); border-left: 0 }
+.arrow .ln::before { content: ""; position: absolute; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--c) }
+.arrow.right .ln::before { left: -4px } .arrow.left .ln::before { right: -4px }
+.who { display: none }
+.btnin { display: inline-flex; margin-right: 4px; vertical-align: 1px }
+
+.alt { position: relative; z-index: 1; border: 1px dashed var(--life); border-radius: 12px; margin-block: 8px; padding-block: 2px }
+.althead { font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 12px; text-transform: uppercase; letter-spacing: .05em }
+.branch { border-top: 1px dashed var(--life); padding-block: 2px 6px }
+.althead + .branch { border-top: 0 }
+.brlabel { display: inline-block; margin: 6px 12px 2px; font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--tint); color: var(--c) }
+
+.note { position: relative; z-index: 1; margin: 6px 8%; font-size: 13px; color: var(--muted); font-style: italic; text-align: center }
+.gap { position: relative; z-index: 1; margin: 8px 4%; background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--fg); display: grid; gap: 2px }
+.gap b { color: var(--warn) }
+.gap a { color: var(--warn); font-weight: 600 }
+
+body[data-role] .row:not(.hit), body[data-role] .note, body[data-role] .gap { opacity: .22 }
+.band[hidden] { display: none }
+.empty { padding: 32px 0; text-align: center; color: var(--muted) }
+
+section.gaps { margin-top: 40px; display: grid; gap: 12px }
+section.gaps h2 { font-size: 22px; color: var(--brand) }
+section.gaps > p { margin: 0; color: var(--muted); max-width: 70ch }
+.gapcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 12px }
+.gapcard { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--warn-line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; scroll-margin-top: 130px; min-width: 0 }
+.gapcard h3 { font-size: 15px }
+.gapcard .q { color: var(--muted); font-size: 14px; margin: 0 }
+.gapcard .p { margin: 0; font-size: 14px }
+.gapcard .refs { font-size: 12px; color: var(--muted) }
+.gapcard .refs a { color: var(--brand) }
+
+@media (max-width: 760px) {
+  .lanehead, .lifelines { display: none }
+  .toolbar { position: static }
+  .row { display: block; min-height: 0; padding-block: 6px; border-bottom: 1px solid var(--line) }
+  .arrow, .act { grid-column: auto !important; text-align: left; padding: 0; margin: 0; border: 0; background: none; font-size: 14px }
+  .arrow .ln { display: none }
+  .arrow .lbl { max-width: none; padding: 0 }
+  .who { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em }
+  .who span { color: var(--c) }
+  .alt { padding-inline: 10px }
+  .note, .gap { margin-inline: 0 }
+}
+@media (prefers-reduced-motion: reduce) { .row { transition: none } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Parcours SUNUSOCIAL</h1>
+    <p>Tout ce qui va être développé, en un seul schéma. Chaque colonne est un type d'utilisateur. Une flèche relie celui qui agit à celui qui voit la conséquence. Quand le modérateur, le système ou l'utilisateur doit choisir, chaque issue possible est détaillée.</p>
+    <div class="stats" id="stats"></div>
+    <div class="legend"><span class="chipbtn">Bouton</span> bouton sur lequel on clique <span class="warnchip">⚠ G1</span> point non décidé, avec la proposition de JËFTECH</div>
+  </header>
+
+  <div class="toolbar" id="toolbar">
+    <input type="search" id="q" placeholder="Rechercher : suppression, remboursement, alerte…" aria-label="Rechercher dans le schéma">
+    <div class="roles" id="roles" role="group" aria-label="Mettre en avant un rôle"></div>
+    <button class="toggle" id="gapsOnly" aria-pressed="false">⚠ Points à trancher</button>
+    <select id="jump" aria-label="Aller au scénario"></select>
+  </div>
+
+  <div class="lanehead" id="lanehead"></div>
+  <div class="chart" id="chart"><div class="lifelines" id="lifelines"></div></div>
+  <div class="empty" id="empty" hidden>Aucun scénario ne correspond à la recherche.</div>
+
+  <section class="gaps" id="gaps">
+    <h2>Points non décidés</h2>
+    <p>Pour chaque point, JËFTECH propose une règle. Il reste à la valider ou à la remplacer avant de commencer le développement.</p>
+    <div class="gapcards" id="gapcards"></div>
+  </section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const LANES = DATA.lanes.map(([k, n]) => ({ k, n }));
+const IDX = Object.fromEntries(LANES.map((l, i) => [l.k, i]));
+const NAME = Object.fromEntries(LANES.map(l => [l.k, l.n]));
+const SUB = { D: "particuliers", S: "orphelinats, foyers…", Y: "plateforme, NabooPay, SMS", M: "équipe SUNUSOCIAL", H: "dons de sang" };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const laneVar = k => `--c: var(--lane-${k}); --tint: var(--tint-${k})`;
+
+function walk(steps, f) { for (const s of steps) { f(s); if (s.k === "alt") s.br.forEach(b => walk(b.steps, f)); } }
+let nBtn = 0; DATA.scenarios.forEach(sc => walk(sc.steps, s => { if (s.k === "msg" && s.btn) nBtn++; }));
+document.getElementById("stats").innerHTML = `<span><b>${DATA.scenarios.length}</b> scénarios</span><span><b>${nBtn}</b> boutons</span><span><b>${Object.keys(DATA.gaps).length}</b> points à trancher</span><span><b>5</b> rôles</span>`;
+
+const lh = document.getElementById("lanehead"), ll = document.getElementById("lifelines");
+LANES.forEach(l => { const d = el("div", null, `${esc(l.n)}<small>${SUB[l.k]}</small>`); d.style.cssText = laneVar(l.k); lh.append(d); ll.append(el("div")); });
+
+function msgRow(s, n) {
+  const row = el("div", "row"); row.dataset.lanes = s.frm + " " + s.to;
+  const btn = s.btn ? `<span class="chipbtn btnin">${esc(s.btn)}</span>` : "";
+  const who = s.frm === s.to ? `<div class="who"><span style="${laneVar(s.frm)}">${NAME[s.frm]}</span></div>`
+    : `<div class="who"><span style="${laneVar(s.frm)}">${NAME[s.frm]}</span> → <span style="${laneVar(s.to)}">${NAME[s.to]}</span></div>`;
+  const text = `<span class="n">${n}</span>${btn}${esc(s.t)}`;
+  if (s.frm === s.to) {
+    const a = el("div", "act", who + text); a.style.cssText = laneVar(s.frm) + `; grid-column: ${IDX[s.frm] + 1}`; row.append(a);
+  } else {
+    const i = IDX[s.frm], j = IDX[s.to], lo = Math.min(i, j), hi = Math.max(i, j), span = hi - lo + 1;
+    const a = el("div", "arrow " + (j > i ? "right" : "left"), who + `<span class="lbl">${text}</span>`);
+    a.style.cssText = laneVar(s.frm) + `; grid-column: ${lo + 1} / ${hi + 2}`;
+    const ln = el("div", "ln"); const edge = 100 / (span * 2); ln.style.left = edge + "%"; ln.style.right = edge + "%"; a.append(ln);
+    row.append(a);
+  }
+  return row;
+}
+
+function renderSteps(steps, host, ctr) {
+  for (const s of steps) {
+    if (s.k === "msg") host.append(msgRow(s, ++ctr.n));
+    else if (s.k === "note") host.append(el("div", "note", esc(s.t)));
+    else if (s.k === "gap") {
+      const g = DATA.gaps[s.id];
+      host.append(el("div", "gap", `<span><span class="warnchip">⚠ ${s.id}</span> <b>Non décidé :</b> ${esc(g.title)}</span><span><b>Proposition :</b> ${esc(g.p)} <a href="#gap-${s.id}">Détail</a></span>`));
+    } else if (s.k === "alt") {
+      const box = el("div", "alt"); box.style.cssText = laneVar(s.by);
+      box.append(el("div", "althead", `Choix · ${esc(NAME[s.by])}`));
+      for (const br of s.br) {
+        const b = el("div", "branch"); b.append(el("span", "brlabel", esc(br.label)));
+        renderSteps(br.steps, b, ctr); box.append(b);
+      }
+      host.append(box);
+    }
+  }
+}
+
+const chart = document.getElementById("chart"), jump = document.getElementById("jump");
+jump.append(new Option("Aller au scénario…", ""));
+let lastGroup = null, og = null;
+for (const sc of DATA.scenarios) {
+  if (sc.group !== lastGroup) { og = document.createElement("optgroup"); og.label = sc.group; jump.append(og); lastGroup = sc.group; }
+  og.append(new Option(`${sc.id} · ${sc.title}`, sc.id));
+  const band = el("section", "band"); band.id = sc.id;
+  let txt = [sc.id, sc.title, sc.group, sc.pre || ""], gaps = false;
+  walk(sc.steps, s => { if (s.k === "msg") txt.push(s.t, s.btn || ""); if (s.k === "note") txt.push(s.t); if (s.k === "gap") { gaps = true; txt.push(s.id, DATA.gaps[s.id].title, DATA.gaps[s.id].p); } if (s.k === "alt") s.br.forEach(b => txt.push(b.label)); });
+  band.dataset.text = txt.join(" ").toLowerCase(); band.dataset.gaps = gaps ? "1" : "";
+  band.append(el("div", "bandhead", `<span class="id">${sc.id}</span><h3>${esc(sc.title)}</h3><span class="grp">${esc(sc.group)}</span>${sc.pre ? `<span class="pre">Point de départ : ${esc(sc.pre)}</span>` : ""}`));
+  renderSteps(sc.steps, band, { n: 0 });
+  chart.append(band);
+}
+
+const gc = document.getElementById("gapcards");
+for (const [id, g] of Object.entries(DATA.gaps)) {
+  const c = el("article", "gapcard"); c.id = "gap-" + id;
+  c.innerHTML = `<span class="warnchip" style="justify-self:start">⚠ ${id}</span><h3>${esc(g.title)}</h3><p class="q">${esc(g.q)}</p><p class="p"><b>Proposition :</b> ${esc(g.p)}</p><span class="refs">Dans le schéma : ${g.refs.map(r => `<a href="#${r}">${r}</a>`).join(", ")}</span>`;
+  gc.append(c);
+}
+
+// roles
+const rolesEl = document.getElementById("roles");
+const allBtn = el("button", null, "Tous"); allBtn.setAttribute("aria-pressed", "true"); allBtn.style.cssText = "--c: var(--brand)"; rolesEl.append(allBtn);
+const roleBtns = [allBtn];
+LANES.forEach(l => { const b = el("button", null, esc(l.n)); b.dataset.k = l.k; b.setAttribute("aria-pressed", "false"); b.style.cssText = laneVar(l.k); rolesEl.append(b); roleBtns.push(b); });
+function setRole(k) {
+  roleBtns.forEach(b => b.setAttribute("aria-pressed", String((b.dataset.k || "") === (k || ""))));
+  if (k) document.body.dataset.role = k; else delete document.body.dataset.role;
+  document.querySelectorAll(".row").forEach(r => r.classList.toggle("hit", !!k && r.dataset.lanes.split(" ").includes(k)));
+  try { localStorage.setItem("parcours-role", k || ""); } catch (e) {}
+}
+roleBtns.forEach(b => b.addEventListener("click", () => setRole(b.dataset.k)));
+
+// search + gaps filter
+const q = document.getElementById("q"), gapsOnly = document.getElementById("gapsOnly"), empty = document.getElementById("empty");
+function filter() {
+  const term = q.value.trim().toLowerCase(), g = gapsOnly.getAttribute("aria-pressed") === "true"; let shown = 0;
+  document.querySelectorAll(".band").forEach(b => { const ok = (!term || b.dataset.text.includes(term)) && (!g || b.dataset.gaps); b.hidden = !ok; if (ok) shown++; });
+  empty.hidden = shown > 0;
+}
+q.addEventListener("input", filter);
+gapsOnly.addEventListener("click", () => { gapsOnly.setAttribute("aria-pressed", String(gapsOnly.getAttribute("aria-pressed") !== "true")); filter(); });
+jump.addEventListener("change", () => { if (jump.value) { const t = document.getElementById(jump.value); if (t.hidden) { q.value = ""; gapsOnly.setAttribute("aria-pressed", "false"); filter(); } t.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); jump.value = ""; } });
+
+// keep the lane header right under the sticky toolbar
+const tb = document.getElementById("toolbar");
+const setTb = () => document.documentElement.style.setProperty("--tb", tb.offsetHeight + "px");
+setTb(); window.addEventListener("resize", setTb);
+try { const r = localStorage.getItem("parcours-role"); if (r && IDX[r] != null) setRole(r); } catch (e) {}
+</script>
