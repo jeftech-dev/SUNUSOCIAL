@@ -124,7 +124,7 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `net` | number | `amount − fee − platformFee` | What the structure receives |
 | `method` | string | `orange_money`\|`wave` | No card |
 | `provider` | string | `naboopay`\|`mock` | |
-| `providerTxnId` | string | unique once set | The NabooPay `order_id`, stored **before** the redirect. Idempotency key for webhooks and status checks |
+| `providerTxnId` | string | optional; unique once set | The NabooPay `order_id`, stored **before** the redirect. The donation row is created first (its id builds `success_url`), then the `order_id` is set. Idempotency key for webhooks and status checks |
 | `paidMethod` | string | optional | NabooPay `selected_payment_method`. A refund is sent back on this method |
 | `status` | string | `pending`\|`held`\|`released`\|`refunded`\|`failed` | |
 | `createdAt` | number | required | |
@@ -302,42 +302,49 @@ These are **not a table**. Regions and communes are a static list in `lib/geo.ts
 
 ```sql
 -- Convex indexes are declared in schema.ts via .index(name, [fields]).
--- Shown here in SQL-equivalent form for review.
+-- Shown here in SQL-equivalent form for review. Names match convex/schema.ts.
+-- `email`, `phone` and `userId` keep Convex Auth's own index names: the library queries them by name.
 
-CREATE INDEX users_by_phone              ON users (phone);
-CREATE INDEX users_by_email              ON users (email);
-CREATE INDEX otp_by_phone_purpose        ON otpCodes (phone, purpose);
-CREATE INDEX otp_by_session              ON otpCodes (sessionId);
-CREATE INDEX resets_by_token             ON passwordResets (tokenHash);
-CREATE INDEX donorProfiles_by_user       ON donorProfiles (userId);
-CREATE INDEX donorProfiles_by_type_commune ON donorProfiles (bloodOptIn, bloodType, commune); -- blood alert targeting
-CREATE INDEX structures_by_status        ON structures (status);
-CREATE INDEX causes_by_status_cat        ON causes (status, category);       -- feed
-CREATE INDEX causes_by_structure         ON causes (structureId);            -- org dashboard
-CREATE INDEX causes_by_featured          ON causes (featuredAt);             -- Coup de cœur
-CREATE INDEX causes_by_status_deadline   ON causes (status, deadline);       -- release cron
-CREATE INDEX donations_by_cause          ON donations (causeId);
-CREATE INDEX donations_by_cause_donor    ON donations (causeId, donorId);    -- distinct donorCount
-CREATE INDEX donations_by_donor          ON donations (donorId);
-CREATE INDEX donations_by_txn            ON donations (providerTxnId);       -- webhook idempotency (uniqueness enforced in mutation)
-CREATE INDEX refunds_by_status           ON refundRequests (status);
-CREATE INDEX refunds_by_donation         ON refundRequests (donationId);
-CREATE INDEX proofs_by_cause             ON proofs (causeId);
-CREATE INDEX proofs_by_status            ON proofs (status);
-CREATE INDEX proofItems_by_proof         ON proofItems (proofId);
-CREATE INDEX proofItems_by_ref           ON proofItems (supplier, ref);      -- reused invoice detection
-CREATE INDEX proofDeadlines_by_due       ON proofDeadlines (metAt, dueAt);   -- suspension cron
-CREATE INDEX deletions_by_status         ON deletionRequests (status);
-CREATE INDEX payouts_by_status           ON payouts (status, createdAt);     -- worker + reconciliation
-CREATE INDEX extensions_by_status        ON extensionRequests (status);
-CREATE INDEX donations_by_status_created ON donations (status, createdAt);   -- pending re-check cron
-CREATE INDEX audit_by_actor              ON auditLog (actorId, createdAt);
-CREATE INDEX notifications_by_user       ON notifications (userId, readAt);
-CREATE INDEX audit_by_target             ON auditLog (targetTable, targetId);
-CREATE INDEX alerts_by_hospital          ON bloodAlerts (hospitalId, closed);
-CREATE INDEX alerts_open                 ON bloodAlerts (closed);
-CREATE INDEX responses_by_alert          ON bloodResponses (alertId);
-CREATE INDEX stock_by_hospital           ON bloodStock (hospitalId, bloodType);
+CREATE INDEX email                     ON users (email);
+CREATE INDEX phone                     ON users (phone);
+CREATE INDEX userId                    ON authSessions (userId);
+CREATE INDEX by_phone_purpose          ON otpCodes (phone, purpose);
+CREATE INDEX by_session                ON otpCodes (sessionId);
+CREATE INDEX by_token                  ON passwordResets (tokenHash);
+CREATE INDEX by_user                   ON donorProfiles (userId);
+CREATE INDEX by_optin_type_commune     ON donorProfiles (bloodOptIn, bloodType, commune); -- blood alert targeting
+CREATE INDEX by_status                 ON structures (status);
+CREATE INDEX by_status_category        ON causes (status, category);       -- feed
+CREATE INDEX by_structure              ON causes (structureId);            -- org dashboard
+CREATE INDEX by_featured               ON causes (featuredAt);             -- Coup de cœur
+CREATE INDEX by_status_deadline        ON causes (status, deadline);       -- release cron
+CREATE INDEX by_cause                  ON donations (causeId);
+CREATE INDEX by_cause_donor            ON donations (causeId, donorId);    -- distinct donorCount
+CREATE INDEX by_donor                  ON donations (donorId);
+CREATE INDEX by_txn                    ON donations (providerTxnId);       -- webhook idempotency (uniqueness enforced in mutation)
+CREATE INDEX by_status_created         ON donations (status, createdAt);   -- pending re-check cron
+CREATE INDEX by_status                 ON refundRequests (status);
+CREATE INDEX by_donation               ON refundRequests (donationId);
+CREATE INDEX by_status_created         ON payouts (status, createdAt);     -- worker + reconciliation
+CREATE INDEX by_cause                  ON proofs (causeId);
+CREATE INDEX by_status                 ON proofs (status);
+CREATE INDEX by_proof                  ON proofItems (proofId);
+CREATE INDEX by_supplier_ref           ON proofItems (supplier, ref);      -- reused invoice detection
+CREATE INDEX by_cause                  ON proofDeadlines (causeId);        -- one deadline per cause
+CREATE INDEX by_met_due                ON proofDeadlines (metAt, dueAt);   -- suspension cron
+CREATE INDEX by_status                 ON deletionRequests (status);
+CREATE INDEX by_cause                  ON deletionRequests (causeId);      -- one active request per cause
+CREATE INDEX by_status                 ON extensionRequests (status);
+CREATE INDEX by_structure              ON extensionRequests (structureId);
+CREATE INDEX by_user_read              ON notifications (userId, readAt);
+CREATE INDEX by_actor                  ON auditLog (actorId, createdAt);
+CREATE INDEX by_target                 ON auditLog (targetTable, targetId);
+CREATE INDEX by_action_created         ON auditLog (action, createdAt);    -- 12-month purge of donor logins
+CREATE INDEX by_hospital_closed        ON bloodAlerts (hospitalId, closed);
+CREATE INDEX by_closed                 ON bloodAlerts (closed);
+CREATE INDEX by_alert                  ON bloodResponses (alertId);
+CREATE INDEX by_alert_donor            ON bloodResponses (alertId, donorId); -- one response per donor and alert
+CREATE INDEX by_hospital_type          ON bloodStock (hospitalId, bloodType);
 ```
 
 > Convex has no unique constraints. Every field marked "unique" is enforced inside the writing mutation, by looking the value up through its index first. Mutations are serialisable, so this check is race-free.
