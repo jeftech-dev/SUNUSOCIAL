@@ -13,6 +13,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "name": "Aminata Diop",      // required
   "phone": "+221771234567",    // required, E.164
   "password": "••••••••",      // required
+  "otpCode": "583014",         // required — sent by otp.send({ purpose: "donor_signup", phone })
   "bloodProfile": {            // optional — opt-in only, off by default
     "optIn": true,
     "bloodType": "O+",         // one of A±,B±,AB±,O±, or "unknown"
@@ -24,7 +25,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 ```
 **Response (success) — 200**
 ```json
-{ "userId": "usr_01H…", "role": "donor", "session": "sess_…" }
+{ "userId": "usr_01H…", "role": "donor", "phoneVerified": true }   // then signIn("password") creates the session
 ```
 **Response (error)**
 ```json
@@ -42,7 +43,13 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "responsiblePhone": "+221338001234",            // required
   "email": "contact@keurkhadija.sn",              // required, professional email
   "password": "••••••••••••",                     // required, ≥ 12 chars
-  "receiptFileId": "file_…"                        // required — uploaded récépissé/agrément (PDF/JPG/PNG ≤ 5MB)
+  "receiptFileId": "file_…",                       // required — uploaded récépissé/agrément (PDF/JPG/PNG ≤ 5MB)
+  "payout": {                                      // required for structures, omitted for hospitals — approved by the moderator with the documents
+    "method": "wave",                             // orange_money | wave
+    "accountNumber": "+221771234567",             // E.164
+    "holderName": "Khadija Sow",                  // the responsible's own name (phase 1) — informational, not checked by NabooPay
+    "otpCode": "204817"                           // required — otp.send({ purpose: "payout_number", phone: accountNumber })
+  }
 }
 ```
 **Response (success) — 200**
@@ -54,22 +61,27 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 { "error": { "code": "VALIDATION", "message": "Le mot de passe doit comporter au moins 12 caractères.", "field": "password" } }
 ```
 
-### mutation `auth.login`
-**Request**
+### Sign-in (Convex Auth) + `otp.verifyLogin`
+Sign-in uses Convex Auth's client call; there is no custom `auth.login` mutation.
+
+```ts
+await signIn("password", { flow: "signIn", email: "+221771234567" /* phone for donors, email for orgs */, password: "••••••••" });
+```
+Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequired: true`):
+
+**`otp.send` request** `{ "purpose": "login_2fa" }` → **response** `{ "channel": "sms", "to": "+22177•••4567", "expiresAt": 1761750000000 }`
+
+**`otp.verifyLogin` request**
 ```json
-{
-  "identifier": "+221771234567",  // required: phone (donor) or email (org/hospital/moderator)
-  "password": "••••••••",         // required
-  "twoFactorCode": "428913"       // required for org/hospital/moderator (SMS 2FA)
-}
+{ "code": "428913" }   // required, 6 digits; 10-min expiry; 5 attempts max
 ```
 **Response (success) — 200**
 ```json
-{ "userId": "usr_…", "role": "donor", "session": "sess_…", "twoFactorRequired": false }
+{ "ok": true }
 ```
 **Response (error)**
 ```json
-{ "error": { "code": "UNAUTHENTICATED", "message": "Numéro ou mot de passe incorrect.", "field": null } }
+{ "error": { "code": "OTP_INVALID", "message": "Code incorrect ou expiré.", "field": "code" } }
 ```
 
 ---
@@ -129,7 +141,8 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "percent": 45,
   "donorCount": 23,
   "endCondition": { "type": "goal", "deadline": 1765756800000 },
-  "fundControl": "held",       // held (NabooPay) | direct (SycaPay)
+  "estimatedNet": 9700,        // goal minus the 3% fee — shown on the page
+  "featured": false,
   "status": "active",
   "similar": [ { "id": "cau_…", "title": "…", "raised": 55000, "goal": 55000, "percent": 100, "bannerUrl": "…" } ]
 }
@@ -192,13 +205,13 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 ```json
 {
   "donationId": "don_…",
-  "provider": "naboopay",        // or sycapay
+  "provider": "naboopay",        // mock in dev/preview
   "amount": 5000,
   "feeRate": 0.03,
   "fee": 150,
-  "net": 4850,                   // what the structure receives
-  "fundControl": "held",         // held | direct
-  "checkoutUrl": "https://pay.naboopay.com/…",
+  "platformFee": 0,              // 0 until the revenue model is decided
+  "net": 4850,                   // what the structure receives at release
+  "checkoutUrl": "https://checkout.naboopay.com/checkout/550e8400-…",
   "status": "pending"
 }
 ```
@@ -207,25 +220,28 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 { "error": { "code": "CONFLICT", "message": "Cette cause n'accepte plus de dons.", "field": null } }
 ```
 
-### action `payments.webhook` (HTTP POST, signed)
-**Request** (from provider)
+### `POST /payments/naboopay/webhook` (Convex httpAction, signed)
+> Field names below are placeholders: the real payload and signature header follow NabooPay's documentation (Sprint 4 spike, DT-3).
+**Request** (from NabooPay, API v2 webhook — header `X-Signature: <hex HMAC-SHA256 of the raw body>`)
 ```json
 {
-  "providerTxnId": "NB-93f1…",   // required — used for idempotency
-  "donationId": "don_…",
-  "status": "succeeded",         // succeeded | failed
-  "amount": 5000,
-  "method": "wave",
-  "signature": "…"               // verified against the webhook secret
+  "order_id": "550e8400-e29b-41d4-a716-446655440000",  // = donations.providerTxnId (stored before redirect); idempotency key
+  "transaction_status": "paid",       // paid | paid_and_blocked — both mean paid
+  "amount": 5000,                     // must equal the donation amount
+  "fees": 150,                        // actual NabooPay fee → stored on the donation
+  "selected_payment_method": "wave",
+  "currency": "XOF",
+  "paid_at": "2026-11-15T10:35:00Z"
 }
 ```
+NabooPay only calls this on success and retries 3 times, 5 minutes apart; pending donations are also re-checked with `GET /transactions/{order_id}` (success page + 10-minute cron).
 **Response (success) — 200**
 ```json
 { "ok": true }
 ```
 **Response (error)**
 ```json
-{ "error": { "code": "PAYMENT_FAILED", "message": "Signature de webhook invalide.", "field": null } }
+HTTP 401 with an empty body when the signature is missing or invalid (nothing is recorded).
 ```
 
 ### query `donations.mine`
@@ -244,9 +260,9 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
       "amount": 10000,
       "method": "Wave",
       "date": 1760313600000,
-      "fundControl": "held",
+      "status": "held",                                   // pending | held | released | refunded | failed
       "proof": { "available": true, "proofId": "prf_…", "itemCount": 5 },
-      "refund": { "eligible": true, "request": null },   // request: null | { status: pending|refunded|rejected }
+      "refund": { "eligible": true, "estimatedAmount": 9700 /* net */, "request": null },   // eligible only while held; request: null | { status, refundAmount }
       "causeDeleted": null                                // or { reason, outcome: "refunded"|"paidOut" }
     }
   ],
@@ -258,7 +274,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 ### mutation `donations.requestRefund`
 **Request**
 ```json
-{ "donationId": "don_…", "reason": "Je me suis trompé de montant." }  // reason ≥ 5 chars
+{ "donationId": "don_…", "reason": "Je me suis trompé de montant.", "receivingPhone": "+221771234567" }  // reason ≥ 5 chars; phone defaults to the verified one
 ```
 **Response (success) — 200**
 ```json
@@ -325,7 +341,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
       "hospital": "Hôpital Principal de Dakar",
       "place": "Dakar-Plateau",
       "bloodTypes": ["O+", "O-"],
-      "level": "vitale",             // vitale | urgente | …
+      "level": "vitale",             // vitale | urgente | normale
       "unitsNeeded": 4,
       "unitsCollected": 2,
       "deadline": "Aujourd'hui",
@@ -347,11 +363,11 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 { "ok": true, "message": "Venue confirmée. L'hôpital voit votre prénom et votre groupe, pas votre adresse." }
 ```
 
-### mutation `bloodAlerts.create` (moderator in prototype; hospital TBD)
+### mutation `bloodAlerts.create` (hospital)
 **Request**
 ```json
 {
-  "hospitalId": "str_…",          // required
+  // hospitalId comes from the session
   "bloodTypes": ["O+"],           // required, ≥ 1
   "level": "vitale",              // required
   "unitsNeeded": 10,              // required
@@ -390,7 +406,9 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "causes": { "count": 3, "items": [ { "id": "cau_…", "title": "Réparation de la toiture", "organization": "Foyer Jàmm", "urgent": true } ] },
   "proofs": { "count": 3, "items": [ { "id": "prf_…", "cause": "Riz, huile et sucre", "flagged": true } ] },
   "deletions": { "count": 2, "items": [ { "id": "del_…", "title": "Fournitures scolaires 2026", "raised": 64000, "donors": 18 } ] },
-  "refunds": { "count": 1, "hiddenForProvider": false }
+  "refunds": { "count": 1, "items": [ { "id": "ref_…", "amount": 10000, "refundAmount": 9700 } ] },
+  "payoutChanges": { "count": 0, "items": [] },
+  "featured": { "causeId": "cau_…", "since": 1761523200000 }
 }
 ```
 
@@ -415,8 +433,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
   "requestId": "del_…",           // required
   "decision": "approve",          // approve | maintain
   "reason": "Besoin couvert par une ONG partenaire.",  // required, ≥ 10 chars
-  "fundOutcome": "refund"         // required when funds > 0 and provider = naboopay: refund | payout
-                                  // under sycapay, "refund" is rejected (funds already paid)
+  "fundOutcome": "refund"         // required when funds > 0: refund | payout
 }
 ```
 **Response (success) — 200**
@@ -430,7 +447,7 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 ```
 **Response (error)**
 ```json
-{ "error": { "code": "CONFLICT", "message": "Remboursement impossible avec Sycapay : fonds déjà versés.", "field": "fundOutcome" } }
+{ "error": { "code": "VALIDATION", "message": "Choisissez le sort des fonds collectés.", "field": "fundOutcome" } }
 ```
 
 ### mutation `moderation.decideRefund`
@@ -440,5 +457,35 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 ```
 **Response (success) — 200**
 ```json
-{ "ok": true, "message": "10 000 FCFA remboursés à Ousmane Ba sur Wave." }
+{ "ok": true, "refundAmount": 9700, "payoutStatus": "queued", "message": "Remboursement de 9 700 FCFA (montant net) en cours vers Ousmane Ba sur Wave." }
+```
+
+### mutation `moderation.setFeatured`
+**Request**
+```json
+{ "causeId": "cau_…" }   // or null to clear; the cause must be active. Replaces the current Coup de cœur.
+```
+**Response (success) — 200**
+```json
+{ "ok": true, "message": "« Lait infantile pour 32 nourrissons » est le Coup de cœur de la semaine." }
+```
+
+### mutation `extensions.request`
+**Request**
+```json
+{ "kind": "cause_deadline", "targetId": "cau_…", "requestedUntil": 1765756800000, "reason": "Livraison du fournisseur retardée." }  // kind: cause_deadline | proof_deadline; ≤ 30 days later
+```
+**Response (success) — 200**
+```json
+{ "requestId": "ext_…", "status": "pending", "message": "Demande de prolongation envoyée au modérateur." }
+```
+
+### mutation `moderation.decideExtension`
+**Request**
+```json
+{ "requestId": "ext_…", "decision": "approve", "reason": "Retard fournisseur justifié." }  // approve | refuse; reason required on refuse
+```
+**Response (success) — 200**
+```json
+{ "ok": true, "newDate": 1765756800000, "message": "Prolongation accordée. Les donateurs ont été informés." }
 ```

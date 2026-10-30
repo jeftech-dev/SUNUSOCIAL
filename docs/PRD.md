@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Version** | 1.0 |
-| **Status** | Draft for build — several decisions pending board input |
-| **Last Updated** | 28 October 2026 |
+| **Status** | Ready for build — core decisions taken (see `DECISIONS.md`); remaining board questions in `BOARD_QUESTIONS.md` |
+| **Last Updated** | 29 October 2026 |
 | **Author** | JefTech (lead developer / CTO), from `context.md` and the clickable prototype |
 
 ---
@@ -63,7 +63,8 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 ### P1 — should ship for v1
 
 - As a **donor**, I want a weekly editor's pick ("Coup de cœur de la semaine") so that I see a curated cause.
-- As a **donor**, I want to request a refund while funds are still held (NabooPay only) so that I can correct a mistake.
+- As a **moderator**, I want to choose the weekly "Coup de cœur" from the moderation console so that the featured cause is always a deliberate choice.
+- As a **donor**, I want to request a refund while funds are still held so that I can correct a mistake.
 - As an **organization**, I want to request deletion of a published cause (moderator-approved) so that I can withdraw a need that no longer applies.
 - As a **moderator**, I want to arbitrate deletion requests and decide the fate of collected funds (refund vs. pay out) with a reason so that donors are treated fairly.
 - As a **moderator**, I want to arbitrate refund requests so that donor mistakes are handled fairly.
@@ -81,13 +82,17 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 ## 5. Feature Specifications
 
 ### 5.1 Accounts & Authentication — P0
-**Description.** Donors register with full name, phone (+221) and password — **no OTP** (dropped to avoid SMS cost). Structures/hospitals register with organization name, type, region, commune, responsible's phone, professional email, password, and a récépissé/agrément upload; they log in with email + password + **SMS 2FA**. Moderators use a separate platform, email + password, no role selector.
+**Description.** Donors register with full name, phone (+221) and password; **the phone is verified by an SMS code** before the account is created, and donor activity is logged. Structures/hospitals register with organization name, type, region, commune, responsible's phone, professional email, password, a récépissé/agrément upload, and — for structures only, not hospitals — a **payout account** (the responsible chooses Orange Money or Wave and gives their number and name); they log in with email + password + an **SMS code**. A second onboarding phase later collects the structure's full information. Sessions last at most one week for every role. Moderators use a separate platform, email + password, no role selector.
 **Acceptance criteria**
-- [ ] Donor signup requires name, phone, password; login is phone + password with no OTP step.
+- [ ] Donor signup requires name, phone, password and a valid SMS code sent to that phone; login is phone + password (no code at login).
+- [ ] Donor activity (signup, logins, donations, profile changes, refund requests) is recorded in the activity log.
 - [ ] A donor must be logged in to view and donate to causes.
 - [ ] Structure/hospital signup collects org name, type, region→commune, responsible phone, email, password (≥ 12 chars), and a document upload (PDF/JPG/PNG, ≤ 5 MB).
 - [ ] New structures/hospitals start in **pending validation** and cannot publish until approved.
-- [ ] Structure/hospital/moderator login enforces SMS 2FA. <!-- assumed: 2FA depends on the pending SMS provider; stub acceptably until SMS is live -->
+- [ ] **Structure** signup (not hospitals, which never receive funds) collects a payout account (method, number, the responsible's name); the number is verified by SMS code, the moderator approves it with the documents, and a later change needs a new SMS code plus moderator re-approval.
+- [ ] Structure/hospital/moderator login enforces an SMS one-time code at every login.
+- [ ] Sessions expire after at most 7 days.
+- [ ] "Mot de passe oublié ?" works: SMS code for donors; email link for organizations.
 - [ ] Moderation platform is on its own URL and is unreachable with a donor/structure session.
 
 ### 5.2 Causes Feed & Discovery — P0
@@ -95,29 +100,31 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 **Acceptance criteria**
 - [ ] Only approved causes from verified structures appear.
 - [ ] Category tabs and secondary filters narrow the list; an empty state shows when nothing matches.
-- [ ] The featured slot is editor-controlled, not automatic.
+- [ ] The featured slot is set by a moderator from the moderation console (one cause at a time), never automatically; it is hidden when nothing is featured.
 - [ ] Progress reflects real donations in realtime.
 
 ### 5.3 Cause Detail — P0
 **Description.** Banner image, org + Vérifié badge, title, category and urgency tags, full description, collected/goal with progress and donor count, end condition, a "Faire un don" button, a WhatsApp contact button, and a carousel of similar causes in the same category.
 **Acceptance criteria**
 - [ ] Shows end condition clearly (date, or goal-or-deadline).
-- [ ] Shows the fund-control rule note (held vs. direct, per active provider).
+- [ ] Shows the fund-control note: funds are held by NabooPay and released to the structure at the goal or the deadline.
 - [ ] Similar causes come from the same category.
 
 ### 5.4 Donation Flow — P0
 **Description.** Donation modal (itch.io-style): preset amounts (500 / 1 000 / 5 000 FCFA) plus a free custom amount; payment method Orange Money or Wave (no card); a **live fee line** showing the provider rate and the **net amount the structure receives**; a provider note; confirm. On success: thank-you state, incremented progress bar, options to donate again or browse. Donations are tied to the donor's account.
 **Acceptance criteria**
-- [ ] Fee and net recompute live as the amount or provider changes.
+- [ ] Fee and net recompute live as the amount changes (3% NabooPay fee; platform-fee line present but 0 until the revenue model is decided).
+- [ ] Amounts below the minimum donation (500 FCFA, to be reviewed with the board) are rejected.
 - [ ] Only Orange Money and Wave are offered; no card option exists.
 - [ ] Success state increments the cause progress and records the donation in the donor's history.
-- [ ] The provider note states whether funds are held (NabooPay) or paid directly (SycaPay).
+- [ ] The provider note states that funds are held until the cause ends.
 
 ### 5.5 Organization Dashboard & Cause Management — P0
 **Description.** Stats (total received this month, active/pending causes, donations received); a list of causes each with a status timeline (Soumise → En modération → Approuvée/Refusée → Active → Clôturée); create/edit/withdraw; refusal reason displayed when refused.
 **Acceptance criteria**
-- [ ] Create-cause wizard captures banner, title, description, category, end condition (date **or** goal — and every cause also carries a deadline), target amount, urgency.
+- [ ] Create-cause wizard captures banner, title, description, category, end condition (date **or** goal), a **mandatory deadline** (at most **30 days**), target amount, urgency, and shows the estimated net the structure will receive.
 - [ ] A cause in moderation (no donations yet) can be withdrawn by the structure itself.
+- [ ] A structure can request a deadline extension with a reason; it applies only once a moderator approves it, and donors of the cause are notified.
 - [ ] A published cause cannot be deleted without moderator approval; the structure sends a motivated request.
 - [ ] Refusal reasons are visible to the structure.
 
@@ -128,20 +135,24 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 - [ ] Auto-flagged items are marked and routed to the moderator.
 - [ ] Validated dossiers appear in donor dashboards and the public proofs feed.
 - [ ] If a deleted cause's funds went to the structure, a proof dossier is due within **7 days**; missing it auto-suspends the account until a moderator lifts it.
+- [ ] **Every funded cause** owes a proof dossier within 7 days of the payout; the structure can request a delay (sursis) that a moderator approves; a missed deadline auto-suspends the account.
+- [ ] Upload limits: images and PDFs ≤ 5 MB (images resized client-side), videos ≤ 50 MB and ≤ 90 s.
 
 ### 5.7 Moderation Platform — P0
-**Description.** Separate app with queues: **Structures à valider** (rendered récépissé + declared info; Valider/Refuser with reason), **Causes à modérer**, **Preuves à valider** (including auto-flagged), **Demandes de suppression**, **Demandes de remboursement** (NabooPay only). Refusals always require a reason visible to the affected party.
+**Description.** Separate app with queues: **Structures à valider** (rendered récépissé + declared info; Valider/Refuser with reason), **Causes à modérer**, **Preuves à valider** (including auto-flagged), **Demandes de suppression**, **Demandes de remboursement**, **Demandes de prolongation** (cause deadlines and proof delays), plus the **Coup de cœur** selector. Refusals always require a reason visible to the affected party.
 **Acceptance criteria**
 - [ ] Each queue shows counts and lets the moderator approve/refuse with a mandatory reason on refusal.
-- [ ] Deletion arbitration lets the moderator choose refund donors vs. pay out to structure (refund disabled under SycaPay since funds are already paid), with a reason, and tracks the resulting proof deadline.
-- [ ] Refund arbitration is final and is hidden entirely when the active provider is SycaPay.
+- [ ] Structure validation checks both the documents and the payout account (document-only verification — no physical visit).
+- [ ] Deletion arbitration lets the moderator choose refund donors vs. pay out to structure, with a reason, and tracks the resulting proof deadline.
+- [ ] Refund arbitration is final; an approved refund returns the **net amount** (donation minus the NabooPay fee) to the donor's verified phone, and the screen shows that amount.
+- [ ] Every decision is written to the audit log.
 
 ### 5.8 Blood-Donation Module — P1
 **Description.** Hospitals (a verified structure subtype) publish shortage alerts by blood type, targeted to communes in their region; compatible opted-in donors are notified (in-app + SMS). Donors confirm a visit slot (informational — the on-site doctor confirms eligibility). Hospitals maintain stock and confirm each donor who came (auto-incrementing stock), then thank confirmed donors.
 **Acceptance criteria**
 - [ ] Donor blood profile is **opt-in**, off by default, editable later, with a short explanation; captures blood type (or "Je ne sais pas") and region→commune from fixed lists (no free text).
 - [ ] Alerts target only the chosen blood types and the chosen communes within the hospital's region; donor addresses are never shared.
-- [ ] For the prototype, **the moderator creates alerts** <!-- assumed: prototype has hospitals self-serve alerts; long-term owner (hospital vs moderator) is [OPEN] in context.md §14 -->; the alert preview shows "X donneurs compatibles seront notifiés".
+- [ ] **Hospitals create and send their own alerts** (moderators can see, close or disable any alert). The alert preview shows "X donneurs compatibles seront notifiés".
 - [ ] Donors receive alerts only when their blood type is requested; a donor can confirm a slot.
 - [ ] Hospitals can update stock, confirm attendees (stock +1 per confirmed donation), close an alert, and send a thank-you message.
 
@@ -155,7 +166,7 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 - Native mobile apps (Android/iOS) — deferred to Phase 2 with a separate quote.
 - Credit-card payments — removed for both providers; mobile money only.
 - In-kind / logistics donations (physical food, materials) — redirected to WhatsApp.
-- A SUNUSOCIAL-held central account — funds go directly to structures (held at provider level if NabooPay).
+- Card payments and bank transfers — funds are collected in SUNUSOCIAL's NabooPay merchant account, held there, and paid out to the structure's verified mobile-money account.
 - Real-time geolocation for blood alerts — targeting is by commune only.
 - Public third-party API — the API is internal to the platform's own clients. <!-- assumed: context.md names no external API consumers -->
 
@@ -180,20 +191,22 @@ Twelve months from launch, SUNUSOCIAL is the place a Senegalese donor opens when
 | Milestone | Target Date | Deliverable |
 |-----------|-------------|-------------|
 | Foundations (schema, types, auth) | Sprint 1–2 | Accounts work; DB schema live |
-| Core donor loop | Sprint 3–4 | Browse → donate → see progress & proof |
-| Organization loop | Sprint 5 | Create cause → moderated → proof dossier |
-| Moderation platform | Sprint 6 | All moderation queues operational |
+| Core donor loop | Sprint 3–4 | Browse → donate → see progress |
+| Organization loop + moderation queues | Sprint 5 | Create cause → moderated → proof dossier |
+| Deletions, refunds, fund release | Sprint 6 | All money rules and arbitration operational |
 | Blood module | Sprint 7 | Alerts, responses, stock, thanks |
 | Polish, security review, deploy | Sprint 8 | Production launch on Vercel |
 
-## 9. Open Questions
+## 9. Decisions & Open Questions
 
-- [ ] **Payment provider**: NabooPay (3%, escrow/hold) vs. SycaPay (1.5%, direct payout) — board decision pending SycaPay documentation review. [OPEN]
-- [ ] **Revenue model**: percentage on donations vs. subscription charged to organizations only — founder leans non-profit. [OPEN]
-- [ ] **Blood alert SMS channel**: validate cost and a dedicated service number. [OPEN]
-- [ ] **Who creates blood alerts long-term**: hospitals self-serve vs. moderator-only. [OPEN]
-- [ ] **Organization verification depth**: document-only vs. physical visit. [OPEN]
-- [ ] **Deadline-based release for monetary causes** so funds are never held forever — needs board validation. [HYPOTHESIS]
-- [ ] **Fund control model**: hold funds (JefTech, legal transparency) vs. direct payout with after-the-fact receipt control (SUNUSOCIAL preference). [OPEN]
-- [ ] **Payout cadence**: single lump payment vs. fractioned payments — SUNUSOCIAL to analyze. [OPEN]
-- [ ] **Full commune list**: prototype covers 8 regions; final must cover all 14 regions and their communes (official list to be supplied). [OPEN]
+**Decided** (see `DECISIONS.md` DB-1…DB-15): NabooPay; funds held until release; document-only verification by the moderator; lump-sum payout; every cause has a deadline of at most 30 days (extensions with moderator approval); "Coup de cœur" curated by the moderator; hospitals send their own alerts; proof mandatory for every funded cause (delay with moderator approval); net refunds; 500 FCFA minimum (to review); payout account = the responsible's OM/Wave number and name, plus a phase-2 onboarding; SMS required (2FA, donor signup verification, donor password recovery, alerts, notifications); sessions ≤ 7 days; donor activity logged.
+
+**Open — waiting on the board** (see `BOARD_QUESTIONS.md`):
+- [ ] Q1 SMS provider, budget, sender ID.
+- [ ] Q2 Revenue model.
+- [ ] Q3 Official list of the 14 regions and their communes.
+- [ ] Q4 Acknowledge the NabooPay money flow (funds held in SUNUSOCIAL's merchant account, paid out automatically).
+- [ ] Q5 Content and timing of the structure onboarding phase 2.
+- [ ] Q6 Review of the 500 FCFA minimum.
+- [ ] Q7–Q9 Legal status, CDP declaration, legal documents.
+- [ ] Part E — what SUNUSOCIAL provides: NabooPay account (KYB, keys, webhook), SMS account, domain + DNS, WhatsApp, first moderator, billing card, content.

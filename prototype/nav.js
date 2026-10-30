@@ -1,6 +1,5 @@
 // Unified prototype control — a floating overlay (bottom-left) that lets you
-// switch V1 <-> V2, jump between profiles, open the Specifications page, and
-// toggle the payment provider (NabooPay <-> Sycapay) on the V2 prototype.
+// switch V1 <-> V2, jump between profiles and open the Specifications page.
 // Plain DOM appended to <body>, entirely outside the dc-runtime React root
 // (#dc-root), so it never interferes with support.js. Included via <script src="./nav.js">.
 (function () {
@@ -16,10 +15,6 @@
   ];
   var SPECS = "Specifications.dc.html";
 
-  var PROVIDERS = [
-    { name: "NabooPay", rate: "3 %",   desc: "Fonds conservés jusqu'à la fin de la cause" },
-    { name: "Sycapay",  rate: "1,5 %", desc: "Chaque don versé directement à la structure" }
-  ];
 
   // Canonical slug: lowercase and strip extensions so detection works whether
   // the host serves "Donateur-v2.dc.html", a Pretty-URL "Donateur-v2.dc", or
@@ -35,10 +30,6 @@
     if ((r.v1 && canon(r.v1) === hereSlug) || (r.v2 && canon(r.v2) === hereSlug)) curRole = r;
   });
 
-  function readProvider() {
-    try { return localStorage.getItem("sunu_provider") === "Sycapay" ? "Sycapay" : "NabooPay"; }
-    catch (e) { return "NabooPay"; }
-  }
 
   function build() {
     if (document.getElementById("proto-nav")) return;
@@ -118,13 +109,8 @@
     });
     if (isV2) panel.appendChild(specRow());
 
-    // ---- Prestataire section (V2 only) ----
-    if (isV2) {
-      panel.appendChild(divide());
-      panel.appendChild(sec("Prestataire de paiement"));
-      var cur = readProvider();
-      PROVIDERS.forEach(function (p) { panel.appendChild(provRow(p, p.name === cur)); });
-    }
+    // Payment provider is decided (NabooPay, 29/10/2026): no provider toggle any more.
+    try { localStorage.removeItem("sunu_provider"); } catch (e) {}
 
     var toggle = document.createElement("button");
     toggle.id = "proto-nav-toggle";
@@ -193,21 +179,6 @@
       '<span class="txt"><b>Spécifications</b><span>Règles et décisions du projet</span></span>' +
       (isCurrent ? '<span class="badge">Ici</span>' : "");
     return a;
-  }
-  function provRow(p, isCurrent) {
-    var b = document.createElement("button");
-    b.type = "button";
-    b.className = "row";
-    b.innerHTML =
-      '<span class="radio' + (isCurrent ? " on" : "") + '"></span>' +
-      '<span class="txt"><b>' + p.name + "</b><span>" + p.desc + "</span></span>" +
-      '<span class="rate">' + p.rate + "</span>";
-    b.addEventListener("click", function () {
-      if (isCurrent) return;
-      try { localStorage.setItem("sunu_provider", p.name); } catch (e) {}
-      location.reload();
-    });
-    return b;
   }
 
   if (document.readyState === "loading") {

@@ -25,7 +25,7 @@ _Goal: first meaningful action = create an account and reach the causes feed._
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
 | 1 | 01 Accueil public (`/`) | Reads value prop, "Comment ça marche", proof feed | Clicks "Je suis Donateur" | Proof feed visible without login |
-| 2 | 02 Authentification (`/inscription`) | Enters name, phone (+221), password; optionally opts into blood alerts (type + commune) | Account created, logged in | **No OTP**; blood opt-in off by default |
+| 2 | 02 Authentification (`/inscription`) | Enters name, phone (+221), password; optionally opts into blood alerts (type + commune) | SMS code verified → account created, logged in | **Phone verified by SMS code**; blood opt-in off by default |
 | 3 | 03 Accueil donateur (`/causes`) | Sees greeting + verified causes | Browses | Must be logged in to view causes |
 
 ### Phase 2 — Core Usage
@@ -33,7 +33,7 @@ _Goal: main value action = make a transparent donation and see progress move._
 
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
-| 1 | 03 Accueil donateur | Filters by category / Urgent / Presque atteint / Récent; may open the "Coup de cœur" | Picks a cause | Featured slot is editor-curated |
+| 1 | 03 Accueil donateur | Filters by category / Urgent / Presque atteint / Récent; may open the "Coup de cœur" | Picks a cause | Featured slot is picked by a moderator |
 | 2 | 04 Détail de la cause (`/causes/[id]`) | Reads description, progress, end condition | Clicks "Faire un don" | Shows fund-control note + WhatsApp |
 | 3 | 05 Modal de don | Picks preset (500/1 000/5 000) or custom; chooses Orange Money or Wave; sees live fee + net | Confirms → provider checkout | No card; net shown before paying |
 | 4 | 05 Modal de don (success) | Sees thank-you + incremented progress | Donate again or browse | Progress animates for all viewers |
@@ -43,10 +43,10 @@ _Goal: user comes back on their own = sees proof their gift was used._
 
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
-| 1 | Notification (in-app/SMS) | Learns a supported cause published a proof | Opens dashboard | SMS pending provider |
+| 1 | Notification (in-app + SMS) | Learns a supported cause published a proof | Opens dashboard | SMS provider to be chosen |
 | 2 | 06 Profil donateur (`/profil`) | Sees history, cumulative impact, proof availability | Opens a dossier | "Vous avez contribué à N causes pour X FCFA" |
 | 3 | 06b Dossier de preuve | Views gallery, report, fund-use breakdown | Trust reinforced; may donate again | Same dossier the moderator validated |
-| 4 | 06 Profil (if held funds) | May request a refund with a reason | Moderator decides (final) | NabooPay only |
+| 4 | 06 Profil (if held funds) | May request a refund with a reason | Moderator decides (final) | Only while funds are held |
 
 ---
 
@@ -118,7 +118,7 @@ _Goal: first meaningful action = reach the queues securely._
 
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
-| 1 | Mod 01 Connexion (`/moderation`) | Email + password (+ 2FA) | Enters moderation platform | Separate URL; no role selector |
+| 1 | Mod 01 Connexion (`moderation.<domain>`) | Email + password + SMS code | Enters moderation platform | Separate subdomain; no role selector |
 | 2 | Mod 02 Files d'attente | Sees counts for all queues | Picks an item | |
 
 ### Phase 2 — Core Usage
@@ -135,8 +135,9 @@ _Goal: recurring arbitration keeps money fair._
 
 | Step | Screen/Page | What user does | What happens next | Notes |
 |------|-------------|----------------|-------------------|-------|
-| 1 | Mod 06 Demande de suppression | Reviews a deletion request | Approve (refund/payout) or maintain (reason) | Refund disabled under SycaPay |
-| 2 | Mod 07 Demandes de remboursement | Reviews donor refund requests | Accept / reject (final) | Hidden entirely under SycaPay |
+| 1 | Mod 06 Demande de suppression | Reviews a deletion request | Approve (refund/payout) or maintain (reason) | Funds are held, so both outcomes are possible |
+| 2 | Mod 07 Demandes de remboursement | Reviews donor refund requests | Accept / reject (final) | Shows the exact refund amount |
+| 3 | Coup de cœur | Picks the weekly featured cause | Feed shows it | One cause at a time |
 
 ---
 
@@ -158,7 +159,8 @@ _Goal: recurring arbitration keeps money fair._
 | Preuve de réception | `/structure/preuve/[causeId]` | Submit dossier | Structure P3 |
 | Tableau de bord hôpital | `/hopital` | Stock + alerts + responders | Hospital P2/P3 |
 | Émettre une alerte | `/hopital/alerte` | Create alert + thank donors | Hospital P2/P3 |
-| Modération | `/moderation` + queues | Login + all review screens | Moderator all |
+| Modération | `moderation.<domain>` + queues | Login + all review screens, Coup de cœur, alerts | Moderator all |
+| Mot de passe oublié | `/mot-de-passe` | SMS code (donors) / email link (orgs) | All |
 
 ## Edge Cases & Alternate Flows
 
@@ -169,9 +171,14 @@ _Goal: recurring arbitration keeps money fair._
 | Duplicate payment webhook | Provider retry | No-op | Idempotent on `providerTxnId` |
 | Cause refused | Moderator refuses | Structure dashboard | Refusal reason shown inline |
 | Structure deletes published cause | Deletion request approved | Donor dashboard notice | Reason + funds refunded or paid out shown |
-| Refund requested under SycaPay | Donor opens profil | Refund action absent | Impossible — funds already paid |
+| Refund requested after release | Donor opens profil | Refund action absent | Impossible — funds already paid out to the structure |
+| Structure changes payout account | Structure edits profile | Structure dashboard | Payouts blocked until a moderator re-approves the account |
+| Donor forgot password | "Mot de passe oublié ?" | `/mot-de-passe` | SMS code to the verified phone, then a new password |
+| Structure needs more time | Deadline or proof due date approaching | Structure dashboard | Requests an extension / delay; applies only once a moderator approves |
+| Donor never receives the SMS code | Signup | `/inscription` | "Renvoyer le code" after 60 s (max 3 per 10 min); WhatsApp link for help |
+| Goal reached before deadline | Donation pushes raised ≥ goal | Cause detail shows "Objectif atteint" | Cause closes, funds released at once, no more donations |
 | Proof missing after payout | 7-day deadline passes | Structure dashboard | Account auto-suspended until moderator lifts |
-| Monetary cause never reaches goal | Deadline passes | — | Releases everything collected at deadline [HYPOTHESIS] |
+| Monetary cause never reaches goal | Deadline passes | — | Releases everything collected at the deadline (decided — DB-5) |
 | Blood alert, donor's group not requested | Alert sent | Donor `/sang` | Alert hidden / "Groupe non recherché" |
 | No alerts for donor's group | Donor opens `/sang` | Empty state | "Aucune alerte pour votre groupe en ce moment." |
 | Structure in moderation withdraws cause | No donations yet | Structure dashboard | Structure can self-withdraw |
@@ -190,4 +197,4 @@ _Goal: recurring arbitration keeps money fair._
 | Account suspended | Missed proof deadline | In-app + email | `/structure` |
 | Thank-you from hospital | Alert closed | In-app + SMS | `/sang` |
 
-<!-- assumed: SMS channel for all SMS rows is pending the SMS provider decision (context.md §14); until then show in-app + an "en attente de validation" SMS preview. -->
+SMS rows go through the SMS provider (to be chosen; development uses a console provider). Email rows go through Resend. Also: "Extension decision" (in-app + SMS → `/structure`), "Cause extended" (in-app → donors of the cause), "Payout sent" (in-app + SMS → `/structure`).
