@@ -33,7 +33,7 @@ sunusocial/
 │       ├── page.tsx                  # Mod 01 login
 │       ├── file/page.tsx             # Mod 02 queues
 │       ├── [resource]/[id]/page.tsx  # Mod 03–07 review screens
-│       ├── coup-de-coeur/page.tsx    # pick the weekly featured cause (DB-6)
+│       ├── coup-de-coeur/page.tsx    # pick the weekly featured cause (DB-6) — since Sprint 3
 │       ├── prolongations/page.tsx    # extension + proof-delay requests (DT-30)
 │       ├── versements/page.tsx       # payout queue, NabooPay balance, reconciliation (DT-4)
 │       └── alertes/page.tsx          # oversee blood alerts (close/disable; DT-26)
@@ -147,9 +147,9 @@ export interface FeeBreakdown { amount: number; provider: Provider; feeRate: num
 
 ```typescript
 // convex/causes.ts
-export const list: Query<{ category?: Category; filter?: "urgent" | "almost" | "recent"; query?: string; cursor?: string | null; limit: number }, PaginatedResponse<CauseCardView>>;
+export const list: Query<{ category?: Category; filter?: "urgent" | "almost" | "recent"; query?: string; paginationOpts: PaginationOptions }, PaginationResult<CauseCardView>>; // DT-34
 export const featured: Query<{}, CauseCardView | null>;
-export const get: Query<{ id: Id<"causes"> }, CauseDetailView>;
+export const get: Query<{ id: string }, CauseDetailView | null>;    // null: unknown, malformed or not visible
 export const mine: Query<{}, Cause[]>;                              // structure's own
 export const create: Mutation<CreateCauseInput, { id: Id<"causes">; status: CauseStatus }>;
 export const update: Mutation<UpdateCauseInput, { ok: true }>;
@@ -211,7 +211,8 @@ export const decideProof: Mutation<{ proofId: Id<"proofs">; decision: "validate"
 export const decideDeletion: Mutation<{ requestId: Id<"deletionRequests">; decision: "approve" | "maintain"; reason: string; fundOutcome?: "refund" | "payout" }, { ok: true }>;
 export const decideRefund: Mutation<{ requestId: Id<"refundRequests">; decision: "refunded" | "rejected" }, { ok: true; refundAmount?: number }>;
 export const decidePayoutAccount: Mutation<{ structureId: Id<"structures">; decision: "approve" | "refuse"; reason?: string }, { ok: true }>;
-export const setFeatured: Mutation<{ causeId: Id<"causes"> | null }, { ok: true }>;                 // DB-6; null clears
+export const setFeatured: Mutation<{ causeId: Id<"causes"> | null }, { ok: true; message: string }>; // DB-6; null clears
+export const featuredCandidates: Query<{}, FeaturedCandidate[]>;                                    // picker
 export const liftSuspension: Mutation<{ structureId: Id<"structures">; reason: string }, { ok: true }>;
 export const decideExtension: Mutation<{ requestId: Id<"extensionRequests">; decision: "approve" | "refuse"; reason?: string }, { ok: true; newDate?: number }>;
 export const closeAlert: Mutation<{ alertId: Id<"bloodAlerts">; reason: string }, { ok: true }>;
@@ -407,7 +408,7 @@ app/moderation/[resource]/[id]/page.tsx
 6. **Payment adapter** — NabooPay sandbox check against `.claude/skills/naboopay` (keys/scopes, escrow question, payout limits); `lib/providers/{naboopay,mock}`, `donations.createCheckout`, `http.ts` webhook + `payments.recordPayment`; `DonationModal` + success state.
 7. **Structure path** — `causes.create/update/withdraw`, org dashboard + create-cause wizard; status timeline.
 8. **Proofs** — `proofs.submit/get/feed` + `proofChecks`; `ProofGallery`; donor dashboard proof access.
-9. **Moderation** — `moderation.*` + queues, review screens, payout verification, Coup de cœur picker, audit log, notifications.
+9. **Moderation** — `moderation.*` + queues, review screens, payout verification, Coup de cœur picker (shipped early, in Sprint 3), audit log, notifications.
 10. **Deletions, refunds, payouts, extensions** — `requestDeletion`, `requestRefund`, `decideDeletion`, `decideRefund`; payout worker + reconciliation; extension requests.
 11. **Fund release** — `payments.releaseCause` (goal) + `crons.ts`/`releaseDue` (deadline); proof-deadline suspension cron.
 12. **Blood module** — `blood.*`, donor `/sang`, hospital dashboard/alert/thanks.
