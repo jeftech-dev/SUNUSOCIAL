@@ -10,6 +10,14 @@ describe("safeNextPath", () => {
     expect(safeNextPath("/\\evil.example")).toBeNull();
     expect(safeNextPath(null)).toBeNull();
   });
+
+  it("refuses paths the browser would turn into another origin", () => {
+    expect(safeNextPath("/\t/evil.example")).toBeNull();
+    expect(safeNextPath("/\n/evil.example")).toBeNull();
+    expect(safeNextPath("/\r\n/evil.example")).toBeNull();
+    expect(safeNextPath("/\t\\evil.example")).toBeNull();
+    expect(safeNextPath("/%2F%2Fevil.example")).toBe("/%2F%2Fevil.example");
+  });
 });
 
 describe("isModerationHost", () => {

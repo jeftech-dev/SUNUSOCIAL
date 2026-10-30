@@ -19,10 +19,21 @@ export function isModerationHost(host: string | null | undefined): boolean {
   return (host ?? "").toLowerCase().startsWith("moderation.");
 }
 
-/** A same-site path to go back to after login, or null. Refuses absolute and protocol-relative URLs. */
+const NEXT_PATH_BASE = "http://next-path.invalid";
+
+/**
+ * A same-site path to go back to after login, or null. The value is resolved the way the browser
+ * would (which drops tabs and newlines, so "/\t/evil.example" means "//evil.example") and kept
+ * only if it stays on the same origin.
+ */
 export function safeNextPath(next: string | null | undefined): string | null {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
+  if (!next || !next.startsWith("/")) return null;
+  let url: URL;
+  try {
+    url = new URL(next, NEXT_PATH_BASE);
+  } catch {
     return null;
   }
-  return next;
+  if (url.origin !== NEXT_PATH_BASE) return null;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
