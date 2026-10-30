@@ -161,10 +161,17 @@ export default defineSchema({
     fundsReleasedAt: v.optional(v.number()),
     releasePayoutId: v.optional(v.id("payouts")),
   })
-    .index("by_status_category", ["status", "category"])
+    // Feed orders (DT-34): soonest deadline first by default, newest approval first for "Récent".
+    .index("by_status_deadline", ["status", "deadline"])
+    .index("by_status_category_deadline", ["status", "category", "deadline"])
+    .index("by_status_approved", ["status", "approvedAt"])
+    .index("by_status_category_approved", ["status", "category", "approvedAt"])
     .index("by_structure", ["structureId"])
     .index("by_featured", ["featuredAt"])
-    .index("by_status_deadline", ["status", "deadline"]),
+    .searchIndex("search_title", {
+      searchField: "title",
+      filterFields: ["status", "category", "urgency"],
+    }),
 
   donations: defineTable({
     causeId: v.id("causes"),
