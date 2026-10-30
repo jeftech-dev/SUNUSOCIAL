@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
@@ -10,11 +10,13 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { convexSiteUrl } from "@/lib/convexSite";
 import { toUiError } from "@/lib/errors";
 import { communesOf, REGIONS } from "@/lib/geo";
 import { fr } from "@/lib/strings.fr";
 import {
   HOSPITAL_TYPE,
+  type ApiError,
   METHODS,
   STRUCTURE_TYPES,
   type Method,
@@ -26,12 +28,11 @@ import {
   normalizeName,
   normalizePhone,
   PASSWORD_MIN_LENGTH,
+  RECEIPT_MAX_BYTES,
+  RECEIPT_TYPES,
 } from "@/lib/validation";
 
 import { OtpStep } from "./OtpStep";
-
-const RECEIPT_MAX_BYTES = 5 * 1024 * 1024;
-const RECEIPT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 
 type FieldName =
   | "organizationName"
@@ -43,12 +44,44 @@ type FieldName =
   | "payoutNumber"
   | "holderName";
 
+/** Where the SMS codes went: the responsible's phone, and the payout number if it differs. */
+interface SentCodes {
+  contact: string;
+  payout?: string;
+}
+
 /**
- * Structure / hospital signup, phase 1 (PARCOURS S09, S10). Structures prove their payout number
- * with an SMS code; hospitals have no payout account. The dossier then waits for a moderator.
+ * Uploads the receipt to the Convex signup endpoint (convex/files.ts), authorised by the contact
+ * phone's SMS code. Returns the storage id, or the French error to show.
+ */
+async function uploadReceipt(
+  file: File,
+  phone: string,
+  code: string,
+): Promise<{ storageId: Id<"_storage"> } | { error: string }> {
+  const base = convexSiteUrl();
+  if (!base) return { error: fr.errors.generic };
+  try {
+    const response = await fetch(`${base}/signup/receipt`, {
+      method: "POST",
+      headers: { "Content-Type": file.type, "X-Signup-Phone": phone, "X-Signup-Code": code },
+      body: file,
+    });
+    const body = (await response.json()) as { storageId?: Id<"_storage">; error?: ApiError };
+    if (response.ok && body.storageId) return { storageId: body.storageId };
+    return { error: body.error?.message ?? fr.errors.generic };
+  } catch {
+    return { error: fr.errors.network };
+  }
+}
+
+/**
+ * Structure / hospital signup, phase 1 (PARCOURS S09, S10). The responsible's phone is confirmed
+ * by SMS code (it receives the login code, DT-33); a structure's payout number too, with a second
+ * code when it is another number. Hospitals have no payout account. The dossier then waits for a
+ * moderator.
  */
 export function OrganizationSignupForm() {
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const sendCode = useAction(api.otp.send);
   const register = useAction(api.auth.registerOrganization);
 
@@ -68,8 +101,9 @@ export function OrganizationSignupForm() {
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [receiptFileId, setReceiptFileId] = useState<Id<"_storage"> | null>(null);
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  /** The uploaded receipt and the contact phone it was uploaded for, reused on a retry. */
+  const [uploaded, setUploaded] = useState<{ fileId: Id<"_storage">; phone: string } | null>(null);
+  const [sent, setSent] = useState<SentCodes | null>(null);
   const [done, setDone] = useState(false);
 
   const isHospital = type === HOSPITAL_TYPE;
@@ -91,10 +125,10 @@ export function OrganizationSignupForm() {
     if (!isValidPassword(password, "organization")) {
       next.password = fr.errors.passwordTooShort(PASSWORD_MIN_LENGTH.organization);
     }
-    if (!receipt && !receiptFileId) next.receipt = fr.errors.receiptRequired;
+    if (!receipt) next.receipt = fr.errors.receiptRequired;
     else if (
-      receipt &&
-      (receipt.size > RECEIPT_MAX_BYTES || !RECEIPT_TYPES.includes(receipt.type))
+      receipt.size > RECEIPT_MAX_BYTES ||
+      !(RECEIPT_TYPES as readonly string[]).includes(receipt.type)
     ) {
       next.receipt = fr.errors.receiptInvalid;
     }
@@ -106,45 +140,59 @@ export function OrganizationSignupForm() {
     return Object.keys(next).length === 0 ? clean : null;
   }
 
-  async function uploadReceipt(): Promise<Id<"_storage">> {
-    if (receiptFileId) return receiptFileId;
-    if (!receipt) throw new Error("missing receipt");
-    const url = await generateUploadUrl();
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": receipt.type },
-      body: receipt,
-    });
-    if (!response.ok) throw new Error("upload failed");
-    const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
-    setReceiptFileId(storageId);
-    return storageId;
+  /** The payout number when it needs its own code (a structure, with another number). */
+  function separatePayoutNumber(clean: {
+    responsiblePhone: string | null;
+    payoutNumber: string | null;
+  }) {
+    if (isHospital || !clean.payoutNumber || clean.payoutNumber === clean.responsiblePhone) {
+      return null;
+    }
+    return clean.payoutNumber;
   }
 
-  async function submitDossier(otpCode?: string): Promise<string | null> {
+  async function sendCodes(): Promise<SentCodes | null> {
     const clean = validate();
-    if (!clean) return fr.errors.generic;
+    if (!clean) return null;
+    const contact = await sendCode({ purpose: "org_contact", phone: clean.responsiblePhone! });
+    const payoutNumber = separatePayoutNumber(clean);
+    const payout = payoutNumber
+      ? await sendCode({ purpose: "payout_number", phone: payoutNumber })
+      : null;
+    return { contact: contact.to, payout: payout?.to };
+  }
+
+  async function submitDossier(contactCode: string, payoutCode?: string): Promise<string | null> {
+    const clean = validate();
+    if (!clean || !receipt) return fr.errors.generic;
+    const phone = clean.responsiblePhone!;
+    let fileId = uploaded?.phone === phone ? uploaded.fileId : null;
+    if (!fileId) {
+      const result = await uploadReceipt(receipt, phone, contactCode);
+      if ("error" in result) return result.error;
+      fileId = result.storageId;
+      setUploaded({ fileId, phone });
+    }
     try {
-      const fileId = await uploadReceipt();
       await register({
         organizationName: clean.organizationName!,
         type,
         region,
         commune,
         responsibleName: clean.responsibleName!,
-        responsiblePhone: clean.responsiblePhone!,
+        responsiblePhone: phone,
         email: clean.email!,
         password,
         receiptFileId: fileId,
-        payout:
-          isHospital || !otpCode
-            ? undefined
-            : {
-                method,
-                accountNumber: clean.payoutNumber!,
-                holderName: clean.holderName!,
-                otpCode,
-              },
+        contactOtpCode: contactCode,
+        payout: isHospital
+          ? undefined
+          : {
+              method,
+              accountNumber: clean.payoutNumber!,
+              holderName: clean.holderName!,
+              otpCode: payoutCode,
+            },
       });
       setDone(true);
       return null;
@@ -155,18 +203,11 @@ export function OrganizationSignupForm() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const clean = validate();
-    if (!clean) return;
     setPending(true);
     setFormError(null);
     try {
-      if (isHospital) {
-        setFormError(await submitDossier());
-      } else {
-        await uploadReceipt();
-        const result = await sendCode({ purpose: "payout_number", phone: clean.payoutNumber! });
-        setSentTo(result.to);
-      }
+      const result = await sendCodes();
+      if (result) setSent(result);
     } catch (e) {
       setFormError(toUiError(e).message);
     } finally {
@@ -186,16 +227,24 @@ export function OrganizationSignupForm() {
     );
   }
 
-  if (sentTo) {
+  if (sent) {
     return (
       <OtpStep
-        to={sentTo}
-        submitLabel={fr.auth.otp.verify}
-        onSubmit={(code) => submitDossier(code)}
+        to={sent.contact}
+        second={
+          sent.payout
+            ? {
+                to: sent.payout,
+                firstLabel: fr.auth.otp.contactCode,
+                secondLabel: fr.auth.otp.payoutCode,
+              }
+            : undefined
+        }
+        submitLabel={fr.auth.signup.submitOrg}
+        onSubmit={submitDossier}
         onResend={async () => {
-          const phone = normalizePhone(payoutNumber);
-          if (!phone) return;
-          setSentTo((await sendCode({ purpose: "payout_number", phone })).to);
+          const result = await sendCodes();
+          if (result) setSent(result);
         }}
       />
     );
@@ -278,7 +327,11 @@ export function OrganizationSignupForm() {
           />
         )}
       </Field>
-      <Field label={fr.auth.fields.responsiblePhone} error={errors.responsiblePhone}>
+      <Field
+        label={fr.auth.fields.responsiblePhone}
+        hint={fr.auth.fields.responsiblePhoneHint}
+        error={errors.responsiblePhone}
+      >
         {(props) => (
           <Input
             {...props}
@@ -330,7 +383,7 @@ export function OrganizationSignupForm() {
             className="h-auto py-2.5"
             onChange={(e) => {
               setReceipt(e.target.files?.[0] ?? null);
-              setReceiptFileId(null);
+              setUploaded(null);
             }}
           />
         )}
@@ -382,11 +435,7 @@ export function OrganizationSignupForm() {
       )}
 
       <Button type="submit" variant="cta" size="lg" disabled={pending}>
-        {pending
-          ? fr.common.loading
-          : isHospital
-            ? fr.auth.signup.submitOrg
-            : fr.auth.signup.sendCode}
+        {pending ? fr.common.loading : fr.auth.signup.sendCode}
       </Button>
       <p className="text-xs text-muted-foreground">{fr.auth.signup.terms}</p>
     </form>

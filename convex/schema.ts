@@ -56,7 +56,7 @@ export default defineSchema({
     name: v.string(),
     role: roleV,
     structureId: v.optional(v.id("structures")),
-    /** Donors: set when the signup SMS code is verified (DB-7). */
+    /** Set when the signup SMS code to `phone` is verified (DB-7; organisations: DT-33). */
     phoneVerifiedAt: v.optional(v.number()),
     disabled: v.boolean(),
     createdAt: v.number(),
@@ -336,6 +336,19 @@ export default defineSchema({
     .index("by_actor", ["actorId", "createdAt"])
     .index("by_target", ["targetTable", "targetId"])
     .index("by_action_created", ["action", "createdAt"]),
+
+  /**
+   * Receipts uploaded during an organisation signup, until `registerOrganization` attaches them.
+   * Rows left after 24 h are abandoned signups: a daily cron deletes them and their files.
+   */
+  signupUploads: defineTable({
+    storageId: v.id("_storage"),
+    /** The contact phone whose SMS code authorised the upload. */
+    phone: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_storage", ["storageId"])
+    .index("by_created", ["createdAt"]),
 
   /** Fixed-window counters for rate limits (convex/lib/rateLimit.ts). */
   rateLimits: defineTable({

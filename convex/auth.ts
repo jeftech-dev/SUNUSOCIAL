@@ -2,8 +2,9 @@
 //
 // - Sign-in goes through Convex Auth: `signIn("password", { flow: "signIn", identifier, password,
 //   audience })`. Donors use their phone, organisations and moderators their email.
-// - Registration runs as dedicated actions (`registerDonor`, `registerOrganization`) that check the
-//   SMS code first, then create the account; the client signs in afterwards.
+// - Registration runs as dedicated actions (`registerDonor`, `registerOrganization`) that verify the
+//   SMS codes first, then create the account; the codes are marked used in the same transaction
+//   that creates it (`insertNewUser`). The client signs in afterwards.
 // - Structures, hospitals and moderators must also pass the SMS code on every login
 //   (`otp.send({ purpose: "login_2fa" })` + `otp.verifyLogin`); see convex/lib/guards.ts.
 
@@ -35,6 +36,8 @@ import {
   normalizeName,
   normalizePhone,
   PASSWORD_MIN_LENGTH,
+  RECEIPT_MAX_BYTES,
+  RECEIPT_TYPES,
 } from "../lib/validation";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -48,15 +51,13 @@ import {
 } from "./_generated/server";
 import { logAudit } from "./audit";
 import { appError } from "./lib/errors";
+import { findSignupUpload } from "./files";
 import { requireRole } from "./lib/guards";
-import { otpErrorMessage } from "./otp";
+import { claimOtp, otpErrorMessage } from "./otp";
 import { bloodTypeV, methodV, structureTypeV } from "./validators";
 
 /** The single credentials provider id (accounts: phone for donors, email for everyone else). */
 export const PASSWORD_PROVIDER = "password";
-
-const RECEIPT_MAX_BYTES = 5 * 1024 * 1024;
-const RECEIPT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
 
 // ---------------------------------------------------------------------------
 // New-account profiles, passed through createAccount to createOrUpdateUser
@@ -71,7 +72,14 @@ interface BloodProfileInput {
 }
 
 type NewAccountProfile =
-  | { kind: "donor"; name: string; phone: string; bloodProfile?: BloodProfileInput }
+  | {
+      kind: "donor";
+      name: string;
+      phone: string;
+      bloodProfile?: BloodProfileInput;
+      /** Verified signup codes, marked used with the account creation. */
+      otpIds: Id<"otpCodes">[];
+    }
   | {
       kind: "organization";
       role: "structure" | "hospital";
@@ -87,11 +95,16 @@ type NewAccountProfile =
         receiptFileId: Id<"_storage">;
         payout?: { method: Method; accountNumber: string; holderName: string };
       };
+      otpIds: Id<"otpCodes">[];
     }
   | { kind: "moderator"; name: string; email: string; phone: string };
 
 async function insertNewUser(ctx: MutationCtx, profile: NewAccountProfile): Promise<Id<"users">> {
   const now = Date.now();
+  // Throws if a code was used meanwhile, which rolls back the whole account creation.
+  if (profile.kind !== "moderator") {
+    for (const otpId of profile.otpIds) await claimOtp(ctx, otpId);
+  }
   switch (profile.kind) {
     case "donor": {
       const userId = await ctx.db.insert("users", {
@@ -131,6 +144,9 @@ async function insertNewUser(ctx: MutationCtx, profile: NewAccountProfile): Prom
     }
     case "organization": {
       const s = profile.structure;
+      const upload = await findSignupUpload(ctx, s.receiptFileId, profile.phone);
+      if (!upload) throw appError("VALIDATION", fr.errors.receiptRequired, "receiptFileId");
+      await ctx.db.delete(upload._id);
       const structureId = await ctx.db.insert("structures", {
         name: s.name,
         type: s.type,
@@ -141,7 +157,7 @@ async function insertNewUser(ctx: MutationCtx, profile: NewAccountProfile): Prom
         email: profile.email,
         receiptNo: s.receiptNo,
         receiptFileId: s.receiptFileId,
-        // The number was proven by SMS code just before; the moderator approves it with the documents.
+        // The number was proven by SMS code; the moderator approves it with the documents.
         payout: s.payout && { ...s.payout, phoneVerifiedAt: now },
         status: "pending",
         onboardingPhase: 1,
@@ -153,6 +169,7 @@ async function insertNewUser(ctx: MutationCtx, profile: NewAccountProfile): Prom
         phone: profile.phone,
         role: profile.role,
         structureId,
+        phoneVerifiedAt: now,
         disabled: false,
         createdAt: now,
       });
@@ -192,7 +209,9 @@ const scrypt = new Scrypt();
 
 /**
  * Credentials sign-in only: accounts are created by the register actions below.
- * `audience` keeps moderators on the moderation subdomain and everyone else on the app (DT-9).
+ * `audience: "moderation"` (sent by the moderation login form) accepts moderators only, and its
+ * absence accepts everyone else, so each form refuses the other's accounts (DT-9). The client sets
+ * it, so it is not a security boundary: moderator access rests on `requireRole` and the SMS code.
  */
 const PasswordSignIn = ConvexCredentials({
   id: PASSWORD_PROVIDER,
@@ -263,21 +282,46 @@ export const accountExists = internalQuery({
   },
 });
 
-export const receiptMetadata = internalQuery({
-  args: { fileId: v.id("_storage") },
-  handler: async (ctx, { fileId }) => {
+/** A receipt uploaded for this signup's contact phone, with its stored size and type. */
+export const signupReceipt = internalQuery({
+  args: { fileId: v.id("_storage"), phone: v.string() },
+  handler: async (ctx, { fileId, phone }) => {
+    if (!(await findSignupUpload(ctx, fileId, phone))) return null;
     const file = await ctx.db.system.get(fileId);
     return file ? { size: file.size, contentType: file.contentType ?? null } : null;
   },
 });
 
-async function consumeOtpOrThrow(
+/** Checks a code without using it up (attempts are counted); returns its id for `claimOtp`. */
+async function verifyOtpOrThrow(
   ctx: ActionCtx,
-  args: { purpose: "donor_signup" | "payout_number"; phone: string; code: string },
+  args: { purpose: "donor_signup" | "org_contact" | "payout_number"; phone: string; code: string },
   field: string,
-) {
-  const check = await ctx.runMutation(internal.otp.consume, args);
+): Promise<Id<"otpCodes">> {
+  const check = await ctx.runMutation(internal.otp.verify, args);
   if (!check.ok) throw appError("OTP_INVALID", otpErrorMessage(check), field);
+  return check.otpId;
+}
+
+/** Convex Auth's createAccount, with its "already exists" error turned into CONFLICT. */
+async function createPasswordAccount(
+  ctx: ActionCtx,
+  account: { id: string; secret?: string },
+  profile: NewAccountProfile,
+  conflict: { message: string; field: string },
+) {
+  try {
+    return await createAccount(ctx, {
+      provider: PASSWORD_PROVIDER,
+      account,
+      profile: profile as never,
+    });
+  } catch (error) {
+    if (error instanceof Error && /already exists/.test(error.message)) {
+      throw appError("CONFLICT", conflict.message, conflict.field);
+    }
+    throw error;
+  }
 }
 
 function validateBloodProfile(input: BloodProfileInput | undefined): BloodProfileInput | undefined {
@@ -327,24 +371,33 @@ export const registerDonor = action({
       );
     }
     const bloodProfile = validateBloodProfile(args.bloodProfile);
-    if (
-      (await ctx.runQuery(internal.otp.donorExists, { phone })) ||
-      (await ctx.runQuery(internal.auth.accountExists, { identifier: phone }))
-    ) {
-      throw appError("CONFLICT", fr.errors.phoneTaken, "phone");
-    }
-    await consumeOtpOrThrow(
+    // The code comes first: only someone holding the phone learns whether it is registered.
+    const otpId = await verifyOtpOrThrow(
       ctx,
       { purpose: "donor_signup", phone, code: args.otpCode.trim() },
       "otpCode",
     );
+    const phoneTaken = { message: fr.errors.phoneTaken, field: "phone" };
+    if (
+      (await ctx.runQuery(internal.otp.donorExists, { phone })) ||
+      (await ctx.runQuery(internal.auth.accountExists, { identifier: phone }))
+    ) {
+      throw appError("CONFLICT", phoneTaken.message, phoneTaken.field);
+    }
 
-    const profile: NewAccountProfile = { kind: "donor", name, phone, bloodProfile };
-    const { user } = await createAccount(ctx, {
-      provider: PASSWORD_PROVIDER,
-      account: { id: phone, secret: args.password },
-      profile: profile as never,
-    });
+    const profile: NewAccountProfile = {
+      kind: "donor",
+      name,
+      phone,
+      bloodProfile,
+      otpIds: [otpId],
+    };
+    const { user } = await createPasswordAccount(
+      ctx,
+      { id: phone, secret: args.password },
+      profile,
+      phoneTaken,
+    );
     return { userId: user._id as Id<"users">, role: "donor" };
   },
 });
@@ -352,6 +405,10 @@ export const registerDonor = action({
 /**
  * Structure or hospital signup (phase 1, DB-15). Lands in `pending` until a moderator validates
  * the documents and, for structures, the payout account. Hospitals have no payout account (DT-5).
+ *
+ * SMS codes: `contactOtpCode` (`org_contact`) proves the responsible's phone, which receives the
+ * login code (DT-33). A structure's payout number needs its own `payout_number` code, unless it is
+ * the same number. The receipt must have been uploaded with the contact code (convex/files.ts).
  */
 export const registerOrganization = action({
   args: {
@@ -365,12 +422,14 @@ export const registerOrganization = action({
     password: v.string(),
     receiptNo: v.optional(v.string()),
     receiptFileId: v.id("_storage"),
+    contactOtpCode: v.string(),
     payout: v.optional(
       v.object({
         method: methodV,
         accountNumber: v.string(),
         holderName: v.string(),
-        otpCode: v.string(),
+        /** Required unless the payout number is the responsible's phone. */
+        otpCode: v.optional(v.string()),
       }),
     ),
   },
@@ -398,11 +457,15 @@ export const registerOrganization = action({
         "password",
       );
     }
-    const receipt = await ctx.runQuery(internal.auth.receiptMetadata, {
+    const receipt = await ctx.runQuery(internal.auth.signupReceipt, {
       fileId: args.receiptFileId,
+      phone,
     });
     if (!receipt) throw appError("VALIDATION", fr.errors.receiptRequired, "receiptFileId");
-    if (receipt.size > RECEIPT_MAX_BYTES || !RECEIPT_TYPES.has(receipt.contentType ?? "")) {
+    if (
+      receipt.size > RECEIPT_MAX_BYTES ||
+      !(RECEIPT_TYPES as readonly string[]).includes(receipt.contentType ?? "")
+    ) {
       throw appError("VALIDATION", fr.errors.receiptInvalid, "receiptFileId");
     }
 
@@ -418,15 +481,30 @@ export const registerOrganization = action({
       payout = { method: args.payout.method, accountNumber, holderName };
     }
 
-    if (await ctx.runQuery(internal.auth.accountExists, { identifier: email })) {
-      throw appError("CONFLICT", fr.errors.emailTaken, "email");
-    }
-    if (payout && args.payout) {
-      await consumeOtpOrThrow(
+    // Codes first: only someone holding the contact phone learns whether the email is taken.
+    const otpIds = [
+      await verifyOtpOrThrow(
         ctx,
-        { purpose: "payout_number", phone: payout.accountNumber, code: args.payout.otpCode.trim() },
-        "payout.otpCode",
+        { purpose: "org_contact", phone, code: args.contactOtpCode.trim() },
+        "contactOtpCode",
+      ),
+    ];
+    if (payout && payout.accountNumber !== phone) {
+      otpIds.push(
+        await verifyOtpOrThrow(
+          ctx,
+          {
+            purpose: "payout_number",
+            phone: payout.accountNumber,
+            code: (args.payout?.otpCode ?? "").trim(),
+          },
+          "payout.otpCode",
+        ),
       );
+    }
+    const emailTaken = { message: fr.errors.emailTaken, field: "email" };
+    if (await ctx.runQuery(internal.auth.accountExists, { identifier: email })) {
+      throw appError("CONFLICT", emailTaken.message, emailTaken.field);
     }
 
     const profile: NewAccountProfile = {
@@ -444,12 +522,14 @@ export const registerOrganization = action({
         receiptFileId: args.receiptFileId,
         payout,
       },
+      otpIds,
     };
-    const { user } = await createAccount(ctx, {
-      provider: PASSWORD_PROVIDER,
-      account: { id: email, secret: args.password },
-      profile: profile as never,
-    });
+    const { user } = await createPasswordAccount(
+      ctx,
+      { id: email, secret: args.password },
+      profile,
+      emailTaken,
+    );
     const structureId = (user as Doc<"users">).structureId;
     if (!structureId) throw new Error("structure was not created");
     return { structureId, status: "pending", message: fr.auth.signup.sent.body };
@@ -462,10 +542,9 @@ export async function createModeratorAccount(
   input: { name: string; email: string; phone: string },
 ): Promise<Id<"users">> {
   const profile: NewAccountProfile = { kind: "moderator", ...input };
-  const { user } = await createAccount(ctx, {
-    provider: PASSWORD_PROVIDER,
-    account: { id: input.email },
-    profile: profile as never,
+  const { user } = await createPasswordAccount(ctx, { id: input.email }, profile, {
+    message: fr.errors.emailTaken,
+    field: "email",
   });
   return user._id as Id<"users">;
 }

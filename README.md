@@ -73,6 +73,7 @@ npx convex dev
 # 4a. Once per deployment: Convex Auth keys (JWT_PRIVATE_KEY, JWKS, SITE_URL in the Convex env)
 npx @convex-dev/auth
 npx convex env set MODERATION_SITE_URL http://moderation.localhost:3000
+npx convex env set OTP_HASH_SECRET "$(openssl rand -hex 32)"   # key for SMS code hashes (required in production)
 
 # 4b. Optional: load demo data (structures, causes, donations, a blood alert) from the prototype
 npx convex run seed:run

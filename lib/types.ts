@@ -78,6 +78,7 @@ export type OnboardingPhase = (typeof ONBOARDING_PHASES)[number];
 export const OTP_PURPOSES = [
   "donor_signup",
   "login_2fa",
+  "org_contact",
   "password_reset",
   "payout_number",
 ] as const;

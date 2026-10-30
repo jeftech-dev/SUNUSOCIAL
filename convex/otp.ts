@@ -1,12 +1,17 @@
-// SMS one-time codes (DT-2): donor signup, payout-number check, login 2FA, donor password reset.
+// SMS one-time codes (DT-2): donor signup, organisation contact phone, payout-number check,
+// login 2FA, donor password reset.
 //
-// - 6 digits, stored only as a hash, valid 10 minutes, 5 attempts.
-// - At most 3 codes per number and purpose in 10 minutes, and 60 s between two codes.
-// - Verification never throws on a wrong code: a throw would roll back the attempt counter.
+// - 6 digits, stored only as a keyed hash, valid 10 minutes, 5 attempts.
+// - Per number and purpose: at most 3 codes in 10 minutes, 10 in 24 hours, and 60 s between two.
+// - Codes sent to people who are not signed in also count toward a global daily cap (SMS_DAILY_CAP).
+// - Checking never throws on a wrong code: a throw would roll back the attempt counter.
+// - Signup codes are checked first (`verify`) and marked used in the same transaction that creates
+//   the account (`claimOtp`), so a failed account creation leaves the code usable.
 
 import { getAuthSessionId, getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
+import { loadConfig } from "../lib/config";
 import { getSmsProvider } from "../lib/sms";
 import { fr } from "../lib/strings.fr";
 import type { OtpPurpose } from "../lib/types";
@@ -23,17 +28,25 @@ import {
 import { logAudit } from "./audit";
 import { hashOtp, randomOtpCode } from "./lib/crypto";
 import { appError } from "./lib/errors";
+import { hitRateLimit } from "./lib/rateLimit";
 import { otpPurposeV } from "./validators";
 
 export const OTP_TTL_MS = 10 * 60 * 1000;
 export const OTP_MAX_ATTEMPTS = 5;
 export const OTP_MAX_SENDS = 3;
 export const OTP_SEND_WINDOW_MS = 10 * 60 * 1000;
+export const OTP_MAX_SENDS_PER_DAY = 10;
+export const OTP_DAY_MS = 24 * 60 * 60 * 1000;
 export const OTP_COOLDOWN_MS = 60 * 1000;
+
+/** Rate-limit key of the global daily cap on codes sent to people who are not signed in. */
+export const SMS_DAILY_CAP_KEY = "sms:anonymous";
 
 const ORG_ROLES = new Set(["structure", "hospital", "moderator"]);
 
 export type OtpCheck = { ok: true } | { ok: false; reason: "invalid" | "expired" | "locked" };
+export type OtpVerification =
+  { ok: true; otpId: Id<"otpCodes"> } | { ok: false; reason: "invalid" | "expired" | "locked" };
 
 export interface SendResult {
   channel: "sms";
@@ -47,9 +60,11 @@ export interface SendResult {
 
 /**
  * Sends a code by SMS.
- * - `donor_signup`, `payout_number`, `password_reset`: `phone` is required.
+ * - `donor_signup`, `org_contact`, `payout_number`, `password_reset`: `phone` is required.
  * - `login_2fa`: no phone; the code goes to the signed-in account's phone and unlocks this session.
- * `password_reset` answers the same whether or not an account exists.
+ *   Asking again within 60 s (e.g. after a page reload) keeps the code already sent.
+ * The answer never reveals whether an account exists: `donor_signup` for a registered number sends
+ * an "account exists" SMS instead of a code, and `password_reset` for an unknown number sends nothing.
  */
 export const send = action({
   args: { purpose: otpPurposeV, phone: v.optional(v.string()) },
@@ -57,7 +72,7 @@ export const send = action({
     let phone: string;
     let userId: Id<"users"> | undefined;
     let sessionId: Id<"authSessions"> | undefined;
-    let deliver = true;
+    let message: "code" | "accountExists" | null = "code";
 
     if (purpose === "login_2fa") {
       const authUserId = await getAuthUserId(ctx);
@@ -74,12 +89,11 @@ export const send = action({
       const normalized = rawPhone === undefined ? null : normalizePhone(rawPhone);
       if (!normalized) throw appError("VALIDATION", fr.errors.invalidPhone, "phone");
       phone = normalized;
-      const donorExists = await ctx.runQuery(internal.otp.donorExists, { phone });
-      if (purpose === "donor_signup" && donorExists) {
-        throw appError("CONFLICT", fr.errors.phoneTaken, "phone");
+      if (purpose === "donor_signup" || purpose === "password_reset") {
+        const donorExists = await ctx.runQuery(internal.otp.donorExists, { phone });
+        if (purpose === "donor_signup" && donorExists) message = "accountExists";
+        if (purpose === "password_reset" && !donorExists) message = null;
       }
-      // Don't reveal whether an account exists: issue the code either way, send it only if so.
-      if (purpose === "password_reset") deliver = donorExists;
     }
 
     const code = randomOtpCode();
@@ -89,16 +103,24 @@ export const send = action({
       userId,
       sessionId,
       codeHash: await hashOtp(purpose, phone, code),
+      delivered: message !== null,
     });
     if (!issued.ok) {
       throw appError(
         "RATE_LIMITED",
         issued.reason === "cooldown"
           ? fr.errors.otpCooldown(Math.ceil(issued.retryAfterMs / 1000))
-          : fr.errors.otpRateLimited,
+          : issued.reason === "unavailable"
+            ? fr.errors.smsUnavailable
+            : fr.errors.otpRateLimited,
       );
     }
-    if (deliver) await getSmsProvider().send(phone, fr.sms.code(code));
+    if (!issued.reused && message !== null) {
+      await getSmsProvider().send(
+        phone,
+        message === "code" ? fr.sms.code(code) : fr.sms.accountExists,
+      );
+    }
     return { channel: "sms", to: maskPhone(phone), expiresAt: issued.expiresAt };
   },
 });
@@ -130,29 +152,41 @@ export const issue = internalMutation({
     userId: v.optional(v.id("users")),
     sessionId: v.optional(v.id("authSessions")),
     codeHash: v.string(),
+    /** False when no SMS goes out (reset for an unknown number): no cost, so no global cap. */
+    delivered: v.boolean(),
   },
   handler: async (
     ctx,
-    args,
+    { delivered, ...args },
   ): Promise<
-    | { ok: true; expiresAt: number }
-    | { ok: false; reason: "cooldown" | "limit"; retryAfterMs: number }
+    | { ok: true; expiresAt: number; reused: boolean }
+    | { ok: false; reason: "cooldown" | "limit" | "unavailable"; retryAfterMs: number }
   > => {
     const now = Date.now();
-    const recent = await ctx.db
+    const today = await ctx.db
       .query("otpCodes")
       .withIndex("by_phone_purpose", (q) => q.eq("phone", args.phone).eq("purpose", args.purpose))
       .order("desc")
-      .filter((q) => q.gt(q.field("_creationTime"), now - OTP_SEND_WINDOW_MS))
+      .filter((q) => q.gt(q.field("_creationTime"), now - OTP_DAY_MS))
       .collect();
-    const last = recent[0];
+    const last = today[0];
     if (last && now - last._creationTime < OTP_COOLDOWN_MS) {
+      // A reload of the 2FA step: the code sent to this session moments ago is still good.
+      if (
+        args.sessionId !== undefined &&
+        last.sessionId === args.sessionId &&
+        last.usedAt === undefined &&
+        last.attempts < OTP_MAX_ATTEMPTS
+      ) {
+        return { ok: true, expiresAt: last.expiresAt, reused: true };
+      }
       return {
         ok: false,
         reason: "cooldown",
         retryAfterMs: last._creationTime + OTP_COOLDOWN_MS - now,
       };
     }
+    const recent = today.filter((row) => row._creationTime > now - OTP_SEND_WINDOW_MS);
     if (recent.length >= OTP_MAX_SENDS) {
       const oldest = recent[recent.length - 1];
       return {
@@ -161,9 +195,28 @@ export const issue = internalMutation({
         retryAfterMs: oldest._creationTime + OTP_SEND_WINDOW_MS - now,
       };
     }
+    if (today.length >= OTP_MAX_SENDS_PER_DAY) {
+      const oldest = today[today.length - 1];
+      return {
+        ok: false,
+        reason: "limit",
+        retryAfterMs: oldest._creationTime + OTP_DAY_MS - now,
+      };
+    }
+    // 2FA codes need a password first, so only anonymous sends count toward the global cap.
+    if (delivered && args.purpose !== "login_2fa") {
+      const cap = await hitRateLimit(ctx, SMS_DAILY_CAP_KEY, {
+        max: loadConfig(process.env).smsDailyCap,
+        windowMs: OTP_DAY_MS,
+      });
+      if (!cap.ok) {
+        console.error(`[otp] SMS daily cap reached; refusing ${args.purpose} codes`);
+        return { ok: false, reason: "unavailable", retryAfterMs: cap.retryAfterMs };
+      }
+    }
     const expiresAt = now + OTP_TTL_MS;
     await ctx.db.insert("otpCodes", { ...args, attempts: 0, expiresAt });
-    return { ok: true, expiresAt };
+    return { ok: true, expiresAt, reused: false };
   },
 });
 
@@ -173,12 +226,12 @@ export const issue = internalMutation({
 
 /**
  * Checks `code` against the latest code for this number and purpose (and session, for 2FA).
- * Counts a failed attempt; marks the code used on success.
+ * Counts a failed attempt, but does not mark the code used: see `claimOtp`.
  */
-export async function checkOtp(
+export async function verifyOtp(
   ctx: MutationCtx,
   args: { purpose: OtpPurpose; phone: string; code: string; sessionId?: Id<"authSessions"> },
-): Promise<OtpCheck> {
+): Promise<OtpVerification> {
   const latest = await ctx.db
     .query("otpCodes")
     .withIndex("by_phone_purpose", (q) => q.eq("phone", args.phone).eq("purpose", args.purpose))
@@ -199,17 +252,45 @@ export async function checkOtp(
       reason: latest.attempts + 1 >= OTP_MAX_ATTEMPTS ? "locked" : "invalid",
     };
   }
-  await ctx.db.patch(latest._id, { usedAt: Date.now() });
+  return { ok: true, otpId: latest._id };
+}
+
+/**
+ * Marks a verified code used. Throws if it was used or expired meanwhile, which rolls back the
+ * caller's transaction (e.g. the account creation it belongs to).
+ */
+export async function claimOtp(ctx: MutationCtx, otpId: Id<"otpCodes">): Promise<void> {
+  const row = await ctx.db.get(otpId);
+  if (!row || row.usedAt !== undefined || row.expiresAt <= Date.now()) {
+    throw appError("OTP_INVALID", fr.errors.otpInvalid);
+  }
+  await ctx.db.patch(otpId, { usedAt: Date.now() });
+}
+
+/** Verifies and marks used in one step (2FA, password reset). */
+export async function checkOtp(
+  ctx: MutationCtx,
+  args: { purpose: OtpPurpose; phone: string; code: string; sessionId?: Id<"authSessions"> },
+): Promise<OtpCheck> {
+  const result = await verifyOtp(ctx, args);
+  if (!result.ok) return result;
+  await claimOtp(ctx, result.otpId);
   return { ok: true };
 }
 
-/** Consumes a code from an action (signup, payout number, password reset). */
+/** Verifies a code from an action without using it up; the caller claims it later. */
+export const verify = internalMutation({
+  args: { purpose: otpPurposeV, phone: v.string(), code: v.string() },
+  handler: (ctx, args): Promise<OtpVerification> => verifyOtp(ctx, args),
+});
+
+/** Verifies and uses up a code from an action (password reset). */
 export const consume = internalMutation({
   args: { purpose: otpPurposeV, phone: v.string(), code: v.string() },
   handler: (ctx, args): Promise<OtpCheck> => checkOtp(ctx, args),
 });
 
-export function otpErrorMessage(check: Exclude<OtpCheck, { ok: true }>): string {
+export function otpErrorMessage(check: { reason: "invalid" | "expired" | "locked" }): string {
   return check.reason === "locked" ? fr.errors.otpLocked : fr.errors.otpInvalid;
 }
 

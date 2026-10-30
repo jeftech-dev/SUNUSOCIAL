@@ -176,6 +176,8 @@ export const fr = {
       organizationName: "Nom de la structure",
       structureType: "Type de structure",
       responsiblePhone: "Téléphone du responsable",
+      responsiblePhoneHint:
+        "Il sera confirmé par un code SMS, puis recevra un code à chaque connexion.",
       receipt: "Récépissé ministériel ou agrément (PDF ou image)",
       receiptHint: "PDF, JPG ou PNG · 5 Mo max.",
       payoutTitle: "Compte de réception des fonds",
@@ -194,6 +196,10 @@ export const fr = {
     },
     otp: {
       sentTo: (to: string) => `Un code à 6 chiffres a été envoyé par SMS au ${to}.`,
+      sentToBoth: (contact: string, payout: string) =>
+        `Deux codes à 6 chiffres ont été envoyés par SMS\u00a0: au ${contact} (téléphone du responsable) et au ${payout} (compte de réception des fonds).`,
+      contactCode: "Code reçu sur le téléphone du responsable",
+      payoutCode: "Code reçu sur le numéro du compte",
       verify: "Vérifier le code et continuer",
       validate: "Valider",
       resend: "Renvoyer le code",
@@ -242,6 +248,8 @@ export const fr = {
   sms: {
     code: (code: string) =>
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
+    accountExists:
+      "SUNUSOCIAL\u00a0: un compte donateur existe déjà avec ce numéro. Connectez-vous, ou utilisez «\u00a0Mot de passe oublié\u00a0».",
   },
 
   email: {
@@ -271,6 +279,7 @@ export const fr = {
     otpLocked: "Trop d'essais. Demandez un nouveau code.",
     otpRateLimited: "Trop de codes demandés. Réessayez dans quelques minutes.",
     otpCooldown: (seconds: number) => `Patientez ${seconds}\u00a0s avant de redemander un code.`,
+    smsUnavailable: "L'envoi de SMS est momentanément indisponible. Réessayez plus tard.",
     invalidCredentials: "Identifiant ou mot de passe incorrect.",
     tooManyAttempts: "Trop de tentatives. Réessayez dans quelques minutes.",
     notAuthenticated: "Connectez-vous pour continuer.",

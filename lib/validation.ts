@@ -60,3 +60,20 @@ export function normalizeName(input: string): string | null {
   const name = input.trim().replace(/\s+/g, " ");
   return name.length >= 2 && name.length <= 120 ? name : null;
 }
+
+/** Signup receipts (récépissé / agrément): PDF, JPG or PNG, 5 MB max. */
+export const RECEIPT_MAX_BYTES = 5 * 1024 * 1024;
+export const RECEIPT_TYPES = ["application/pdf", "image/jpeg", "image/png"] as const;
+
+/**
+ * The receipt type read from the file's first bytes, or null when it is none of RECEIPT_TYPES.
+ * The declared Content-Type alone can't be trusted.
+ */
+export function sniffReceiptType(bytes: Uint8Array): (typeof RECEIPT_TYPES)[number] | null {
+  const startsWith = (signature: number[]) =>
+    bytes.length >= signature.length && signature.every((b, i) => bytes[i] === b);
+  if (startsWith([0x25, 0x50, 0x44, 0x46])) return "application/pdf"; // %PDF
+  if (startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "image/png";
+  if (startsWith([0xff, 0xd8, 0xff])) return "image/jpeg";
+  return null;
+}

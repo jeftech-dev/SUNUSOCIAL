@@ -16,6 +16,11 @@ export interface Config {
   paymentProvider: Provider;
   /** `console` logs codes in development and preview; production needs a real provider (DT-29). */
   smsProvider: string;
+  /**
+   * Most SMS codes sent per 24 h to people who are not signed in (signup, payout number, reset).
+   * Interim cost guard until the board sets the SMS budget (BOARD_QUESTIONS.md Q1).
+   */
+  smsDailyCap: number;
   /** Interim, to be studied with the board (DB-14). */
   minDonation: number;
   /** 0 until the revenue model is decided. */
@@ -36,6 +41,7 @@ export const DEFAULTS: Config = {
   appEnv: "development",
   paymentProvider: "mock",
   smsProvider: "console",
+  smsDailyCap: 1000,
   minDonation: 500,
   platformFeeRate: 0,
   maxCauseDurationDays: 30,
@@ -102,6 +108,7 @@ export function loadConfig(env: Env): Config {
     appEnv: oneOf(env, "APP_ENV", APP_ENVS, DEFAULTS.appEnv),
     paymentProvider: oneOf(env, "PAYMENT_PROVIDER", PROVIDERS, DEFAULTS.paymentProvider),
     smsProvider: raw(env, "SMS_PROVIDER") ?? DEFAULTS.smsProvider,
+    smsDailyCap: positiveInt(env, "SMS_DAILY_CAP", DEFAULTS.smsDailyCap),
     minDonation: positiveInt(env, "MIN_DONATION", DEFAULTS.minDonation),
     platformFeeRate: rate(env, "PLATFORM_FEE_RATE", DEFAULTS.platformFeeRate),
     maxCauseDurationDays: positiveInt(

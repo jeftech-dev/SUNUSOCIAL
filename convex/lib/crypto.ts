@@ -1,6 +1,8 @@
 // Hashing and randomness helpers (Web Crypto, available in the Convex runtime).
 // Generate secrets in actions only: queries and mutations run with seeded randomness.
 
+import { loadConfig } from "../../lib/config";
+
 export async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -23,7 +25,36 @@ export function randomToken(bytes = 32): string {
   return Array.from(buffer, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Hash of a one-time code, bound to its purpose and phone so a code can't be replayed elsewhere. */
-export function hashOtp(purpose: string, phone: string, code: string): Promise<string> {
-  return sha256Hex(`otp:${purpose}:${phone}:${code}`);
+/** Development-only key; production must set OTP_HASH_SECRET. */
+const DEV_OTP_HASH_SECRET = "sunusocial-dev-otp-hash-secret";
+
+function otpHashSecret(env: Record<string, string | undefined> = process.env): string {
+  const secret = env.OTP_HASH_SECRET?.trim();
+  if (secret) return secret;
+  if (loadConfig(env).appEnv === "production") {
+    throw new Error("OTP_HASH_SECRET is required in production");
+  }
+  return DEV_OTP_HASH_SECRET;
+}
+
+async function hmacSha256Hex(key: string, text: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(text));
+  return Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Keyed hash of a one-time code, bound to its purpose and phone so a code can't be replayed
+ * elsewhere. The server key (OTP_HASH_SECRET) means a leaked `otpCodes` table can't be reversed
+ * by trying the million possible codes.
+ */
+export async function hashOtp(purpose: string, phone: string, code: string): Promise<string> {
+  return hmacSha256Hex(otpHashSecret(), `otp:${purpose}:${phone}:${code}`);
 }

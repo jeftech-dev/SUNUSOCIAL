@@ -55,12 +55,59 @@ async function registerDonor(t: T, phone = DONOR_PHONE, password = "motdepasse1"
   });
 }
 
-async function storeReceipt(t: T, type = "application/pdf", bytes = 1024) {
-  return t.run((ctx) => ctx.storage.store(new Blob([new Uint8Array(bytes)], { type })));
+/** A minimal file with the PDF signature. */
+function pdfBytes(size = 1024): Uint8Array {
+  const bytes = new Uint8Array(size);
+  bytes.set(new TextEncoder().encode("%PDF-1.7"));
+  return bytes;
+}
+
+/** POST /signup/receipt as the signup form does. */
+function postReceipt(
+  t: T,
+  {
+    phone,
+    code,
+    type = "application/pdf",
+    body = pdfBytes(),
+  }: {
+    phone: string;
+    code: string;
+    type?: string;
+    body?: Uint8Array;
+  },
+) {
+  return t.fetch("/signup/receipt", {
+    method: "POST",
+    headers: {
+      "Content-Type": type,
+      "X-Signup-Phone": phone,
+      "X-Signup-Code": code,
+      Origin: "http://localhost:3000",
+    },
+    body: new Blob([body as BlobPart], { type }),
+  });
+}
+
+/** Sends the contact code to `phone`, uploads a receipt with it, and returns both. */
+async function startOrgSignup(t: T, phone = RESPONSIBLE_PHONE) {
+  await t.action(api.otp.send, { purpose: "org_contact", phone });
+  const contactOtpCode = lastSmsCode(phone);
+  const response = await postReceipt(t, { phone, code: contactOtpCode });
+  expect(response.status).toBe(200);
+  const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
+  return { contactOtpCode, receiptFileId: storageId };
+}
+
+/** A stored file that did not go through the signup endpoint. */
+async function storeFile(t: T) {
+  return t.run((ctx) =>
+    ctx.storage.store(new Blob([pdfBytes() as BlobPart], { type: "application/pdf" })),
+  );
 }
 
 async function registerStructure(t: T, email = "contact@keurkhadija.test") {
-  const receiptFileId = await storeReceipt(t);
+  const { contactOtpCode, receiptFileId } = await startOrgSignup(t);
   await t.action(api.otp.send, { purpose: "payout_number", phone: PAYOUT_PHONE });
   return t.action(api.auth.registerOrganization, {
     organizationName: "Pouponnière Keur Khadija",
@@ -72,6 +119,7 @@ async function registerStructure(t: T, email = "contact@keurkhadija.test") {
     email,
     password: "un-mot-de-passe-long",
     receiptFileId,
+    contactOtpCode,
     payout: {
       method: "wave",
       accountNumber: PAYOUT_PHONE,
@@ -79,6 +127,10 @@ async function registerStructure(t: T, email = "contact@keurkhadija.test") {
       otpCode: lastSmsCode(PAYOUT_PHONE),
     },
   });
+}
+
+function wrongCode(code: string) {
+  return code === "000000" ? "111111" : "000000";
 }
 
 function signIn(t: T, identifier: string, password: string, audience?: "moderation") {
@@ -146,6 +198,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  delete process.env.SMS_DAILY_CAP;
 });
 
 const advance = (ms: number) => vi.setSystemTime(new Date(Date.now() + ms));
@@ -191,6 +244,53 @@ describe("otp", () => {
     await expectAppError(send(), "RATE_LIMITED");
     advance(10 * 60 * 1000);
     await send();
+  });
+
+  it("caps codes at 10 per number and purpose in 24 hours", async () => {
+    const t = setup();
+    const send = () => t.action(api.otp.send, { purpose: "payout_number", phone: PAYOUT_PHONE });
+    for (let i = 0; i < 10; i += 1) {
+      await send();
+      advance(4 * 60 * 1000);
+    }
+    await expectAppError(send(), "RATE_LIMITED");
+    // Another purpose for the same number has its own budget.
+    await t.action(api.otp.send, { purpose: "org_contact", phone: PAYOUT_PHONE });
+    advance(24 * 60 * 60 * 1000);
+    await send();
+  });
+
+  it("caps codes sent to signed-out people across all numbers (SMS_DAILY_CAP)", async () => {
+    process.env.SMS_DAILY_CAP = "2";
+    const t = setup();
+    await t.action(api.otp.send, { purpose: "donor_signup", phone: "+221770000001" });
+    await t.action(api.otp.send, { purpose: "org_contact", phone: "+221770000002" });
+    const error = await t
+      .action(api.otp.send, { purpose: "payout_number", phone: "+221770000003" })
+      .catch((e: unknown) => e);
+    expect(errorData(error).code).toBe("RATE_LIMITED");
+    expect(logs.filter((l) => l.startsWith("[SMS console]"))).toHaveLength(2);
+    // A reset for an unknown number sends nothing, so it is not refused.
+    await t.action(api.otp.send, { purpose: "password_reset", phone: "+221770000004" });
+    advance(24 * 60 * 60 * 1000);
+    await t.action(api.otp.send, { purpose: "payout_number", phone: "+221770000003" });
+  });
+
+  it("stores a keyed hash, not a plain SHA-256 of the code", async () => {
+    const t = setup();
+    await t.action(api.otp.send, { purpose: "donor_signup", phone: DONOR_PHONE });
+    const code = lastSmsCode(DONOR_PHONE);
+    const plain = Array.from(
+      new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(`otp:donor_signup:${DONOR_PHONE}:${code}`),
+        ),
+      ),
+      (b) => b.toString(16).padStart(2, "0"),
+    ).join("");
+    const row = await t.run((ctx) => ctx.db.query("otpCodes").first());
+    expect(row?.codeHash).not.toBe(plain);
   });
 
   it("counts wrong attempts and locks the code after 5", async () => {
@@ -297,13 +397,66 @@ describe("donor signup and sign-in", () => {
     expect(await t.run((ctx) => ctx.db.query("users").collect())).toHaveLength(0);
   });
 
-  it("refuses a phone that is already registered", async () => {
+  it("does not reveal a registered phone: its owner gets an SMS instead of a code", async () => {
     const t = setup();
     await registerDonor(t);
     advance(61_000);
+    logs = [];
+    const result = await t.action(api.otp.send, { purpose: "donor_signup", phone: DONOR_PHONE });
+    expect(result.to).toBe("+221 77 ••• 45 67");
+    const sms = logs.filter((l) => l.startsWith(`[SMS console] to ${DONOR_PHONE}:`));
+    expect(sms).toHaveLength(1);
+    expect(sms[0]).toContain("existe déjà");
+    expect(sms[0].split(": ").slice(1).join(": ")).not.toMatch(/\d{6}/);
+  });
+
+  it("answers CONFLICT only after a valid code, and keeps the code usable", async () => {
+    const t = setup();
+    const phone = "+221701112233";
+    await t.action(api.otp.send, { purpose: "donor_signup", phone });
+    const otpCode = lastSmsCode(phone);
+    // Another signup for this number finishes in between.
+    const accountId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        name: "Autre",
+        phone,
+        role: "donor",
+        disabled: false,
+        createdAt: Date.now(),
+      });
+      return ctx.db.insert("authAccounts", {
+        userId,
+        provider: "password",
+        providerAccountId: phone,
+      });
+    });
+    const register = () =>
+      t.action(api.auth.registerDonor, {
+        name: "Aminata Diop",
+        phone,
+        password: "motdepasse1",
+        otpCode,
+      });
+    await expectAppError(register(), "CONFLICT");
+    const row = await t.run((ctx) => ctx.db.query("otpCodes").first());
+    expect(row?.usedAt).toBeUndefined();
+
+    // Once the number is free again, the same code still works, and only once.
+    await t.run(async (ctx) => {
+      const account = await ctx.db.get(accountId);
+      await ctx.db.delete(account!.userId);
+      await ctx.db.delete(accountId);
+    });
+    await register();
+    advance(1000);
     await expectAppError(
-      t.action(api.otp.send, { purpose: "donor_signup", phone: DONOR_PHONE }),
-      "CONFLICT",
+      t.action(api.auth.registerDonor, {
+        name: "Aminata Diop",
+        phone: "+221701112244",
+        password: "motdepasse1",
+        otpCode,
+      }),
+      "OTP_INVALID",
     );
   });
 
@@ -370,7 +523,7 @@ describe("donor signup and sign-in", () => {
 });
 
 describe("organisation signup", () => {
-  it("creates a pending structure with an SMS-verified payout account", async () => {
+  it("creates a pending structure with SMS-verified contact phone and payout account", async () => {
     const t = setup();
     const { structureId, status } = await registerStructure(t);
     expect(status).toBe("pending");
@@ -385,12 +538,41 @@ describe("organisation signup", () => {
         .withIndex("email", (q) => q.eq("email", "contact@keurkhadija.test"))
         .unique();
       expect(user).toMatchObject({ role: "structure", structureId, phone: RESPONSIBLE_PHONE });
+      expect(user?.phoneVerifiedAt).toBeDefined();
+      // The receipt is attached: nothing is left for the cleanup job.
+      expect(await ctx.db.query("signupUploads").collect()).toHaveLength(0);
+      const codes = await ctx.db.query("otpCodes").collect();
+      expect(codes.every((c) => c.usedAt !== undefined)).toBe(true);
     });
   });
 
-  it("creates a hospital without a payout account or SMS code", async () => {
+  it("needs a single code when the payout number is the contact phone", async () => {
     const t = setup();
-    const receiptFileId = await storeReceipt(t, "image/png");
+    const { contactOtpCode, receiptFileId } = await startOrgSignup(t);
+    const { structureId } = await t.action(api.auth.registerOrganization, {
+      organizationName: "Daara Serigne Fallou",
+      type: "Orphelinat",
+      region: "Diourbel",
+      commune: "Touba",
+      responsibleName: "Modou Fall",
+      responsiblePhone: RESPONSIBLE_PHONE,
+      email: "daara@fallou.test",
+      password: "un-mot-de-passe-long",
+      receiptFileId,
+      contactOtpCode,
+      payout: {
+        method: "orange_money",
+        accountNumber: RESPONSIBLE_PHONE,
+        holderName: "Modou Fall",
+      },
+    });
+    const structure = await t.run((ctx) => ctx.db.get(structureId));
+    expect(structure?.payout?.phoneVerifiedAt).toBeDefined();
+  });
+
+  it("creates a hospital with a verified contact phone and no payout account", async () => {
+    const t = setup();
+    const { contactOtpCode, receiptFileId } = await startOrgSignup(t);
     const { structureId } = await t.action(api.auth.registerOrganization, {
       organizationName: "Hôpital régional de Thiès",
       type: "Hôpital (don de sang)",
@@ -401,6 +583,7 @@ describe("organisation signup", () => {
       email: "transfusion@hrt.test",
       password: "un-mot-de-passe-long",
       receiptFileId,
+      contactOtpCode,
     });
     const structure = await t.run((ctx) => ctx.db.get(structureId));
     expect(structure?.payout).toBeUndefined();
@@ -413,45 +596,136 @@ describe("organisation signup", () => {
     expect(user?.role).toBe("hospital");
   });
 
-  it("requires the payout account, a valid receipt, 12-char passwords and a unique email", async () => {
+  it("checks the codes, the receipt, the payout account, 12-char passwords and a unique email", async () => {
     const t = setup();
+    const { contactOtpCode, receiptFileId } = await startOrgSignup(t);
     const base = {
       organizationName: "Foyer Jàmm",
-      type: "Foyer" as const,
+      type: "Hôpital (don de sang)" as const,
       region: "Saint-Louis",
       commune: "Saint-Louis",
       responsibleName: "Awa Sow",
       responsiblePhone: RESPONSIBLE_PHONE,
       email: "jamm@foyer.test",
       password: "un-mot-de-passe-long",
-      receiptFileId: await storeReceipt(t),
+      receiptFileId,
+      contactOtpCode,
     };
-    await expectAppError(t.action(api.auth.registerOrganization, base), "VALIDATION");
+    const register = (
+      overrides: Partial<Omit<typeof base, "type">> & {
+        type?: "Foyer";
+        payout?: { method: "wave"; accountNumber: string; holderName: string };
+      } = {},
+    ) => t.action(api.auth.registerOrganization, { ...base, ...overrides });
+    await expectAppError(register({ type: "Foyer" }), "VALIDATION"); // no payout account
+    await expectAppError(register({ password: "trop-court" }), "VALIDATION");
+    await expectAppError(register({ contactOtpCode: wrongCode(contactOtpCode) }), "OTP_INVALID");
+    // A file that did not go through the signup endpoint, or was uploaded for another phone.
+    await expectAppError(register({ receiptFileId: await storeFile(t) }), "VALIDATION");
     await expectAppError(
-      t.action(api.auth.registerOrganization, { ...base, password: "trop-court" }),
+      register({ responsiblePhone: "+221775550000", contactOtpCode }),
       "VALIDATION",
     );
+    // A different payout number needs its own code.
     await expectAppError(
-      t.action(api.auth.registerOrganization, {
-        ...base,
-        type: "Hôpital (don de sang)",
-        receiptFileId: await storeReceipt(t, "text/plain"),
+      register({
+        type: "Foyer",
+        payout: { method: "wave", accountNumber: PAYOUT_PHONE, holderName: "Awa Sow" },
       }),
-      "VALIDATION",
+      "OTP_INVALID",
     );
-    await expectAppError(
-      t.action(api.auth.registerOrganization, {
-        ...base,
-        type: "Hôpital (don de sang)",
-        receiptFileId: await storeReceipt(t, "application/pdf", 6 * 1024 * 1024),
-      }),
-      "VALIDATION",
-    );
-    await registerStructure(t, "jamm@foyer.test");
-    await expectAppError(
-      t.action(api.auth.registerOrganization, { ...base, type: "Hôpital (don de sang)" }),
-      "CONFLICT",
-    );
+
+    // The email is checked after the codes, which stay usable after a CONFLICT.
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {
+        name: "Autre",
+        email: "jamm@foyer.test",
+        role: "structure",
+        disabled: false,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("authAccounts", {
+        userId,
+        provider: "password",
+        providerAccountId: "jamm@foyer.test",
+      });
+    });
+    await expectAppError(register(), "CONFLICT");
+    await register({ email: "jamm2@foyer.test" });
+  });
+});
+
+describe("signup receipt upload", () => {
+  it("needs the contact phone's code and doesn't use it up", async () => {
+    const t = setup();
+    await t.action(api.otp.send, { purpose: "org_contact", phone: RESPONSIBLE_PHONE });
+    const code = lastSmsCode(RESPONSIBLE_PHONE);
+    const refused = await postReceipt(t, { phone: RESPONSIBLE_PHONE, code: wrongCode(code) });
+    expect(refused.status).toBe(403);
+    expect(((await refused.json()) as { error: { code: string } }).error.code).toBe("OTP_INVALID");
+    const noCode = await postReceipt(t, { phone: "+221775550000", code });
+    expect(noCode.status).toBe(403);
+
+    const ok = await postReceipt(t, { phone: RESPONSIBLE_PHONE, code });
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3000");
+    const rows = await t.run((ctx) => ctx.db.query("otpCodes").collect());
+    expect(rows[0].usedAt).toBeUndefined();
+    expect(rows[0].attempts).toBe(1);
+  });
+
+  it("checks the size and the real file type before storing", async () => {
+    const t = setup();
+    await t.action(api.otp.send, { purpose: "org_contact", phone: RESPONSIBLE_PHONE });
+    const code = lastSmsCode(RESPONSIBLE_PHONE);
+    const post = (type: string, body: Uint8Array) =>
+      postReceipt(t, { phone: RESPONSIBLE_PHONE, code, type, body });
+    expect((await post("text/plain", pdfBytes())).status).toBe(415);
+    // Declared as a PDF, but an HTML page.
+    expect((await post("application/pdf", new TextEncoder().encode("<html>"))).status).toBe(415);
+    expect((await post("application/pdf", pdfBytes(5 * 1024 * 1024 + 1))).status).toBe(413);
+    expect(await t.run((ctx) => ctx.db.system.query("_storage").collect())).toHaveLength(0);
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
+    expect((await post("image/png", png)).status).toBe(200);
+  });
+
+  it("limits uploads per phone, with no shared counter", async () => {
+    const t = setup();
+    await t.action(api.otp.send, { purpose: "org_contact", phone: RESPONSIBLE_PHONE });
+    const code = lastSmsCode(RESPONSIBLE_PHONE);
+    for (let i = 0; i < 5; i += 1) {
+      expect((await postReceipt(t, { phone: RESPONSIBLE_PHONE, code })).status).toBe(200);
+    }
+    expect((await postReceipt(t, { phone: RESPONSIBLE_PHONE, code })).status).toBe(429);
+    // Someone else signing up at the same time is not affected.
+    await startOrgSignup(t, PAYOUT_PHONE);
+  });
+
+  it("answers the CORS preflight for the app's origin only", async () => {
+    const t = setup();
+    const preflight = (origin: string) =>
+      t.fetch("/signup/receipt", { method: "OPTIONS", headers: { Origin: origin } });
+    expect(
+      (await preflight("http://localhost:3000")).headers.get("Access-Control-Allow-Origin"),
+    ).toBe("http://localhost:3000");
+    expect(
+      (await preflight("https://evil.example")).headers.get("Access-Control-Allow-Origin"),
+    ).toBeNull();
+  });
+
+  it("deletes the files of signups abandoned for 24 hours", async () => {
+    const t = setup();
+    await registerStructure(t);
+    const { receiptFileId } = await startOrgSignup(t, PAYOUT_PHONE);
+    advance(25 * 60 * 60 * 1000);
+    expect(await t.mutation(internal.files.purgeAbandonedUploads, {})).toEqual({ deleted: 1 });
+    await t.run(async (ctx) => {
+      expect(await ctx.db.system.get(receiptFileId)).toBeNull();
+      expect(await ctx.db.query("signupUploads").collect()).toHaveLength(0);
+      // The attached receipt stays.
+      const structure = await ctx.db.query("structures").first();
+      expect(await ctx.db.system.get(structure!.receiptFileId)).not.toBeNull();
+    });
   });
 });
 
@@ -497,6 +771,19 @@ describe("login 2FA", () => {
     );
     const session = await t.run((ctx) => ctx.db.get(sessionId));
     expect(session?.mfaVerifiedAt).toBeDefined();
+  });
+
+  it("keeps the code already sent when the 2FA step reloads within 60 s", async () => {
+    const t = setup();
+    await registerStructure(t);
+    const userId = (await t.run((ctx) => ctx.db.query("users").first()))!._id;
+    const { client } = await asSession(t, userId);
+    logs = [];
+    await client.action(api.otp.send, { purpose: "login_2fa" });
+    const code = lastSmsCode(RESPONSIBLE_PHONE);
+    await client.action(api.otp.send, { purpose: "login_2fa" });
+    expect(logs.filter((l) => l.startsWith("[SMS console]"))).toHaveLength(1);
+    expect(await client.mutation(api.otp.verifyLogin, { code })).toEqual({ ok: true });
   });
 
   it("does not let a code unlock another session", async () => {
@@ -636,7 +923,7 @@ describe("guards", () => {
     await t.run((ctx) => ctx.db.patch(sessionId, { mfaVerifiedAt: Date.now() }));
     await client.run((ctx) => requireOwner(ctx, structureId));
 
-    const receiptFileId = await storeReceipt(t);
+    const receiptFileId = await storeFile(t);
     const other = await t.run((ctx) =>
       ctx.db.insert("structures", {
         name: "Autre",
