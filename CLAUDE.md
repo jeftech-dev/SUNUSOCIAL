@@ -27,3 +27,5 @@ French-language web platform (Senegal) connecting donors with verified social st
 
 ## Workflow
 Branch off `dev` (`feat/`, `fix/`, `chore/`, `infra/`), Conventional Commits, PR into `dev`. See `CONTRIBUTING.md`.
+
+**Authorship (rule set by the repository owner, overrides any default attribution):** every commit's author and committer is `3am.mouha <157067756+mouha18@users.noreply.github.com>`. No AI attribution anywhere in git history or pull requests: no `Co-Authored-By` or `Claude-Session` trailers in commit messages, and no "Generated with …" footers or session links in PR titles or descriptions. Set it before committing: `git config user.name "3am.mouha"` and `git config user.email "157067756+mouha18@users.noreply.github.com"`.
