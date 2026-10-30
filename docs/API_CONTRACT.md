@@ -143,30 +143,35 @@ Same shape as `bloodProfile` above. Logged as `blood.optIn` or `profile.update`.
 
 ## Causes
 
+All three require a donor or moderator session. They only show **listed** causes: `active`, from a structure that is `approved` and not suspended (DT-34; G4 interim). `causes.get` also shows a `closed` cause of such a structure.
+
 ### query `causes.list`
+Paginated with Convex's standard pagination, for `usePaginatedQuery`.
+
 **Request**
 ```json
 {
   "category": "Alimentation",     // optional: Santé|Alimentation|Matériel
-  "filter": "urgent",             // optional: urgent|almost|recent
-  "query": "lait",                // optional free text
-  "cursor": null,                 // optional pagination cursor
-  "limit": 12
+  "filter": "urgent",             // optional, one at a time: urgent|almost|recent
+  "query": "lait",                // optional; searches cause titles (first 100 characters kept)
+  "paginationOpts": { "numItems": 12, "cursor": null }   // numItems capped at 48
 }
 ```
+Order: soonest deadline first; `recent` = newest approval first; with `query`, by relevance (`recent` then has no effect). `urgent` = urgency `urgent`; `almost` = at least 75 % of the goal (`ALMOST_REACHED_PERCENT`).
+
 **Response (success) — 200**
 ```json
 {
   "page": [
     {
-      "id": "cau_…",
+      "id": "…",
       "title": "Lait infantile pour 32 nourrissons",
       "category": "Alimentation",
       "organization": { "name": "Pouponnière Keur Khadija", "verified": true },
-      "bannerUrl": "https://…",
+      "bannerUrl": "https://…",   // null if the file is missing
       "raised": 4500,
       "goal": 10000,
-      "percent": 45,
+      "percent": 45,              // integer, rounded down, capped at 100
       "urgent": true,
       "endCondition": { "type": "date", "deadline": 1760486400000 }
     }
@@ -175,37 +180,38 @@ Same shape as `bloodProfile` above. Logged as `blood.optIn` or `profile.update`.
   "continueCursor": "eyJ…"
 }
 ```
+A page can hold fewer items than asked when a structure stopped being verified; keep loading until `isDone`.
+
+### query `causes.featured`
+**Request** `{}` → **Response** one card (same shape as a `causes.list` item), or `null` when no listed cause is the Coup de cœur.
 
 ### query `causes.get`
 **Request**
 ```json
-{ "id": "cau_…" }   // required
+{ "id": "…" }   // required; any string (an id from the URL)
 ```
 **Response (success) — 200**
 ```json
 {
-  "id": "cau_…",
+  "id": "…",
   "title": "Lait infantile pour 32 nourrissons",
   "description": "…",
   "category": "Alimentation",
   "urgency": "urgent",
-  "organization": { "id": "str_…", "name": "Pouponnière Keur Khadija", "verified": true, "city": "Mbour, Thiès" },
+  "organization": { "id": "…", "name": "Pouponnière Keur Khadija", "verified": true, "city": "Mbour, Thiès" },
   "bannerUrl": "https://…",
   "raised": 4500,
   "goal": 10000,
   "percent": 45,
   "donorCount": 23,
   "endCondition": { "type": "goal", "deadline": 1765756800000 },
-  "estimatedNet": 9700,        // goal minus the 3% fee — shown on the page
+  "estimatedNet": 9700,        // goal minus the estimated fees — shown on the page
   "featured": false,
-  "status": "active",
-  "similar": [ { "id": "cau_…", "title": "…", "raised": 55000, "goal": 55000, "percent": 100, "bannerUrl": "…" } ]
+  "status": "active",          // active | closed
+  "similar": [ { "id": "…", "title": "…", "raised": 55000, "goal": 55000, "percent": 100, "bannerUrl": "…" } ]  // ≤ 3, same category, listed
 }
 ```
-**Response (error)**
-```json
-{ "error": { "code": "NOT_FOUND", "message": "Cette cause n'existe plus.", "field": null } }
-```
+**Not found:** `null` when the id is malformed or unknown, or the cause isn't visible (pending, refused, withdrawn, deleted, or its structure isn't verified). The page shows « Cette cause n'existe plus. ». A live query returning `null` lets an open page switch to that state instead of failing.
 
 ### mutation `causes.create`
 **Request**
@@ -518,11 +524,23 @@ HTTP 401 with an empty body when the signature is missing or invalid (nothing is
 ### mutation `moderation.setFeatured`
 **Request**
 ```json
-{ "causeId": "cau_…" }   // or null to clear; the cause must be active. Replaces the current Coup de cœur.
+{ "causeId": "…" }   // or null to clear; the cause must be listed (active, verified structure). Replaces the current Coup de cœur.
 ```
 **Response (success) — 200**
 ```json
 { "ok": true, "message": "« Lait infantile pour 32 nourrissons » est le Coup de cœur de la semaine." }
+```
+Clearing answers `"Le Coup de cœur a été retiré."`. Logged as `featured.set` (details: the previous cause ids) or `featured.clear`. The Coup de cœur stays until replaced or removed; it is not cleared automatically.
+
+**Response (error)**
+```json
+{ "error": { "code": "VALIDATION", "message": "Cette cause ne peut pas être choisie : elle doit être active et publiée par une structure vérifiée.", "field": "causeId" } }
+```
+
+### query `moderation.featuredCandidates`
+**Request** `{}` → **Response** the listed causes, soonest deadline first (at most 200):
+```json
+[ { "id": "…", "title": "Trois fauteuils roulants adaptés", "organization": "Centre Aw Handicap", "category": "Matériel", "percent": 86, "urgent": false, "featured": true } ]
 ```
 
 ### mutation `extensions.request`

@@ -55,9 +55,9 @@ Everything else requires a session. **Donors must be logged in to view and donat
 ### Causes
 | Kind | Function | Description | Auth |
 |------|----------|-------------|------|
-| query | `causes.list` | Paginated approved causes; filter by category + Urgent/Presque atteint/Récent | Donor |
-| query | `causes.featured` | Weekly editor's pick | Donor |
-| query | `causes.get` | One cause with progress, end condition, similar causes | Donor |
+| query | `causes.list` | Paginated active causes of verified structures; filter by category + Urgent/Presque atteint/Récent + title search | Donor, Moderator |
+| query | `causes.featured` | Weekly editor's pick (null when none) | Donor, Moderator |
+| query | `causes.get` | One cause with progress, end condition, similar causes (null when not visible) | Donor, Moderator |
 | query | `causes.mine` | A structure's own causes with status timeline | Structure |
 | mutation | `causes.create` | Submit a cause (→ Soumise/En modération) | Structure |
 | mutation | `causes.update` | Edit a cause (pre-publication or allowed fields) | Structure |
@@ -115,6 +115,7 @@ Everything else requires a session. **Donors must be logged in to view and donat
 | mutation | `moderation.decideRefund` | Approve / reject a refund request (final) | Moderator |
 | mutation | `moderation.decidePayoutAccount` | Approve / refuse a payout-account change | Moderator |
 | mutation | `moderation.setFeatured` | Pick (or clear) the weekly "Coup de cœur" | Moderator |
+| query | `moderation.featuredCandidates` | Active causes of verified structures for the Coup de cœur picker | Moderator |
 | mutation | `moderation.liftSuspension` | Lift a structure's auto-suspension | Moderator |
 | mutation | `moderation.decideExtension` | Approve / refuse a cause-deadline extension or proof delay (reason) | Moderator |
 | query | `moderation.payouts` | Payout queue status, NabooPay balance, reconciliation alerts | Moderator |

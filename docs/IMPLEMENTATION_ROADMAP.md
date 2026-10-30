@@ -79,16 +79,19 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `causes.list` with category + Urgent/Presque atteint/Récent filters | `feat` | `convex/causes.ts` | 📋 |
-| 2 | Feed page + `CauseCard` + `ProgressBar` + `VerifiedBadge` | `feat` | `app/(donor)/causes/page.tsx`, `components/cause/*` | 📋 |
-| 3 | Weekly featured ("Coup de cœur") display + `moderation.setFeatured` | `feat` | `convex/causes.ts`, `convex/moderation.ts`, feed page | 📋 |
-| 4 | `causes.get` + detail page (end condition, similar causes, WhatsApp) | `feat` | `convex/causes.ts`, `app/(donor)/causes/[id]/page.tsx` | 📋 |
-| 5 | Empty/loading states | `feat` | feed + detail pages | 📋 |
+| 1 | `causes.list` with category + Urgent/Presque atteint/Récent filters + title search (DT-34) | `feat` | `convex/causes.ts`, `convex/lib/causeViews.ts`, `convex/schema.ts` (feed indexes) | ✅ |
+| 2 | Feed page + `CauseCard` + `ProgressBar` + `VerifiedBadge` | `feat` | `app/(donor)/causes/page.tsx`, `components/cause/*`, `hooks/useCauses.ts` | ✅ |
+| 3 | Weekly featured ("Coup de cœur") display + `moderation.setFeatured` | `feat` | `convex/causes.ts`, `convex/moderation.ts`, feed page | ✅ |
+| 3b | Coup de cœur picker on the moderation host *(pulled forward from Sprint 5)* | `feat` | `app/moderation/coup-de-coeur`, `components/moderation/FeaturedPicker.tsx` | ✅ |
+| 4 | `causes.get` + detail page (end condition, similar causes, WhatsApp) | `feat` | `convex/causes.ts`, `app/(donor)/causes/[id]/page.tsx` | ✅ |
+| 5 | Empty/loading states | `feat` | feed + detail pages | ✅ |
 
 **Definition of Done:**
-- [ ] Only approved causes from verified structures show.
-- [ ] Filters and categories narrow the list; empty state renders.
-- [ ] Progress and donor count reflect live data.
+- [x] Only approved causes from verified structures show. *(Suspended structures are hidden too: G4 interim, DT-34.)*
+- [x] Filters and categories narrow the list; empty state renders.
+- [x] Progress and donor count reflect live data. *(Live Convex queries; donations start moving them in Sprint 4.)*
+
+*Verified with `convex-test` (visibility, filters, order, search, pagination, detail, Coup de cœur, guards and audit), `lint`, `typecheck` and `next build`. Not yet checked in a browser against a running backend: this environment could not download the local Convex backend. "Faire un don" is shown disabled until Sprint 4. The WhatsApp buttons appear once `NEXT_PUBLIC_WHATSAPP_NUMBER` is set.*
 
 ---
 
@@ -204,9 +207,9 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [x] Activity log — Sprint 2
 - [ ] Extension requests (cause deadline, proof delay) — Sprint 6
 - [x] Moderator separate-platform login — Sprint 2
-- [ ] Causes feed with categories + filters — Sprint 3
-- [ ] Weekly "Coup de cœur" featured — Sprint 3
-- [ ] Cause detail (end condition, similar, WhatsApp) — Sprint 3
+- [x] Causes feed with categories + filters — Sprint 3
+- [x] Weekly "Coup de cœur" featured — Sprint 3 (picker included)
+- [x] Cause detail (end condition, similar, WhatsApp) — Sprint 3
 - [ ] Donation modal with live fee + net (Orange Money/Wave) — Sprint 4
 - [ ] Donor dashboard (history + cumulative impact) — Sprint 4
 - [ ] Create/edit/withdraw cause + status timeline — Sprint 5
@@ -223,4 +226,4 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [ ] Donor alert response (visit slot) — Sprint 7
 - [ ] Hospital stock + confirm attendee — Sprint 7
 - [ ] Hospital thank-you message — Sprint 7
-- [ ] WhatsApp contact fallback — Sprint 3 (cause detail + footer)
+- [x] WhatsApp contact fallback — Sprint 3 (cause detail + footer; hidden until the board provides the number)
