@@ -1,8 +1,10 @@
+import Link from "next/link";
+
 import { RequireRole } from "@/components/auth/RequireRole";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { fr } from "@/lib/strings.fr";
 
-/** Mod 02 queues: placeholder until Sprint 5. */
+/** Mod 02 queues: placeholder until Sprint 5, with the Coup de cœur picker. */
 export default function ModerationQueuesPage() {
   return (
     <RequireRole role="moderator" loginPath="/">
@@ -12,6 +14,12 @@ export default function ModerationQueuesPage() {
           <SignOutButton />
         </div>
         <p className="text-muted-foreground">{fr.moderation.queuesSoon}</p>
+        <Link
+          href="/coup-de-coeur"
+          className="self-start font-heading font-bold text-brand-blue underline-offset-4 hover:underline"
+        >
+          {fr.moderation.featuredLink}
+        </Link>
       </section>
     </RequireRole>
   );
