@@ -42,3 +42,7 @@ Thumbs.db
 
 # skills CLI working dir (project skills live in .claude/skills)
 .agents/
+
+# TypeScript / certs
+*.tsbuildinfo
+*.pem
