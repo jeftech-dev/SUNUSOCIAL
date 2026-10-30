@@ -147,7 +147,7 @@ sunusocial/
 | `SMS_PROVIDER` | `console` (dev/preview — refused in production) or the chosen provider | Yes |
 | `SMS_PROVIDER_API_KEY` | SMS gateway key | In production |
 | `SMS_SENDER_ID` | Dedicated SMS sender number/ID | In production |
-| `WHATSAPP_CONTACT_NUMBER` | E.164 number behind the "Nous contacter sur WhatsApp" links | Yes |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | E.164 number behind the "Nous contacter sur WhatsApp" links; the buttons are hidden while it is empty (waiting on the board) | Yes |
 | `NEXT_PUBLIC_APP_URL` | Public base URL of the donor/structure app | Yes |
 | `NEXT_PUBLIC_MODERATION_URL` | Public base URL of the moderation subdomain | Yes |
 
