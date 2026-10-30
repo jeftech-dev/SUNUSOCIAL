@@ -112,7 +112,7 @@ input,button,textarea{font-family:inherit}
     </div>
 
     <section data-screen-label="Mod 07 Demandes de remboursement" style="background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:20px;display:flex;flex-direction:column;gap:12px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:18px;font-weight:700">Demandes de remboursement</h2><span style="background:#5b8fc4;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ refundCount }}</span><span style="font-size:13px;color:#94a3b8;margin-left:auto">NabooPay uniquement · avant le versement des fonds · décision définitive</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:18px;font-weight:700">Demandes de remboursement</h2><span style="background:#5b8fc4;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ refundCount }}</span><span style="font-size:13px;color:#94a3b8;margin-left:auto">Avant le versement des fonds · montant net remboursé (don moins les frais NabooPay) · décision définitive</span></div>
       <sc-if value="{{ noRefunds }}" hint-placeholder-val="{{ false }}"><div style="padding:18px;text-align:center;color:#64748b">Aucune demande ✓</div></sc-if>
       <sc-for list="{{ refunds }}" as="r" hint-placeholder-count="1">
         <div style="background:#141c2b;border:1px solid #2c3a52;border-radius:18px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 20px;align-items:center">
@@ -131,7 +131,27 @@ input,button,textarea{font-family:inherit}
           <sc-if value="{{ r.isClosed }}" hint-placeholder-val="{{ false }}"><span style="justify-self:end;font-size:13px;font-weight:700;color:{{ r.doneFg }}">{{ r.doneLabel }}</span></sc-if>
         </div>
       </sc-for>
-      <sc-if value="{{ isSyca }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#f0a564">Avec Sycapay, les fonds sont versés à chaque don : aucune demande de remboursement n'est possible.</span></sc-if>
+    </section>
+
+    <section data-screen-label="Mod 08 Demandes de prolongation" style="background:#1e293b;border:1px solid #2c3a52;border-radius:28px 28px 28px 8px;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:18px;font-weight:700">Demandes de prolongation</h2><span style="background:#5b8fc4;color:#fff;border-radius:999px;padding:3px 10px;font-weight:700;font-size:13px">{{ extCount }}</span><span style="font-size:13px;color:#94a3b8;margin-left:auto">Date limite d'une cause (30 jours max. par demande) ou délai pour une preuve</span></div>
+      <sc-for list="{{ exts }}" as="x" hint-placeholder-count="2">
+        <div style="background:#141c2b;border:1px solid #2c3a52;border-radius:18px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 20px;align-items:center">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.04em;color:{{ x.kindFg }};background:{{ x.kindBg }};border-radius:999px;padding:3px 9px">{{ x.kindLabel }}</span>
+            <strong style="color:#fff;font-size:15px">{{ x.title }}</strong>
+            <span style="font-size:13px;color:#94a3b8">{{ x.org }} · {{ x.change }}</span>
+            <span style="font-size:13px;color:#e2e8f0;line-height:1.5">« {{ x.reason }} »</span>
+          </div>
+          <sc-if value="{{ x.isOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+              <button onClick="{{ x.accept }}" style="background:#529e3b;color:#fff;border:0;border-radius:999px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:#3b7a29">Accorder</button>
+              <button onClick="{{ x.reject }}" style="background:transparent;color:#fff;border:1.5px solid #5b8fc4;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:rgba(91,143,196,.14)">Refuser</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ x.isClosed }}" hint-placeholder-val="{{ false }}"><span style="justify-self:end;font-size:13px;font-weight:700;color:{{ x.doneFg }}">{{ x.doneLabel }}</span></sc-if>
+        </div>
+      </sc-for>
     </section>
 
     <section style="display:flex;flex-direction:column;gap:12px">
@@ -437,11 +457,15 @@ const PROV = { NabooPay: ['3 %', "Fonds conservés jusqu'à l'objectif ou la dat
 const RKEY = 'sunu_refund_reqs';
 const SEED_REQ = { id: 'seed', donor: 'Ousmane Ba', cause: 'Séances de kinésithérapie', org: 'Centre Aw Handicap', amount: 10000, method: 'Wave', date: '11 oct. 2026', reason: "Je me suis trompé de montant : je voulais donner 1 000 FCFA." };
 const readReqs = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '[]'); } catch (e) { return []; } };
-const readProv = () => { try { return localStorage.getItem('sunu_provider') === 'Sycapay' ? 'Sycapay' : 'NabooPay'; } catch (e) { return 'NabooPay'; } };
+const EXT_SEED = [
+  { id: 'e1', kind: 'cause', title: 'Lait infantile pour 32 nourrissons', org: 'Pouponnière Keur Khadija', change: 'date limite : 15 oct. → 5 nov. 2026', reason: 'Le fournisseur de lait a repoussé sa livraison de trois semaines.' },
+  { id: 'e2', kind: 'proof', title: 'Riz, huile et sucre pour octobre', org: 'Orphelinat Darou Salam', change: 'preuve due le 14 oct. → 21 oct. 2026', reason: 'La distribution a lieu samedi prochain, nous publierons les photos juste après.' }
+];
+const readProv = () => 'NabooPay'; // board decision 29/10/2026: NabooPay only (SycaPay dropped)
 
 class Component extends DCLogic {
   state = {
-    reqs: readReqs(), seedStatus: null, pvIdx: 0, screen: 'login', email: '', curId: null, refusing: false, reason: '', toast: '', fund: null, provider: readProv(), optOpen: false,
+    reqs: readReqs(), seedStatus: null, extStatus: {}, pvIdx: 0, screen: 'login', email: '', curId: null, refusing: false, reason: '', toast: '', fund: null, provider: readProv(), optOpen: false,
     structures: [
       { id: 1, name: 'Foyer Keur Yaay', type: 'Foyer', region: 'Dakar', commune: 'Grand Dakar', phone: '+221 33 800 12 34', contact: 'Awa Sow', date: '11 oct. 2026', receiptNo: 'SG/DAGAT/2026-0417', receiptFile: 'recepisse_keur_yaay.pdf', desc: "Foyer accueillant 24 enfants en situation de rue. Nous souhaitons financer les repas et les fournitures scolaires." },
       { id: 2, name: 'Hôpital régional de Thiès', type: 'Hôpital (don de sang)', region: 'Thiès', commune: 'Thiès', phone: '+221 33 951 10 10', contact: 'Dr Mame Diarra Sarr', date: '11 oct. 2026', receiptNo: 'MSAS/DES/2019-0231', receiptFile: 'agrement_msas_thies.pdf', desc: "Service de transfusion de l'hôpital régional. Nous souhaitons alerter les donneurs de la région quand un groupe sanguin vient à manquer." },
@@ -488,6 +512,13 @@ class Component extends DCLogic {
     const refuseFlow = (key, item, msg) => { if (!s.refusing) return this.setState({ refusing: true }); if (!s.reason.trim()) return this.toast('La raison du refus est obligatoire'); drop(key, item, msg); };
     return {
       toast: s.toast, isLogin: s.screen === 'login', isApp: s.screen !== 'login',
+      extCount: EXT_SEED.filter(x => !s.extStatus[x.id]).length,
+      exts: EXT_SEED.map(x => { const st = s.extStatus[x.id]; const proof = x.kind === 'proof';
+        const decide = v => { if (v === 'refused' && !st) { const r = window.prompt('Raison du refus (visible par la structure) :'); if (!r || !r.trim()) return this.toast('La raison du refus est obligatoire'); }
+          this.setState({ extStatus: { ...s.extStatus, [x.id]: v } }); this.toast(v === 'approved' ? (proof ? `Délai accordé à ${x.org}` : `Prolongation accordée — les donateurs de « ${x.title} » sont informés`) : `Demande de ${x.org} refusée`); };
+        return { ...x, kindLabel: proof ? 'DÉLAI DE PREUVE' : 'PROLONGATION DE CAUSE', kindFg: proof ? '#f0a564' : '#9cc3ea', kindBg: proof ? 'rgba(222,125,40,.16)' : 'rgba(91,143,196,.18)',
+          isOpen: !st, isClosed: !!st, doneLabel: st === 'approved' ? 'Accordée ✓' : 'Refusée ✗', doneFg: st === 'approved' ? '#7cc46a' : '#e58b7c',
+          accept: () => decide('approved'), reject: () => decide('refused') }; }),
       isDash: s.screen === 'dash', isCause: s.screen === 'cause', isProof: s.screen === 'proof', isStructure: s.screen === 'structure', isDel: s.screen === 'del',
       email: s.email, onEmail: e => this.setState({ email: e.target.value }),
       login: () => this.go('dash'), logout: () => this.go('login'), goDash: () => this.go('dash'),
@@ -500,7 +531,7 @@ class Component extends DCLogic {
       refundCount: s.provider === 'Sycapay' ? 0 : [{ status: s.seedStatus }, ...s.reqs].filter(r => !r.status).length, noRefunds: s.provider === 'Sycapay',
       structureCount: s.structures.length, causeCount: s.causes.length, proofCount: s.proofs.length, delCount: s.dels.length,
       refunds: (() => { const syca = s.provider === 'Sycapay'; const list = [{ ...SEED_REQ, status: s.seedStatus }, ...s.reqs]; const shown = syca ? [] : list;
-        const decide = (r, st) => { if (r.id === 'seed') this.setState({ seedStatus: st }); else { const reqs = s.reqs.map(x => x.id === r.id ? { ...x, status: st } : x); try { localStorage.setItem(RKEY, JSON.stringify(reqs)); } catch (e) {} this.setState({ reqs }); } this.toast(st === 'refunded' ? `${fmt(r.amount)} remboursés à ${r.donor} sur ${r.method}` : `Demande de ${r.donor} refusée — le don reste affecté à la cause`); };
+        const decide = (r, st) => { if (r.id === 'seed') this.setState({ seedStatus: st }); else { const reqs = s.reqs.map(x => x.id === r.id ? { ...x, status: st } : x); try { localStorage.setItem(RKEY, JSON.stringify(reqs)); } catch (e) {} this.setState({ reqs }); } this.toast(st === 'refunded' ? `${fmt(r.amount - Math.round(r.amount * 0.03))} (montant net) remboursés à ${r.donor} sur ${r.method}` : `Demande de ${r.donor} refusée — le don reste affecté à la cause`); };
         return shown.map(r => ({ ...r, amountStr: fmt(r.amount), isOpen: !r.status, isClosed: !!r.status, doneLabel: r.status === 'refunded' ? '✓ Remboursé' : 'Refusé · don maintenu', doneFg: r.status === 'refunded' ? '#8fd27a' : '#94a3b8', accept: () => decide(r, 'refunded'), reject: () => decide(r, 'rejected') })); })(),
       isSyca: s.provider === 'Sycapay',
       noStructures: !s.structures.length, noCauses: !s.causes.length, noProofs: !s.proofs.length, noDels: !s.dels.length,

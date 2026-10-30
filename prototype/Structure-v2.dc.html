@@ -67,6 +67,7 @@ input,select,button,textarea{font-family:inherit}
           <span style="color:#5b6678">{{ r.goalStr }}</span>
           <div style="display:flex;gap:6px;justify-content:{{ actJustify }};flex-wrap:wrap">
             <sc-if value="{{ r.canProof }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.proof }}" style="border:0;background:#529e3b;color:#fff;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer" style-hover="background:#3b7a29">Publier la preuve</button></sc-if>
+            <sc-if value="{{ r.canExt }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.ext }}" style="border:1.5px solid #e2e8f0;background:#fff;color:#174a7c;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;cursor:pointer" style-hover="border-color:#174a7c">{{ r.extBtn }}</button></sc-if>
             <button onClick="{{ r.edit }}" style="border:1.5px solid #e2e8f0;background:#fff;color:#1e293b;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;cursor:pointer" style-hover="border-color:#de7d28;color:#b4601a">Modifier</button>
             <sc-if value="{{ r.canDel }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.del }}" style="border:0;background:none;color:#a03b2a;padding:7px 8px;font-weight:600;font-size:13px;cursor:pointer" style-hover="text-decoration:underline">Supprimer</button></sc-if>
           </div>
@@ -87,6 +88,19 @@ input,select,button,textarea{font-family:inherit}
             </div>
           </div>
         </sc-if>
+        <sc-if value="{{ r.askingExt }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px;border:1.5px solid #cfe0f1;background:#f4f8fc;border-radius:16px;padding:14px">
+            <strong style="font-size:14px;color:#174a7c">{{ r.extTitle }}</strong>
+            <span style="font-size:13px;color:#5b6678;line-height:1.5">{{ r.extNote }}</span>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Nouvelle date souhaitée<input type="date" value="{{ extDate }}" onChange="{{ onExtDate }}" style="border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:14px;outline:none;background:#fff"></input></label>
+            <textarea value="{{ extReason }}" onChange="{{ onExtReason }}" placeholder="Ex. Le fournisseur a repoussé la livraison de deux semaines." style="border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:14px;min-height:70px;outline:none;resize:vertical;font-family:inherit"></textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+              <button onClick="{{ cancelExt }}" style="border:1.5px solid #e2e8f0;background:#fff;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;color:#334155">Annuler</button>
+              <button onClick="{{ r.sendExt }}" disabled="{{ noExtReason }}" style="border:0;background:#174a7c;color:#fff;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;opacity:{{ extOpacity }}">Envoyer la demande au modérateur</button>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ r.extPending }}" hint-placeholder-val="{{ false }}"><div style="background:#eaf1f8;color:#174a7c;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5">⏳ {{ r.extPendingText }}</div></sc-if>
         <sc-if value="{{ r.delPending }}" hint-placeholder-val="{{ false }}"><div style="background:#fdeeea;color:#8a2f20;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5">⏳ Demande de suppression envoyée le 12 oct. 2026 · en attente de l'autorisation du modérateur. Motif : « {{ r.delReq }} »</div></sc-if>
         <sc-if value="{{ r.isDeletedKept }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:4px;background:#fdf0e3;color:#7a420f;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5"><strong>Preuve d'utilisation obligatoire avant le 17 oct. 2026 (J-5)</strong><span>{{ r.delNote }}</span><span style="font-weight:600">Sans preuve validée à cette date, votre compte sera suspendu : vous ne pourrez plus publier de nouvelle cause.</span></div></sc-if>
         <sc-if value="{{ r.isRefused }}" hint-placeholder-val="{{ false }}"><div style="background:#fdeeea;color:#8a2f20;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5"><strong>Raison du refus :</strong> {{ r.reason }}</div></sc-if>
@@ -156,7 +170,7 @@ input,select,button,textarea{font-family:inherit}
       </div>
       <div style="display:flex;gap:10px;align-items:flex-start;background:#fdf0e3;border-radius:16px;padding:14px;font-size:13px;color:#7a420f;line-height:1.5">
         <span style="flex:none;background:#de7d28;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;font-size:10px;letter-spacing:.06em">RÈGLE VALIDÉE</span>
-        <span>Toute cause a une date limite. Pour un objectif financier, les fonds sont libérés à l'objectif atteint ou à la date limite, au premier des deux — aucun don ne reste bloqué chez NabooPay. (Avec Sycapay, les dons vous sont versés directement à chaque paiement.)</span>
+        <span>Toute cause dure <b>30 jours au maximum</b>. Pour un objectif financier, les fonds sont versés à l'objectif atteint ou à la date limite, au premier des deux. Besoin de plus de temps ? Vous pourrez demander une prolongation, accordée par un modérateur.</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <span style="font-size:13px;font-weight:600;color:#334155">Niveau d'urgence</span>
@@ -369,7 +383,7 @@ const dateFr = d => { const x = new Date(d); return isNaN(x) ? '—' : x.toLocal
 
 class Component extends DCLogic {
   state = {
-    delId: null, delReason: '', screen: 'dash', step: 1, editId: null, f: { ...blank }, toast: '', proofId: null, proofFile: false, pCount: 0, pvIdx: 0, proofDesc: '', proofSent: false, w: 1200,
+    delId: null, delReason: '', extId: null, extReason: '', extDate: '', screen: 'dash', step: 1, editId: null, f: { ...blank }, toast: '', proofId: null, proofFile: false, pCount: 0, pvIdx: 0, proofDesc: '', proofSent: false, w: 1200,
     causes: [
       { id: 1, title: 'Lait infantile pour 32 nourrissons', cat: 'Alimentation', status: 'active', raised: 4500, goal: 10000, end: 'date', date: '2026-10-15', urgent: true, desc: '' },
       { id: 2, title: 'Lait infantile — septembre', cat: 'Alimentation', status: 'closed', raised: 85000, goal: 85000, end: 'goal', date: '2026-09-30', urgent: false, desc: '' },
@@ -402,13 +416,27 @@ class Component extends DCLogic {
         delNote: c.raised > 0 ? 'Les ' + fmt(c.raised) + ' déjà collectés seront remboursés aux donateurs ou réaffectés selon la décision du modérateur.' : '',
         del: () => c.status === 'pending' ? (this.setState({ causes: s.causes.filter(x => x.id !== c.id) }), this.toast('Cause retirée de la modération')) : this.setState({ delId: c.id, delReason: '' }),
         sendDel: () => { if (s.delReason.trim().length < 5) return; this.setState({ delId: null, causes: s.causes.map(x => x.id === c.id ? { ...x, delReq: s.delReason.trim() } : x) }); this.toast('Demande de suppression envoyée au modérateur'); },
-        proof: () => this.go('proof', { proofId: c.id, pCount: 0, pvIdx: 0, proofDesc: '', proofSent: false }) };
+        proof: () => this.go('proof', { proofId: c.id, pCount: 0, pvIdx: 0, proofDesc: '', proofSent: false }),
+        ...(() => {
+          const forCause = c.status === 'active', forProof = (c.status === 'closed' || c.status === 'deleted') && !c.proofSent;
+          return {
+            canExt: (forCause || forProof) && !c.extReq, extBtn: forCause ? 'Prolonger' : 'Demander un délai',
+            askingExt: s.extId === c.id, extPending: !!c.extReq,
+            extTitle: forCause ? 'Demander une prolongation de la cause' : 'Demander un délai pour la preuve',
+            extNote: forCause ? 'Date limite actuelle : ' + dateFr(c.date) + '. La prolongation (30 jours au maximum) doit être acceptée par un modérateur. Vos donateurs en seront informés.' : 'La preuve est due 7 jours après le versement des fonds. Un modérateur peut vous accorder un délai supplémentaire. Sans preuve ni délai accordé, le compte est suspendu automatiquement.',
+            extPendingText: (c.extKind === 'proof' ? 'Demande de délai pour la preuve' : 'Demande de prolongation') + ' envoyée — en attente de la décision du modérateur.',
+            ext: () => this.setState({ extId: c.id, extReason: '', extDate: '' }),
+            sendExt: () => { if (s.extReason.trim().length < 10) return; this.setState({ extId: null, causes: s.causes.map(x => x.id === c.id ? { ...x, extReq: s.extReason.trim(), extKind: forCause ? 'cause' : 'proof' } : x) }); this.toast('Demande envoyée au modérateur'); }
+          };
+        })() };
     });
     const goalN = parseInt(String(f.goal).replace(/\D/g, '')) || 0;
     const tab = on => [on ? '#fff' : 'transparent', on ? '#1e293b' : '#5b6678'];
     const proofCause = s.causes.find(c => c.id === s.proofId) || s.causes[1];
     return {
       delReason: s.delReason || '', onDelReason: e => this.setState({ delReason: e.target.value }), cancelDel: () => this.setState({ delId: null }),
+      extReason: s.extReason || '', onExtReason: e => this.setState({ extReason: e.target.value }), extDate: s.extDate || '', onExtDate: e => this.setState({ extDate: e.target.value }), cancelExt: () => this.setState({ extId: null }),
+      noExtReason: (s.extReason || '').trim().length < 10, extOpacity: (s.extReason || '').trim().length < 10 ? 0.45 : 1,
       noDelReason: (s.delReason || '').trim().length < 5, delOpacity: (s.delReason || '').trim().length < 5 ? 0.45 : 1,
       toast: s.toast, isDash: s.screen === 'dash', isForm: s.screen === 'form', isProof: s.screen === 'proof',
       goDash: () => this.go('dash'),
