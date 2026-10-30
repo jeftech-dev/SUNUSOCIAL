@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as seed from "../seed.js";
 import type * as validators from "../validators.js";
 
 /**
@@ -24,6 +25,7 @@ import type * as validators from "../validators.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  seed: typeof seed;
   validators: typeof validators;
 }>;
 export declare const api: FilterApi<
