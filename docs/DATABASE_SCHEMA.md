@@ -231,6 +231,15 @@ Cause-deadline extensions (DB-11) and proof delays, or sursis (DB-12). Each is d
 | `decidedBy` | Id<"users"> | optional | |
 | `createdAt` | number | required | |
 
+### rateLimits
+Fixed-window counters for rate limits (DT-19): signup uploads, email reset requests.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `key` | string | unique | e.g. `upload:signup`, `reset:<email>` |
+| `windowStart` | number | required | Start of the current window |
+| `count` | number | required | Hits in the current window |
+
 ### notifications
 In-app notifications (DT-17).
 
@@ -311,6 +320,7 @@ CREATE INDEX userId                    ON authSessions (userId);
 CREATE INDEX by_phone_purpose          ON otpCodes (phone, purpose);
 CREATE INDEX by_session                ON otpCodes (sessionId);
 CREATE INDEX by_token                  ON passwordResets (tokenHash);
+CREATE INDEX by_user                   ON passwordResets (userId);           -- one live link per account
 CREATE INDEX by_user                   ON donorProfiles (userId);
 CREATE INDEX by_optin_type_commune     ON donorProfiles (bloodOptIn, bloodType, commune); -- blood alert targeting
 CREATE INDEX by_status                 ON structures (status);
@@ -345,6 +355,7 @@ CREATE INDEX by_closed                 ON bloodAlerts (closed);
 CREATE INDEX by_alert                  ON bloodResponses (alertId);
 CREATE INDEX by_alert_donor            ON bloodResponses (alertId, donorId); -- one response per donor and alert
 CREATE INDEX by_hospital_type          ON bloodStock (hospitalId, bloodType);
+CREATE INDEX by_key                    ON rateLimits (key);
 ```
 
 > Convex has no unique constraints. Every field marked "unique" is enforced inside the writing mutation, by looking the value up through its index first. Mutations are serialisable, so this check is race-free.

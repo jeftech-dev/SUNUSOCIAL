@@ -37,7 +37,7 @@ sunusocial/
 │       ├── prolongations/page.tsx    # extension + proof-delay requests (DT-30)
 │       ├── versements/page.tsx       # payout queue, NabooPay balance, reconciliation (DT-4)
 │       └── alertes/page.tsx          # oversee blood alerts (close/disable; DT-26)
-├── middleware.ts                     # host-based routing: moderation subdomain ↔ app (DT-9)
+├── proxy.ts                          # Next 16 proxy (ex-middleware): Convex Auth + moderation subdomain routing (DT-9)
 ├── components/                       # shared presentational + interactive components
 │   ├── ui/                           # shadcn/ui primitives (generated, themed)
 │   ├── cause/CauseCard.tsx

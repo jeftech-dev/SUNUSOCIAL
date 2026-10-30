@@ -73,7 +73,7 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 - Reset requests never reveal whether an account exists.
 - *(Supersedes the WhatsApp-assisted reset in rev. 1, which is no longer needed now that SMS is required.)*
 
-**DT-20 — The first moderator.** Created by the lead developer with `npx convex run admin:createModerator`. There is no public moderator signup.
+**DT-20 — The first moderator.** Created by the lead developer with `npx convex run admin:createModerator '{"name", "email", "phone"}'`. The account has no password until the moderator sets one through the emailed link (so no password goes through the CLI or shell history); the phone receives the login SMS code. There is no public moderator signup.
 
 **DT-27 — Session lifetime.**
 - Convex Auth `session.totalDurationMs` = 7 days for every role (DB-8). Access JWTs are short-lived (library default) and renewed with refresh tokens within that week.
@@ -253,7 +253,7 @@ Récépissés and agréments are visible to moderators only.
 
 Flags are advisory; the moderator decides.
 
-**DT-19 — Rate limiting.** `@convex-dev/rate-limiter`. Calls to NabooPay must also stay under its limit of 100 requests per 60 s per endpoint, so the pending-payment poller works in batches.
+**DT-19 — Rate limiting.** A small fixed-window limiter on a `rateLimits` table (`convex/lib/rateLimit.ts`), plus Convex Auth's own limit on failed sign-ins (30 per hour per account) and the per-number limits of `otpCodes` (DT-2). *(Rev. 3: replaces `@convex-dev/rate-limiter`, so the app has no Convex component yet; it can be swapped in later without changing callers.)* Calls to NabooPay must also stay under its limit of 100 requests per 60 s per endpoint, so the pending-payment poller works in batches.
 
 **DT-26 — Blood alerts (DB-10).**
 - Verified hospitals create, close and thank on their own alerts.

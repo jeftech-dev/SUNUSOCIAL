@@ -6,83 +6,124 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 
 ## Auth
 
-### mutation `auth.registerDonor`
+Errors from app functions are `ConvexError`s whose `data` is `{ code, message, field }` (`lib/types.ts` `ApiError`); `message` is French and can be shown as is. Implementation: `convex/auth.ts`, `convex/otp.ts`, `convex/passwordReset.ts`.
+
+### action `otp.send`
+SMS one-time codes (DT-2): 6 digits, hashed at rest, 10-min expiry, 5 attempts, at most 3 codes per number and purpose in 10 min, 60 s between two codes.
+
+**Request**
+```json
+{ "purpose": "donor_signup", "phone": "77 123 45 67" }   // purpose: donor_signup | payout_number | password_reset | login_2fa
+                                                           // phone: required except for login_2fa (sent to the signed-in account's phone)
+```
+**Response (success)**
+```json
+{ "channel": "sms", "to": "+221 77 ••• 45 67", "expiresAt": 1761750000000 }
+```
+**Errors:** `VALIDATION` (not a Senegalese mobile number), `CONFLICT` (`donor_signup` on a registered number: "Ce numéro est déjà utilisé."), `RATE_LIMITED`, `UNAUTHENTICATED` / `FORBIDDEN` (`login_2fa`). `password_reset` answers the same whether or not the account exists.
+
+### action `auth.registerDonor`
+An action (Convex Auth hashes the password in an action). The account is created only if the SMS code is valid; then the client signs in.
+
 **Request**
 ```json
 {
   "name": "Aminata Diop",      // required
-  "phone": "+221771234567",    // required, E.164
-  "password": "••••••••",      // required
-  "otpCode": "583014",         // required — sent by otp.send({ purpose: "donor_signup", phone })
+  "phone": "+221771234567",    // required, Senegalese mobile, normalised to E.164
+  "password": "••••••••",      // required, ≥ 8 chars
+  "otpCode": "583014",         // required — from otp.send({ purpose: "donor_signup", phone })
   "bloodProfile": {            // optional — opt-in only, off by default
     "optIn": true,
     "bloodType": "O+",         // one of A±,B±,AB±,O±, or "unknown"
-    "region": "Dakar",
-    "commune": "Médina",
+    "region": "Dakar",         // from lib/geo.ts
+    "commune": "Médina",       // required when optIn is true
     "smsOptIn": true
   }
 }
 ```
-**Response (success) — 200**
+**Response (success)**
 ```json
-{ "userId": "usr_01H…", "role": "donor", "phoneVerified": true }   // then signIn("password") creates the session
+{ "userId": "…", "role": "donor" }   // then signIn("password", { flow: "signIn", identifier: phone, password })
 ```
-**Response (error)**
-```json
-{ "error": { "code": "VALIDATION", "message": "Ce numéro est déjà utilisé.", "field": "phone" } }
-```
+**Errors:** `VALIDATION` (`name`, `phone`, `password`, `region`, `commune`), `CONFLICT` (`phone`), `OTP_INVALID` (`otpCode`: "Code incorrect ou expiré." / "Trop d'essais. Demandez un nouveau code.").
 
-### mutation `auth.registerOrganization`
+### mutation `files.generateUploadUrl`
+Upload URL for the récépissé / agrément before signup (public, rate-limited). The client `POST`s the file to it and receives `{ storageId }`.
+
+### action `auth.registerOrganization`
 **Request**
 ```json
 {
   "organizationName": "Pouponnière Keur Khadija", // required
   "type": "Pouponnière",                          // required: Hôpital (don de sang)|Orphelinat|Prison pour femmes|Centre pour handicapés|Pouponnière|Foyer|Autre
   "region": "Thiès",                              // required
-  "commune": "Mbour",                             // required
-  "responsiblePhone": "+221338001234",            // required
-  "email": "contact@keurkhadija.sn",              // required, professional email
+  "commune": "Mbour",                             // required, within the region
+  "responsibleName": "Khadija Sow",               // required
+  "responsiblePhone": "+221771234567",            // required, mobile: receives the login SMS code
+  "email": "contact@keurkhadija.sn",              // required, professional email (login identifier)
   "password": "••••••••••••",                     // required, ≥ 12 chars
-  "receiptFileId": "file_…",                       // required — uploaded récépissé/agrément (PDF/JPG/PNG ≤ 5MB)
-  "payout": {                                      // required for structures, omitted for hospitals — approved by the moderator with the documents
+  "receiptNo": "SG/DAGAT/2026-0417",              // optional
+  "receiptFileId": "kg2…",                         // required — storageId of the uploaded récépissé/agrément (PDF/JPG/PNG ≤ 5 MB)
+  "payout": {                                      // required for structures, omitted for hospitals
     "method": "wave",                             // orange_money | wave
-    "accountNumber": "+221771234567",             // E.164
-    "holderName": "Khadija Sow",                  // the responsible's own name (phase 1) — informational, not checked by NabooPay
+    "accountNumber": "+221771234567",             // mobile number
+    "holderName": "Khadija Sow",                  // the responsible's own name — informational, not checked by NabooPay
     "otpCode": "204817"                           // required — otp.send({ purpose: "payout_number", phone: accountNumber })
   }
 }
 ```
-**Response (success) — 200**
+**Response (success)**
 ```json
-{ "structureId": "str_…", "status": "pending", "message": "Dossier envoyé. Vérification par notre équipe en cours." }
+{ "structureId": "…", "status": "pending", "message": "Vérification par notre équipe en cours. …" }
 ```
-**Response (error)**
-```json
-{ "error": { "code": "VALIDATION", "message": "Le mot de passe doit comporter au moins 12 caractères.", "field": "password" } }
-```
+**Errors:** `VALIDATION` (any field; `receiptFileId` for a missing, oversized or wrong-type file), `CONFLICT` (`email`), `OTP_INVALID` (`payout.otpCode`).
 
 ### Sign-in (Convex Auth) + `otp.verifyLogin`
-Sign-in uses Convex Auth's client call; there is no custom `auth.login` mutation.
+Sign-in uses Convex Auth's client call through the Next.js proxy (`/api/auth`, httpOnly cookies); there is no custom login mutation.
 
 ```ts
-await signIn("password", { flow: "signIn", email: "+221771234567" /* phone for donors, email for orgs */, password: "••••••••" });
+await signIn("password", {
+  flow: "signIn",
+  identifier: "+221771234567",   // phone for donors, email for organisations and moderators
+  password: "••••••••",
+  audience: "moderation",        // only on the moderation subdomain; moderators can't sign in elsewhere
+});
 ```
-Then, for structure/hospital/moderator accounts only (`auth.me` returns `mfaRequired: true`):
+Failed attempts are limited by Convex Auth (30 per hour per account). Errors carry only a message (`InvalidAccountId`, `InvalidSecret`, `TooManyFailedAttempts`, `AccountDisabled`); the UI shows a generic "Identifiant ou mot de passe incorrect."
 
-**`otp.send` request** `{ "purpose": "login_2fa" }` → **response** `{ "channel": "sms", "to": "+22177•••4567", "expiresAt": 1761750000000 }`
+Then, for structure, hospital and moderator accounts (`auth.me` returns `mfaRequired: true, mfaVerified: false`): `otp.send({ purpose: "login_2fa" })`, then:
 
 **`otp.verifyLogin` request**
 ```json
-{ "code": "428913" }   // required, 6 digits; 10-min expiry; 5 attempts max
+{ "code": "428913" }
 ```
-**Response (success) — 200**
+**Response** — returned, not thrown, so failed attempts are counted:
 ```json
 { "ok": true }
+{ "ok": false, "error": { "code": "OTP_INVALID", "message": "Code incorrect ou expiré." } }
 ```
-**Response (error)**
+
+### query `auth.me`
 ```json
-{ "error": { "code": "OTP_INVALID", "message": "Code incorrect ou expiré.", "field": "code" } }
+{
+  "user": { "_id": "…", "role": "structure", "name": "Khadija Sow", "phone": "+221…", "email": "…" },
+  "profile": null,                               // donorProfiles row for donors
+  "structure": { "_id": "…", "name": "…", "type": "Pouponnière", "status": "pending", "refusalReason": null },
+  "mfaRequired": true,
+  "mfaVerified": false
+}
 ```
+`null` when signed out. Readable before the SMS step; every other function for these roles answers `MFA_REQUIRED` until it is done (`convex/lib/guards.ts`).
+
+### mutation `auth.updateBloodProfile` (donor)
+Same shape as `bloodProfile` above. Logged as `blood.optIn` or `profile.update`.
+
+### Password reset
+- Donors: `otp.send({ purpose: "password_reset", phone })`, then action `passwordReset.resetWithSmsCode({ phone, code, newPassword })` → `{ ok: true }`. Ends every session.
+- Organisations and moderators: action `passwordReset.requestEmailReset({ email })` → always `{ ok: true }`; the email links to `/mot-de-passe/nouveau?token=…` (30 min, single use). Then action `passwordReset.resetWithToken({ token, newPassword })` → `{ ok: true, role }`. Ends every session; the SMS code is asked at the next login.
+
+### internal action `admin.createModerator`
+`npx convex run admin:createModerator '{"name": "…", "email": "…", "phone": "+221…"}'` creates the account without a password and emails a link to set one (DT-20).
 
 ---
 
