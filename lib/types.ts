@@ -78,6 +78,7 @@ export type OnboardingPhase = (typeof ONBOARDING_PHASES)[number];
 export const OTP_PURPOSES = [
   "donor_signup",
   "login_2fa",
+  "org_contact",
   "password_reset",
   "payout_number",
 ] as const;
@@ -218,13 +219,16 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "PAYMENT_FAILED"
-  | "RATE_LIMITED";
+  | "RATE_LIMITED"
+  | "MFA_REQUIRED"
+  | "OTP_INVALID";
 
-export interface ApiError {
+// A type alias (not an interface) so it is a Convex `Value` and can travel in a ConvexError.
+export type ApiError = {
   code: ApiErrorCode;
   message: string;
   field?: string | null;
-}
+};
 
 export type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: ApiError };
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { LocationDemo } from "@/components/common/LocationDemo";
 import { Button } from "@/components/ui/button";
@@ -32,12 +33,14 @@ export default function Home() {
         </h1>
         <p className="max-w-2xl text-lg text-muted-foreground">{fr.landing.intro}</p>
         <div className="flex flex-wrap gap-3">
-          <Button size="lg">{fr.landing.ctaDonor}</Button>
-          <Button size="lg" variant="cta">
-            {fr.landing.ctaStructure}
+          <Button asChild size="lg">
+            <Link href="/inscription">{fr.landing.ctaDonor}</Link>
           </Button>
-          <Button size="lg" variant="outline">
-            {fr.nav.login}
+          <Button asChild size="lg" variant="cta">
+            <Link href="/inscription?role=org">{fr.landing.ctaStructure}</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/connexion">{fr.nav.login}</Link>
           </Button>
         </div>
         <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">

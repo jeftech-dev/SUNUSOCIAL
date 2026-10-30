@@ -50,21 +50,24 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | Convex Auth setup (7-day sessions); donor register (SMS code) + login (phone + password) | `feat` | `convex/auth.ts`, `app/(auth)/*` | 📋 |
-| 2 | Structure/hospital register (+ récépissé/agrément upload; payout account + SMS check for structures only) → pending | `feat` | `convex/auth.ts`, `app/(auth)/inscription` | 📋 |
-| 3 | `otp` module (signup / 2FA / reset) + SMS adapter (`console` provider until the real one is chosen) | `feat` | `convex/otp.ts`, `lib/sms/*` | 📋 |
-| 4 | Role resolution + server guards + route guards | `feat` | `convex/lib/guards.ts`, `lib/authz.ts`, route-group layouts | 📋 |
-| 4b | Password reset: SMS code (donors) + email link (orgs) | `feat` | `convex/passwordReset.ts`, `app/(auth)/mot-de-passe` | 📋 |
-| 4c | Activity/audit log (donor signup, logins, profile changes) | `feat` | `convex/audit.ts` | 📋 |
-| 5 | Blood opt-in profile fields at signup | `feat` | `convex/auth.ts`, signup form | 📋 |
-| 6 | Moderation subdomain (middleware host routing) + moderator login + `admin.createModerator` | `feat` | `middleware.ts`, `app/moderation/*`, `convex/admin.ts` | 📋 |
+| 1 | Convex Auth setup (7-day sessions); donor register (SMS code) + login (phone + password) | `feat` | `convex/auth.ts`, `app/(auth)/*` | ✅ |
+| 2 | Structure/hospital register (responsible's phone confirmed by SMS code; récépissé/agrément upload through `POST /signup/receipt`; payout account + SMS check for structures only) → pending | `feat` | `convex/auth.ts`, `convex/files.ts`, `app/(auth)/inscription` | ✅ |
+| 3 | `otp` module (signup / 2FA / reset; per-number daily cap and global `SMS_DAILY_CAP`) + SMS adapter (`console` provider until the real one is chosen) | `feat` | `convex/otp.ts`, `lib/sms/*` | ✅ |
+| 3b | Cron: delete receipts of signups abandoned for 24 h | `feat` | `convex/crons.ts`, `convex/files.ts` | ✅ |
+| 4 | Role resolution + server guards + route guards | `feat` | `convex/lib/guards.ts`, `lib/authz.ts`, route-group layouts | ✅ |
+| 4b | Password reset: SMS code (donors) + email link (orgs) | `feat` | `convex/passwordReset.ts`, `app/(auth)/mot-de-passe` | ✅ |
+| 4c | Activity/audit log (donor signup, logins, profile changes) | `feat` | `convex/audit.ts` | ✅ |
+| 5 | Blood opt-in profile fields at signup | `feat` | `convex/auth.ts`, signup form | ✅ |
+| 6 | Moderation subdomain (middleware host routing) + moderator login + `admin.createModerator` | `feat` | `proxy.ts` (Next 16 name for middleware), `app/moderation/*`, `convex/admin.ts` | ✅ |
 
 **Definition of Done:**
-- [ ] A donor account only exists once its phone is verified by SMS code; login is phone + password; a donor must be logged in to reach the feed.
-- [ ] Sessions expire after 7 days; logins are in the activity log.
-- [ ] New structures/hospitals land in `pending` and cannot publish.
-- [ ] The moderation subdomain rejects non-moderator and non-MFA sessions; the main host 404s `/moderation/*`.
-- [ ] Passwords hashed; no secrets in client bundle.
+- [x] A donor account only exists once its phone is verified by SMS code; login is phone + password; a donor must be logged in to reach the feed.
+- [x] Sessions expire after 7 days; logins are in the activity log.
+- [x] New structures/hospitals land in `pending` and cannot publish. *(`causes.create` must check `status === "approved"` in Sprint 5.)*
+- [x] The moderation subdomain rejects non-moderator and non-MFA sessions; the main host 404s `/moderation/*`.
+- [x] Passwords hashed; no secrets in client bundle.
+
+*Verified with `convex-test` (auth flows, OTP limits, guards, resets, moderator creation, receipt upload and cleanup) and in the browser at 375px; the end-to-end run against a real Convex deployment is still to do.*
 
 ---
 
@@ -192,13 +195,13 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 ## Full Feature Checklist
 
-- [ ] Donor account (SMS-verified phone + password) — Sprint 2
-- [ ] Structure/hospital signup + récépissé upload + pending validation — Sprint 2
-- [ ] One-time code for org/hospital/moderator — Sprint 2 (email; SMS ⏸ pending board)
-- [ ] Password reset (SMS for donors / email for orgs) — Sprint 2
-- [ ] Activity log — Sprint 2
+- [x] Donor account (SMS-verified phone + password) — Sprint 2
+- [x] Structure/hospital signup + récépissé upload + pending validation — Sprint 2
+- [x] One-time code for org/hospital/moderator — Sprint 2 (SMS; console provider until the real one is chosen)
+- [x] Password reset (SMS for donors / email for orgs) — Sprint 2
+- [x] Activity log — Sprint 2
 - [ ] Extension requests (cause deadline, proof delay) — Sprint 6
-- [ ] Moderator separate-platform login — Sprint 2
+- [x] Moderator separate-platform login — Sprint 2
 - [ ] Causes feed with categories + filters — Sprint 3
 - [ ] Weekly "Coup de cœur" featured — Sprint 3
 - [ ] Cause detail (end condition, similar, WhatsApp) — Sprint 3

@@ -15,6 +15,7 @@ describe("loadConfig", () => {
       requirePhase2BeforePayout: false,
       paymentProvider: "mock",
       smsProvider: "console",
+      smsDailyCap: 1000,
     });
   });
 
@@ -27,6 +28,7 @@ describe("loadConfig", () => {
       APP_ENV: "preview",
       PAYMENT_PROVIDER: "naboopay",
       SMS_PROVIDER: "someprovider",
+      SMS_DAILY_CAP: "250",
       MIN_DONATION: "1000",
       PLATFORM_FEE_RATE: "0.02",
       REQUIRE_PHASE2_BEFORE_PAYOUT: "true",
@@ -35,6 +37,7 @@ describe("loadConfig", () => {
       appEnv: "preview",
       paymentProvider: "naboopay",
       smsProvider: "someprovider",
+      smsDailyCap: 250,
       minDonation: 1000,
       platformFeeRate: 0.02,
       requirePhase2BeforePayout: true,
@@ -45,6 +48,7 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ MIN_DONATION: "abc" })).toThrow(ConfigError);
     expect(() => loadConfig({ MIN_DONATION: "499.5" })).toThrow(ConfigError);
     expect(() => loadConfig({ PROOF_DUE_DAYS: "0" })).toThrow(ConfigError);
+    expect(() => loadConfig({ SMS_DAILY_CAP: "-1" })).toThrow(ConfigError);
     expect(() => loadConfig({ PLATFORM_FEE_RATE: "1" })).toThrow(ConfigError);
     expect(() => loadConfig({ PAYMENT_PROVIDER: "sycapay" })).toThrow(ConfigError);
     expect(() => loadConfig({ APP_ENV: "staging" })).toThrow(ConfigError);
