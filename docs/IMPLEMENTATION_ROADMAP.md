@@ -26,19 +26,21 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | Scaffold Next.js (App Router, TS strict) + Convex + Tailwind/shadcn + lint/format + Vitest + CI | `infra` | `app/`, `convex/`, `tsconfig.json`, `package.json`, `.github/workflows/ci.yml` | 📋 |
-| 2 | Define all tables + indexes | `feat` | `convex/schema.ts` | 📋 |
-| 3 | Shared types | `feat` | `lib/types.ts` | 📋 |
-| 4 | Fee math + FCFA formatting + invariant tests; product flags | `feat` | `lib/money.ts`, `lib/config.ts` | 📋 |
-| 5 | Geo reference data (8 regions interim → 14) + dev seed | `feat` | `lib/geo.ts`, `convex/seed.ts` | 📋 |
-| 6 | Centralized French copy | `chore` | `lib/strings.fr.ts` | 📋 |
-| 7 | Root layout, fonts (Montserrat/Inter), Convex provider, charte theme with accessible tokens (DT-11) | `feat` | `app/layout.tsx`, `app/globals.css` | 📋 |
+| 1 | Scaffold Next.js (App Router, TS strict) + Convex + Tailwind/shadcn + lint/format + Vitest + CI | `infra` | `app/`, `convex/`, `tsconfig.json`, `package.json`, `.github/workflows/ci.yml` | ✅ |
+| 2 | Define all tables + indexes | `feat` | `convex/schema.ts` | ✅ |
+| 3 | Shared types | `feat` | `lib/types.ts` | ✅ |
+| 4 | Fee math + FCFA formatting + invariant tests; product flags | `feat` | `lib/money.ts`, `lib/config.ts` | ✅ |
+| 5 | Geo reference data (8 regions interim → 14) + dev seed | `feat` | `lib/geo.ts`, `convex/seed.ts` | ✅ |
+| 6 | Centralized French copy | `chore` | `lib/strings.fr.ts` | ✅ |
+| 7 | Root layout, fonts (Montserrat/Inter), Convex provider, charte theme with accessible tokens (DT-11) | `feat` | `app/layout.tsx`, `app/globals.css` | ✅ |
 
 **Definition of Done:**
-- [ ] `npx convex dev` and `npm run dev` both run clean.
-- [ ] Schema deploys; `geo` seeded; `lint` + `typecheck` pass.
-- [ ] Brand colors/fonts match the charte (navy #174a7c, orange #de7d28, green #529e3b); white-on-orange buttons use #a9561a.
-- [ ] CI runs lint, typecheck, test and `npm audit` on PRs.
+- [ ] `npx convex dev` and `npm run dev` both run clean. *(`npm run build` + `npm start` verified in a browser; `npx convex dev` needs the team's Convex project, see below.)*
+- [ ] Schema deploys; `geo` seeded; `lint` + `typecheck` pass. *(`lint`, `typecheck` and `test` pass, and the schema and seed are validated with `convex-test`; the first deploy to a real Convex project is still to do.)*
+- [x] Brand colors/fonts match the charte (navy #174a7c, orange #de7d28, green #529e3b); white-on-orange buttons use #a9561a.
+- [x] CI runs lint, typecheck, test and `npm audit` on PRs.
+
+**To finish Sprint 1 on a machine with Convex access:** `npx convex dev` (link or create the project; it writes `.env.local` and regenerates `convex/_generated`), then `npx convex run seed:run`. Commit `convex/_generated` if it changed.
 
 ---
 
