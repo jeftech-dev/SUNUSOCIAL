@@ -90,7 +90,9 @@ export default defineSchema({
     tokenHash: v.string(),
     expiresAt: v.number(),
     usedAt: v.optional(v.number()),
-  }).index("by_token", ["tokenHash"]),
+  })
+    .index("by_token", ["tokenHash"])
+    .index("by_user", ["userId"]),
 
   /** Donor preferences, including the opt-in blood profile (health data, off by default). */
   donorProfiles: defineTable({
@@ -334,6 +336,13 @@ export default defineSchema({
     .index("by_actor", ["actorId", "createdAt"])
     .index("by_target", ["targetTable", "targetId"])
     .index("by_action_created", ["action", "createdAt"]),
+
+  /** Fixed-window counters for rate limits (convex/lib/rateLimit.ts). */
+  rateLimits: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
 
   // -------------------------------------------------------------------------
   // Blood module
