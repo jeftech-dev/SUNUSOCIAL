@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/*
+ * SUNUSOCIAL charte graphique (design/), as tokens. DT-10, DT-11.
+ * Fonts: Montserrat (headings), Inter (body), loaded in app/layout.tsx.
+ *
+ * WCAG 2.1 contrast, checked for every pair used (AA: text 4.5:1, UI 3:1):
+ *   white   on --brand-blue          #174a7c  9.10:1  primary buttons
+ *   white   on --primary-hover       #123a62 11.62:1
+ *   white   on --brand-orange-strong #a9561a  5.21:1  CTA buttons
+ *   white   on --cta-hover           #8f4815  6.76:1
+ *   white   on --brand-orange        #de7d28  2.97:1  FAIL: never put white text on it
+ *   --text  on --brand-orange        #de7d28  4.93:1  dark text only
+ *   white   on --brand-green-strong  #3b7a29  5.25:1
+ *   --brand-green-strong on --background      4.91:1, on --green-soft 4.68:1
+ *   white   on --danger              #b8322a  5.95:1; danger text on background 5.57:1
+ *   --text  on --background          #faf7f2 13.69:1
+ *   --muted on --background                   5.43:1, on white 5.81:1
+ *   --brand-blue on --background              8.52:1, on --primary-soft 7.99:1
+ *   focus ring #a9561a on background 4.87:1, on white 5.21:1 (UI)
+ *   --input border #8a94a6 on white           3.06:1 (UI)
+ *   --border #e2e8f0 is decorative only (dividers), never a control's only boundary.
+ */
+:root {
+  /* Charte palette */
+  --brand-blue: #174a7c;
+  --brand-orange: #de7d28; /* decoration; any text on it must be --text */
+  --brand-orange-strong: #a9561a; /* white-text CTA buttons */
+  --brand-green: #529e3b; /* badges and icons */
+  --brand-green-strong: #3b7a29; /* green text */
+  --text: #1e293b;
+
+  /* Neutrals and tints from the prototype */
+  --cream: #faf7f2;
+  --muted-text: #5b6678;
+  --line: #e2e8f0;
+  --line-warm: #ece6dc;
+  --control-border: #8a94a6;
+  --blue-soft: #eaf1f8;
+  --orange-soft: #fdf0e3;
+  --green-soft: #ebf5e6;
+  --danger: #b8322a;
+  --danger-soft: #fbeceb;
+
+  /* shadcn/ui semantic tokens */
+  --background: var(--cream);
+  --foreground: var(--text);
+  --card: #ffffff;
+  --card-foreground: var(--text);
+  --popover: #ffffff;
+  --popover-foreground: var(--text);
+  --primary: var(--brand-blue);
+  --primary-foreground: #ffffff;
+  --primary-hover: #123a62;
+  --primary-soft: var(--blue-soft);
+  --cta: var(--brand-orange-strong);
+  --cta-foreground: #ffffff;
+  --cta-hover: #8f4815;
+  --secondary: var(--blue-soft);
+  --secondary-foreground: var(--brand-blue);
+  --muted: #f3f1ec;
+  --muted-foreground: var(--muted-text);
+  --accent: var(--orange-soft);
+  --accent-foreground: var(--text);
+  --success: var(--brand-green-strong);
+  --success-soft: var(--green-soft);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--line);
+  --input: var(--control-border);
+  --ring: var(--brand-orange-strong);
+  --radius: 0.875rem;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-heading: var(--font-montserrat), var(--font-inter), sans-serif;
+
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-strong: var(--brand-orange-strong);
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-strong: var(--brand-green-strong);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-cta: var(--cta);
+  --color-cta-foreground: var(--cta-foreground);
+  --color-cta-hover: var(--cta-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+  }
+
+  a {
+    color: var(--brand-blue);
+  }
+
+  /* Visible keyboard focus on every interactive element (CONTRIBUTING.md). */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
