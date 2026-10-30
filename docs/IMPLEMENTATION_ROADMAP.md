@@ -51,8 +51,9 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
 | 1 | Convex Auth setup (7-day sessions); donor register (SMS code) + login (phone + password) | `feat` | `convex/auth.ts`, `app/(auth)/*` | ✅ |
-| 2 | Structure/hospital register (+ récépissé/agrément upload; payout account + SMS check for structures only) → pending | `feat` | `convex/auth.ts`, `app/(auth)/inscription` | ✅ |
-| 3 | `otp` module (signup / 2FA / reset) + SMS adapter (`console` provider until the real one is chosen) | `feat` | `convex/otp.ts`, `lib/sms/*` | ✅ |
+| 2 | Structure/hospital register (responsible's phone confirmed by SMS code; récépissé/agrément upload through `POST /signup/receipt`; payout account + SMS check for structures only) → pending | `feat` | `convex/auth.ts`, `convex/files.ts`, `app/(auth)/inscription` | ✅ |
+| 3 | `otp` module (signup / 2FA / reset; per-number daily cap and global `SMS_DAILY_CAP`) + SMS adapter (`console` provider until the real one is chosen) | `feat` | `convex/otp.ts`, `lib/sms/*` | ✅ |
+| 3b | Cron: delete receipts of signups abandoned for 24 h | `feat` | `convex/crons.ts`, `convex/files.ts` | ✅ |
 | 4 | Role resolution + server guards + route guards | `feat` | `convex/lib/guards.ts`, `lib/authz.ts`, route-group layouts | ✅ |
 | 4b | Password reset: SMS code (donors) + email link (orgs) | `feat` | `convex/passwordReset.ts`, `app/(auth)/mot-de-passe` | ✅ |
 | 4c | Activity/audit log (donor signup, logins, profile changes) | `feat` | `convex/audit.ts` | ✅ |
@@ -66,7 +67,7 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [x] The moderation subdomain rejects non-moderator and non-MFA sessions; the main host 404s `/moderation/*`.
 - [x] Passwords hashed; no secrets in client bundle.
 
-*Verified with `convex-test` (auth flows, OTP limits, guards, resets, moderator creation) and in the browser at 375px; the end-to-end run against a real Convex deployment is still to do.*
+*Verified with `convex-test` (auth flows, OTP limits, guards, resets, moderator creation, receipt upload and cleanup) and in the browser at 375px; the end-to-end run against a real Convex deployment is still to do.*
 
 ---
 

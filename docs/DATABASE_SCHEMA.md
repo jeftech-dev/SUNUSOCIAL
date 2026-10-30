@@ -23,7 +23,7 @@ The base account. Data specific to structures and hospitals lives in `structures
 | `phone` | string | E.164; unique for donors | Donor login identifier; the responsible's phone for organisations |
 | `email` | string | unique when present | Login identifier for organisations, hospitals and moderators |
 | `structureId` | Id<"structures"> | optional | Set for `structure`/`hospital` accounts |
-| `phoneVerifiedAt` | number | required for donors | Set when the signup SMS code is verified (DB-7) |
+| `phoneVerifiedAt` | number | required for donors, structures and hospitals | Set when the signup SMS code to `phone` is verified (DB-7, DT-33) |
 | `disabled` | boolean | default false | Account blocked by a moderator |
 | `createdAt` | number | required | Epoch ms |
 
@@ -32,11 +32,11 @@ SMS one-time codes (DT-2).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `purpose` | string | `donor_signup`\|`login_2fa`\|`password_reset`\|`payout_number` | |
+| `purpose` | string | `donor_signup`\|`org_contact`\|`login_2fa`\|`password_reset`\|`payout_number` | |
 | `phone` | string | E.164 | Where the code was sent |
-| `userId` | Id<"users"> | optional | Not set for `donor_signup`, because the account doesn't exist yet |
+| `userId` | Id<"users"> | optional | Set for `login_2fa` only: signup codes come before the account |
 | `sessionId` | Id<"authSessions"> | optional | For `login_2fa`: the session the code unlocks |
-| `codeHash` | string | required | Hash of the 6-digit code. The plaintext is never stored |
+| `codeHash` | string | required | HMAC-SHA256 of purpose, phone and code, keyed with `OTP_HASH_SECRET`. The plaintext is never stored |
 | `attempts` | number | max 5 | Failed attempts so far |
 | `expiresAt` | number | now + 10 min | |
 | `usedAt` | number | optional | |
@@ -231,12 +231,21 @@ Cause-deadline extensions (DB-11) and proof delays, or sursis (DB-12). Each is d
 | `decidedBy` | Id<"users"> | optional | |
 | `createdAt` | number | required | |
 
-### rateLimits
-Fixed-window counters for rate limits (DT-19): signup uploads, email reset requests.
+### signupUploads
+Récépissés / agréments uploaded during an organisation signup, until `registerOrganization` attaches them (DT-33). Rows older than 24 h are abandoned signups: a daily cron deletes them and their files.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `key` | string | unique | e.g. `upload:signup`, `reset:<email>` |
+| `storageId` | Id<"_storage"> | unique | The uploaded file |
+| `phone` | string | E.164 | The responsible's phone whose `org_contact` code authorised the upload |
+| `createdAt` | number | required | |
+
+### rateLimits
+Fixed-window counters for rate limits (DT-19): signup uploads per phone, email reset requests, the daily SMS cap.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `key` | string | unique | e.g. `upload:<phone>`, `reset:<email>`, `sms:anonymous` |
 | `windowStart` | number | required | Start of the current window |
 | `count` | number | required | Hits in the current window |
 
@@ -355,6 +364,8 @@ CREATE INDEX by_closed                 ON bloodAlerts (closed);
 CREATE INDEX by_alert                  ON bloodResponses (alertId);
 CREATE INDEX by_alert_donor            ON bloodResponses (alertId, donorId); -- one response per donor and alert
 CREATE INDEX by_hospital_type          ON bloodStock (hospitalId, bloodType);
+CREATE INDEX by_storage                ON signupUploads (storageId);
+CREATE INDEX by_created                ON signupUploads (createdAt);
 CREATE INDEX by_key                    ON rateLimits (key);
 ```
 

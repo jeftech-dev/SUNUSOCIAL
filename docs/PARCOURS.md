@@ -42,9 +42,9 @@ sequenceDiagram
     Y->>D: Session ouverte pour 7 jours, arrive sur le<br/>fil des causes
   else Donateur · Code faux ou expiré
     Y->>D: « Code incorrect ou expiré » (5 essais au<br/>maximum)
-    D->>Y: ▶ Renvoyer le code · Redemande un code après<br/>60 s (3 fois max. en 10 min)
+    D->>Y: ▶ Renvoyer le code · Redemande un code après<br/>60 s (3 fois max. en 10 min, 10 par jour)
   else Donateur · Numéro déjà inscrit
-    Y->>D: « Ce numéro est déjà utilisé » avec liens vers<br/>la connexion et le mot de passe oublié
+    Y->>D: Pas de code : un SMS « Un compte existe déjà<br/>avec ce numéro » invite à se connecter ou à<br/>utiliser « Mot de passe oublié » (l'écran ne<br/>révèle pas si le numéro est inscrit)
   end
   end
   rect rgba(128, 128, 128, 0.08)
@@ -100,9 +100,9 @@ sequenceDiagram
   Note over D,H: S09 · Inscription d'une structure (phase 1) et validation
   S->>S: Saisit nom, type, région et commune, e-mail,<br/>téléphone du responsable, mot de passe,<br/>récépissé (PDF/JPG/PNG, 5 Mo)
   S->>S: Compte de réception : choisit Orange Money ou<br/>Wave, numéro et nom du responsable
-  S->>Y: ▶ Recevoir le code par SMS · Demande le code<br/>de vérification du numéro de versement
-  Y->>S: Envoie un code SMS à ce numéro
-  S->>Y: ▶ Vérifier le code et continuer · Valide le<br/>code : le numéro est prouvé
+  S->>Y: ▶ Recevoir le code par SMS · Demande les<br/>codes de vérification
+  Y->>S: Envoie un code au téléphone du responsable<br/>(il recevra le code de chaque connexion) et, si<br/>c'est un autre numéro, un code au numéro de<br/>versement
+  S->>Y: ▶ Envoyer mon dossier · Saisit le ou les deux<br/>codes : les numéros sont prouvés, le récépissé<br/>est envoyé
   Y->>S: « Dossier envoyé, vérification en cours » : ne<br/>peut pas encore publier
   Y->>M: Nouvelle ligne dans « Inscriptions à valider »<br/>(récépissé affiché + infos + compte de<br/>versement)
   alt Modérateur · Valider
@@ -118,7 +118,9 @@ sequenceDiagram
   rect rgba(128, 128, 128, 0.08)
   Note over D,H: S10 · Inscription d'un hôpital et validation
   H->>H: Saisit nom, type « Hôpital », région et<br/>commune, e-mail, téléphone, mot de passe,<br/>agrément du ministère de la Santé (pas de<br/>compte de versement)
-  H->>Y: ▶ Envoyer mon dossier · Envoie son dossier
+  H->>Y: ▶ Recevoir le code par SMS · Demande le code<br/>de vérification du téléphone du responsable
+  Y->>H: Envoie un code SMS à ce numéro (il recevra<br/>le code de chaque connexion)
+  H->>Y: ▶ Envoyer mon dossier · Saisit le code et<br/>envoie son dossier
   Y->>M: Nouvelle ligne dans « Inscriptions à valider<br/>», étiquette DON DE SANG
   alt Modérateur · Valider
     M->>Y: ▶ Valider · Valide l'agrément

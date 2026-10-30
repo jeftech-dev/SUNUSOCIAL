@@ -70,7 +70,7 @@ sunusocial/
 │   ├── seed.ts                       # dev/preview seed data
 │   ├── migrations.ts                 # @convex-dev/migrations backfills
 │   ├── convex.config.ts              # components: rate-limiter, migrations
-│   └── crons.ts                      # scheduled: deadline release (hourly), proof-deadline suspend
+│   └── crons.ts                      # scheduled: deadline release (hourly), proof-deadline suspend, abandoned signup uploads (daily)
 ├── lib/
 │   ├── money.ts                      # fee/net math (DT-6); FCFA formatting
 │   ├── config.ts                     # typed access to product flags (DECISIONS.md §3)
@@ -222,12 +222,12 @@ export const closeAlert: Mutation<{ alertId: Id<"bloodAlerts">; reason: string }
 // these are the app-specific mutations around it.
 export const { auth, signIn, signOut, store } = convexAuth({ providers: [Password({ profile: /* phone for donors, email for orgs */ })] });
 export const registerDonor: Mutation<{ name: string; phone: string; password: string; otpCode: string; bloodProfile?: Partial<DonorProfile> }, { userId: Id<"users"> }>; // phone verified by SMS code
-export const registerOrganization: Mutation<{ organizationName: string; type: string; region: string; commune: string; responsiblePhone: string; email: string; password: string; receiptFileId: Id<"_storage">; payout?: { method: Method; accountNumber: string; holderName: string; otpCode: string } /* required unless type = hospital */ }, { structureId: Id<"structures">; status: "pending" }>;
+export const registerOrganization: Action<{ organizationName: string; type: string; region: string; commune: string; responsiblePhone: string; email: string; password: string; receiptFileId: Id<"_storage"> /* from POST /signup/receipt */; contactOtpCode: string /* org_contact, DT-33 */; payout?: { method: Method; accountNumber: string; holderName: string; otpCode?: string /* unless accountNumber = responsiblePhone */ } /* required unless type = hospital */ }, { structureId: Id<"structures">; status: "pending" }>;
 export const me: Query<{}, { user: User; profile?: DonorProfile; mfaRequired: boolean } | null>;
 export const updateBloodProfile: Mutation<Partial<DonorProfile>, { ok: true }>;
 
 // convex/otp.ts (DT-2) — always SMS
-export const send: Action<{ purpose: "donor_signup" | "login_2fa" | "password_reset" | "payout_number"; phone?: string }, { expiresAt: number }>;
+export const send: Action<{ purpose: "donor_signup" | "org_contact" | "login_2fa" | "password_reset" | "payout_number"; phone?: string }, { expiresAt: number }>;
 export const verifyLogin: Mutation<{ code: string }, { ok: true }>;   // sets authSessions.mfaVerifiedAt
 
 // convex/passwordReset.ts (DT-15)

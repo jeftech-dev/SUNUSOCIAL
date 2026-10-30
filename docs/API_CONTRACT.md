@@ -9,21 +9,23 @@ Full request/response shapes for the core functions. Amounts are **integer FCFA*
 Errors from app functions are `ConvexError`s whose `data` is `{ code, message, field }` (`lib/types.ts` `ApiError`); `message` is French and can be shown as is. Implementation: `convex/auth.ts`, `convex/otp.ts`, `convex/passwordReset.ts`.
 
 ### action `otp.send`
-SMS one-time codes (DT-2): 6 digits, hashed at rest, 10-min expiry, 5 attempts, at most 3 codes per number and purpose in 10 min, 60 s between two codes.
+SMS one-time codes (DT-2): 6 digits, stored as a keyed hash (`OTP_HASH_SECRET`), 10-min expiry, 5 attempts. Per number and purpose: at most 3 codes in 10 min, 10 in 24 h, and 60 s between two codes. Codes sent to signed-out people (every purpose except `login_2fa`) also count toward `SMS_DAILY_CAP` across all numbers.
 
 **Request**
 ```json
-{ "purpose": "donor_signup", "phone": "77 123 45 67" }   // purpose: donor_signup | payout_number | password_reset | login_2fa
+{ "purpose": "donor_signup", "phone": "77 123 45 67" }   // purpose: donor_signup | org_contact | payout_number | password_reset | login_2fa
                                                            // phone: required except for login_2fa (sent to the signed-in account's phone)
 ```
 **Response (success)**
 ```json
 { "channel": "sms", "to": "+221 77 ••• 45 67", "expiresAt": 1761750000000 }
 ```
-**Errors:** `VALIDATION` (not a Senegalese mobile number), `CONFLICT` (`donor_signup` on a registered number: "Ce numéro est déjà utilisé."), `RATE_LIMITED`, `UNAUTHENTICATED` / `FORBIDDEN` (`login_2fa`). `password_reset` answers the same whether or not the account exists.
+**Errors:** `VALIDATION` (not a Senegalese mobile number), `RATE_LIMITED` (per-number limits, or "L'envoi de SMS est momentanément indisponible." once `SMS_DAILY_CAP` is reached), `UNAUTHENTICATED` / `FORBIDDEN` (`login_2fa`).
+
+The answer never reveals whether an account exists: `donor_signup` on a registered number sends that number an "account exists" SMS instead of a code, and `password_reset` on an unknown number sends nothing. `login_2fa` asked again within 60 s by the same session (a page reload) keeps the code already sent and answers success.
 
 ### action `auth.registerDonor`
-An action (Convex Auth hashes the password in an action). The account is created only if the SMS code is valid; then the client signs in.
+An action (Convex Auth hashes the password in an action). The account is created only if the SMS code is valid; then the client signs in. The code is checked first (a wrong one counts as an attempt) and marked used in the same transaction that creates the account, so a failed creation leaves it usable.
 
 **Request**
 ```json
@@ -45,10 +47,20 @@ An action (Convex Auth hashes the password in an action). The account is created
 ```json
 { "userId": "…", "role": "donor" }   // then signIn("password", { flow: "signIn", identifier: phone, password })
 ```
-**Errors:** `VALIDATION` (`name`, `phone`, `password`, `region`, `commune`), `CONFLICT` (`phone`), `OTP_INVALID` (`otpCode`: "Code incorrect ou expiré." / "Trop d'essais. Demandez un nouveau code.").
+**Errors:** `VALIDATION` (`name`, `phone`, `password`, `region`, `commune`), `OTP_INVALID` (`otpCode`: "Code incorrect ou expiré." / "Trop d'essais. Demandez un nouveau code."), `CONFLICT` (`phone`, only after a valid code).
 
-### mutation `files.generateUploadUrl`
-Upload URL for the récépissé / agrément before signup (public, rate-limited). The client `POST`s the file to it and receives `{ storageId }`.
+### HTTP `POST /signup/receipt` (Convex HTTP action)
+Uploads the récépissé / agrément during an organisation signup (`convex/files.ts`). The URL is the deployment's `.convex.site` origin (`lib/convexSite.ts`); CORS allows `SITE_URL` only.
+
+**Request:** the file as the body, with headers:
+```
+Content-Type: application/pdf          // application/pdf | image/jpeg | image/png, ≤ 5 MB
+X-Signup-Phone: +221771234567          // the responsible's phone
+X-Signup-Code: 583014                  // otp.send({ purpose: "org_contact", phone }) — checked, not used up
+```
+The type is checked against the file's first bytes. At most 5 uploads per phone in 10 min.
+
+**Response:** `200 { "storageId": "kg2…" }`, or `{ "error": { code, message, field } }` with `400`/`415`/`413` (`VALIDATION`), `403` (`OTP_INVALID`), `429` (`RATE_LIMITED`). Uploads never attached to an account are deleted after 24 h (daily cron).
 
 ### action `auth.registerOrganization`
 **Request**
@@ -63,12 +75,14 @@ Upload URL for the récépissé / agrément before signup (public, rate-limited)
   "email": "contact@keurkhadija.sn",              // required, professional email (login identifier)
   "password": "••••••••••••",                     // required, ≥ 12 chars
   "receiptNo": "SG/DAGAT/2026-0417",              // optional
-  "receiptFileId": "kg2…",                         // required — storageId of the uploaded récépissé/agrément (PDF/JPG/PNG ≤ 5 MB)
+  "receiptFileId": "kg2…",                         // required — storageId from POST /signup/receipt for this responsiblePhone
+  "contactOtpCode": "583014",                     // required — otp.send({ purpose: "org_contact", phone: responsiblePhone })
   "payout": {                                      // required for structures, omitted for hospitals
     "method": "wave",                             // orange_money | wave
-    "accountNumber": "+221771234567",             // mobile number
+    "accountNumber": "+221781112233",             // mobile number
     "holderName": "Khadija Sow",                  // the responsible's own name — informational, not checked by NabooPay
-    "otpCode": "204817"                           // required — otp.send({ purpose: "payout_number", phone: accountNumber })
+    "otpCode": "204817"                           // otp.send({ purpose: "payout_number", phone: accountNumber });
+                                                  // omitted when accountNumber is the responsiblePhone (contactOtpCode proves it)
   }
 }
 ```
@@ -76,7 +90,7 @@ Upload URL for the récépissé / agrément before signup (public, rate-limited)
 ```json
 { "structureId": "…", "status": "pending", "message": "Vérification par notre équipe en cours. …" }
 ```
-**Errors:** `VALIDATION` (any field; `receiptFileId` for a missing, oversized or wrong-type file), `CONFLICT` (`email`), `OTP_INVALID` (`payout.otpCode`).
+**Errors:** `VALIDATION` (any field; `receiptFileId` for a file not uploaded through `/signup/receipt` for this phone, oversized or of the wrong type), `OTP_INVALID` (`contactOtpCode`, `payout.otpCode`), `CONFLICT` (`email`, only after valid codes). Codes are checked first and marked used with the account creation, as for donors.
 
 ### Sign-in (Convex Auth) + `otp.verifyLogin`
 Sign-in uses Convex Auth's client call through the Next.js proxy (`/api/auth`, httpOnly cookies); there is no custom login mutation.
@@ -86,10 +100,10 @@ await signIn("password", {
   flow: "signIn",
   identifier: "+221771234567",   // phone for donors, email for organisations and moderators
   password: "••••••••",
-  audience: "moderation",        // only on the moderation subdomain; moderators can't sign in elsewhere
+  audience: "moderation",        // sent by the moderation subdomain's login form
 });
 ```
-Failed attempts are limited by Convex Auth (30 per hour per account). Errors carry only a message (`InvalidAccountId`, `InvalidSecret`, `TooManyFailedAttempts`, `AccountDisabled`); the UI shows a generic "Identifiant ou mot de passe incorrect."
+Without `audience: "moderation"`, moderator accounts are refused, and with it, every other account is. This keeps each login form to its own accounts; it is not a security boundary, because the client sets `audience` (DT-9). Moderator access rests on the role check and the SMS code. Failed attempts are limited by Convex Auth (30 per hour per account). Errors carry only a message (`InvalidAccountId`, `InvalidSecret`, `TooManyFailedAttempts`, `AccountDisabled`); the UI shows a generic "Identifiant ou mot de passe incorrect."
 
 Then, for structure, hospital and moderator accounts (`auth.me` returns `mfaRequired: true, mfaVerified: false`): `otp.send({ purpose: "login_2fa" })`, then:
 

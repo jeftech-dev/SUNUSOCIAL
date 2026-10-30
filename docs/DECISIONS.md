@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Last Updated** | 29 October 2026 (rev. 2: second round of board answers and the NabooPay API review) |
+| **Last Updated** | 30 October 2026 (rev. 3: Sprint 2 auth hardening: DT-2, DT-9, DT-19, DT-33) |
 | **Status** | Authoritative. If another document disagrees with this log, this log wins and the other document is a bug |
 
 Two kinds of entries:
@@ -59,11 +59,16 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 | Purpose | Who | When |
 |---|---|---|
 | `donor_signup` | Donor | The account is created only after the code is verified, which sets `phoneVerifiedAt` |
-| `payout_number` | Structure (not hospitals) | Proves control of the OM/Wave payout number, at signup and on every change (DT-5) |
+| `org_contact` | Structure / hospital | Proves the responsible's phone at signup, which then receives the login codes (DT-33) |
+| `payout_number` | Structure (not hospitals) | Proves control of the OM/Wave payout number, at signup and on every change (DT-5). At signup, not needed when it is the responsible's phone |
 | `login_2fa` | Structure / hospital / moderator | Every login. Sets `authSessions.mfaVerifiedAt`; `requireRole()` rejects the session until then |
 | `password_reset` | Donor | Code sent to the verified phone, then a new password |
 
-- Codes are 6 digits, stored only as a hash, expire after 10 minutes, and allow 5 attempts. Sending is rate-limited to 3 per 10 minutes per number.
+- Codes are 6 digits, expire after 10 minutes, and allow 5 attempts. They are stored only as an HMAC keyed with `OTP_HASH_SECRET` (set in Convex; required in production), so a leaked table can't be reversed by trying every code.
+- Sending, per number and purpose: at most 3 codes per 10 minutes and 10 per 24 hours, with 60 s between two. The 24-hour cap bounds guessing: about 50 tries a day against one number instead of about 2,000. *(Rev. 3)*
+- Codes sent to people who are not signed in (every purpose except `login_2fa`) also count toward `SMS_DAILY_CAP` across all numbers, a guard against SMS cost abuse. Once it is reached, those codes are refused until the window ends; `login_2fa` keeps working. *(Rev. 3)*
+- Sending never reveals whether an account exists: a `donor_signup` request for a registered number sends that number an "account exists" SMS instead of a code, and a `password_reset` request for an unknown number sends nothing. Registration answers "already used" only after a valid code. *(Rev. 3)*
+- Signup codes are checked first and marked used in the same transaction that creates the account, so a failed creation leaves the code usable.
 - `SMS_PROVIDER=console|<provider>`: `console` logs codes in development and preview; production refuses `console`.
 - Organisations reset their password through an **email link** (Resend), because they have a professional email.
 
@@ -72,6 +77,8 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 - Structures, hospitals and moderators: a single-use email link, valid 30 minutes, followed by the SMS 2FA at the next login.
 - Reset requests never reveal whether an account exists.
 - *(Supersedes the WhatsApp-assisted reset in rev. 1, which is no longer needed now that SMS is required.)*
+
+**DT-33 — Organisations confirm the responsible's phone at signup.** *(Rev. 3)* The responsible's phone receives the login code at every login (DT-2), so a typo would lock the account for good. Structures and hospitals therefore confirm it with an `org_contact` SMS code at signup; a structure whose payout number is a different number also confirms that one (two codes on the same screen). The récépissé / agrément is uploaded after the code is sent, through `POST /signup/receipt` (`convex/files.ts`): the upload needs that code, is limited to 5 per phone in 10 minutes, and has its size and real type (first bytes) checked before storage. Uploads not attached to an account within 24 hours are deleted by a daily cron.
 
 **DT-20 — The first moderator.** Created by the lead developer with `npx convex run admin:createModerator '{"name", "email", "phone"}'`. The account has no password until the moderator sets one through the emailed link (so no password goes through the CLI or shell history); the phone receives the login SMS code. There is no public moderator signup.
 
@@ -210,8 +217,9 @@ Each row keeps the IP and user-agent when available. Donor login events are kept
 ### Frontend & design
 
 **DT-9 — Moderation subdomain.**
-- The same Next.js app serves `moderation.<domain>`. `middleware.ts` routes by host; the main host returns 404 for `/moderation/*`.
+- The same Next.js app serves `moderation.<domain>`. `proxy.ts` (Next 16's middleware) routes by host; the main host returns 404 for `/moderation/*`.
 - Cookies are scoped to each host.
+- The moderation login form signs in with `audience: "moderation"`, and the main form without it; each refuses the other's accounts. The client sets `audience`, so this keeps people on the right form but is not a security boundary: moderator access rests on the role check and the SMS code (`requireRole`).
 
 **DT-10 — Styling.**
 - Tailwind CSS + shadcn/ui, themed with the charte (Montserrat / Inter, charte palette).
@@ -253,7 +261,7 @@ Récépissés and agréments are visible to moderators only.
 
 Flags are advisory; the moderator decides.
 
-**DT-19 — Rate limiting.** A small fixed-window limiter on a `rateLimits` table (`convex/lib/rateLimit.ts`), plus Convex Auth's own limit on failed sign-ins (30 per hour per account) and the per-number limits of `otpCodes` (DT-2). *(Rev. 3: replaces `@convex-dev/rate-limiter`, so the app has no Convex component yet; it can be swapped in later without changing callers.)* Calls to NabooPay must also stay under its limit of 100 requests per 60 s per endpoint, so the pending-payment poller works in batches.
+**DT-19 — Rate limiting.** A small fixed-window limiter on a `rateLimits` table (`convex/lib/rateLimit.ts`), plus Convex Auth's own limit on failed sign-ins (30 per hour per account) and the per-number limits of `otpCodes` (DT-2). Limits are keyed per phone, email or account wherever possible: a single shared counter would let one script block everyone. The only global one is `SMS_DAILY_CAP` (DT-2), a cost guard. *(Rev. 3: replaces `@convex-dev/rate-limiter`, so the app has no Convex component yet; it can be swapped in later without changing callers.)* Calls to NabooPay must also stay under its limit of 100 requests per 60 s per endpoint, so the pending-payment poller works in batches.
 
 **DT-26 — Blood alerts (DB-10).**
 - Verified hospitals create, close and thank on their own alerts.
@@ -292,6 +300,7 @@ Flags are advisory; the moderator decides.
 |---|---|---|
 | `PAYMENT_PROVIDER` | `naboopay` (prod), `mock` (dev/preview) | |
 | `SMS_PROVIDER` | `console` (dev/preview) → real provider | Waiting on the board: provider, budget, sender ID |
+| `SMS_DAILY_CAP` | `1000` | Interim: codes per 24 h to signed-out people (DT-2), until the board sets the SMS budget |
 | `MAX_CAUSE_DURATION_DAYS` | `30` | Decided (DB-11) |
 | `MAX_EXTENSION_DAYS` | `30` | Technical cap per extension request |
 | `PROOF_DUE_DAYS` | `7` | Decided (DB-12) |
