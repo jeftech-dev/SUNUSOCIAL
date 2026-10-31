@@ -231,11 +231,101 @@ export const fr = {
     footer: "Connexion journalisée · double authentification activée",
     queuesTitle: "Files de modération",
     queuesSoon: "Les files (inscriptions, causes, preuves…) arrivent au sprint 5.",
+    featuredLink: "Choisir le Coup de cœur de la semaine →",
+  },
+
+  /** 03 Accueil donateur. */
+  feed: {
+    hello: (firstName: string) => `Bonjour ${firstName} 👋`,
+    intro: "Voici les besoins vérifiés qui attendent votre soutien aujourd'hui.",
+    all: "Tous",
+    categoriesLabel: "Catégories",
+    refine: "Affiner\u00a0:",
+    searchLabel: "Rechercher une cause",
+    searchPlaceholder: "Rechercher une cause (ex.\u00a0: lait, fauteuils)",
+    editorial: "Sélection éditoriale SUNUSOCIAL",
+    seeCause: "Voir la cause →",
+    loadMore: "Afficher plus de causes",
+    empty: "Aucune cause ne correspond à ces filtres.",
+    resetFilters: "Effacer les filtres",
+    noCauses: "Aucune cause n'est ouverte pour le moment. Revenez bientôt\u00a0!",
+    urgentTag: "URGENT",
+    raisedOf: (raised: string, goal: string) => `${raised} collectés sur ${goal}`,
+  },
+
+  /** 04 Détail de la cause. */
+  causeDetail: {
+    back: "← Toutes les causes",
+    category: (category: string) => `Catégorie\u00a0: ${category}`,
+    urgency: (urgency: string) => `Urgence\u00a0: ${urgency}`,
+    raised: "Collectés",
+    goalOf: "sur un objectif de",
+    reached: (percent: number) => `${percent}\u00a0% atteint`,
+    donors: (count: number) => (count > 1 ? `${count} donateurs` : `${count} donateur`),
+    endDate: (date: string) => `Se termine le ${date}`,
+    endDateSub: (goal: string) =>
+      `Objectif de ${goal} · les dons restent ouverts jusqu'à cette date.`,
+    endGoal: (goal: string) => `Se termine à ${goal}`,
+    endGoalSub: (date: string) => `ou le ${date} au plus tard, au premier des deux.`,
+    daysLeft: (days: number) =>
+      days <= 0 ? "Dernier jour" : days === 1 ? "Plus qu'un jour" : `Plus que ${days} jours`,
+    closed: "Cette cause est clôturée. Merci à tous les donateurs\u00a0!",
+    estimatedNet: (net: string) =>
+      `Si l'objectif est atteint, la structure recevra environ ${net} après les frais de paiement.`,
+    fundsRule: "RÈGLE VALIDÉE",
+    fundsNote:
+      "Les dons sont conservés par NabooPay puis versés à la structure à la fin de la cause\u00a0: à l'objectif ou à la date limite, au premier des deux.",
+    donateSoon: "Le don en ligne arrive très bientôt.",
+    similar: "Causes similaires",
+    notFound: "Cette cause n'existe plus.",
+    notFoundBack: "Voir les causes ouvertes",
+  },
+
+  whatsapp: {
+    contact: "Nous contacter sur WhatsApp",
+    message: "Bonjour SUNUSOCIAL",
+    aboutCause: (title: string) =>
+      `Bonjour SUNUSOCIAL, je vous contacte au sujet de la cause «\u00a0${title}\u00a0».`,
+    footer: "Un don en nature, une question\u00a0? Écrivez-nous sur WhatsApp.",
+  },
+
+  /** Moderation: S15 Choisir le Coup de cœur de la semaine (DB-6). */
+  featuredPicker: {
+    title: "Coup de cœur de la semaine",
+    intro:
+      "Choisissez une cause active à mettre en avant en tête du fil des donateurs. Une seule cause à la fois\u00a0: votre choix remplace le précédent.",
+    current: "Coup de cœur actuel",
+    none: "Aucun Coup de cœur pour le moment\u00a0: l'encadré est masqué dans le fil.",
+    choose: "Choisir comme Coup de cœur",
+    remove: "Retirer",
+    isFeatured: "Coup de cœur",
+    candidates: "Causes actives",
+    noCandidates: "Aucune cause active pour le moment.",
+    progress: (percent: number) => `${percent}\u00a0% atteint`,
+    setDone: (title: string) => `«\u00a0${title}\u00a0» est le Coup de cœur de la semaine.`,
+    clearDone: "Le Coup de cœur a été retiré.",
+    backToQueues: "← Files de modération",
+  },
+
+  dates: {
+    months: [
+      "janvier",
+      "février",
+      "mars",
+      "avril",
+      "mai",
+      "juin",
+      "juillet",
+      "août",
+      "septembre",
+      "octobre",
+      "novembre",
+      "décembre",
+    ],
   },
 
   spaces: {
     donorTitle: "Fil des causes",
-    donorSoon: "Le fil des causes arrive au sprint 3.",
     structureTitle: "Espace structure",
     hospitalTitle: "Espace hôpital",
     pending:
@@ -291,6 +381,8 @@ export const fr = {
     payoutRequired: "Indiquez le compte de réception des fonds.",
     resetLinkInvalid: "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
     rateLimited: "Trop de demandes. Réessayez dans quelques minutes.",
+    causeNotEligible:
+      "Cette cause ne peut pas être choisie\u00a0: elle doit être active et publiée par une structure vérifiée.",
   },
 } as const;
 

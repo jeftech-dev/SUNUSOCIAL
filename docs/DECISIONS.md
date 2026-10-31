@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Last Updated** | 30 October 2026 (rev. 3: Sprint 2 auth hardening: DT-2, DT-9, DT-19, DT-33) |
+| **Last Updated** | 30 October 2026 (rev. 4: Sprint 3 causes feed: new DT-34, `NEXT_PUBLIC_WHATSAPP_NUMBER`) |
 | **Status** | Authoritative. If another document disagrees with this log, this log wins and the other document is a bug |
 
 Two kinds of entries:
@@ -178,6 +178,15 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 
 **DT-8 — Cause statuses:** `pending_review` | `active` | `refused` | `withdrawn` | `closed` | `deleted`, plus the timestamps `submittedAt`, `approvedAt`, `closedAt`, `fundsReleasedAt`.
 
+**DT-34 — The causes feed (donor read path).** *(Rev. 4)*
+- **Who sees a cause.** The feed, the Coup de cœur slot and "Causes similaires" show only **listed** causes: `active`, from a structure that is `approved` **and not suspended**. The detail page also shows a `closed` cause of such a structure. Everything else reads as "not found" (`causes.get` returns `null`).
+- *Interim for G4* (`PARCOURS.md`, suspended structure with active causes, not decided): a suspended structure's causes are **hidden**. Revisit when the board answers G4.
+- **Order and filters.** Default: soonest deadline first. **Récent**: newest approval first. **Urgent**: `urgency = urgent`. **Presque atteint**: at least `ALMOST_REACHED_PERCENT = 75` % of the goal (the prototype's threshold; a UI constant in `lib/causes.ts`, not a board rule). One filter at a time, combinable with a category.
+- **Search** covers cause titles (Convex search index, relevance order). Matching structure names too would need a denormalised field; left for later.
+- **Coup de cœur** (DB-6): `moderation.setFeatured` replaces the previous one in the same transaction, so at most one cause is featured; it is not cleared automatically, and it disappears from the feed as soon as the cause stops being listed. The moderator's picker (`/coup-de-coeur` on the moderation host) shipped in Sprint 3.
+- **Progress** is an integer percentage rounded down (100 % only once the goal is met). The page shows the estimated net of the goal (`computeFee`, DT-6).
+- **WhatsApp** links ("Nous contacter sur WhatsApp", PRD 5.9) use `NEXT_PUBLIC_WHATSAPP_NUMBER` and are hidden while it is unset (§3).
+
 **DT-17 — Notifications.**
 - A `notifications` table holds in-app notifications.
 - `notify.send` also sends an SMS (important events, blood alerts) and an email (organisations).
@@ -308,5 +317,6 @@ Flags are advisory; the moderator decides.
 | `PLATFORM_FEE_RATE` | `0` | Waiting on the revenue model |
 | `REQUIRE_PHASE2_BEFORE_PAYOUT` | `false` | Waiting on the phase 2 definition |
 | `SESSION_TOTAL_DAYS` | `7` | Decided (DB-8) |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | *(unset)* | SUNUSOCIAL's official WhatsApp number, waiting on the board (`BOARD_QUESTIONS.md` part E). The WhatsApp buttons are hidden while it is unset |
 
 *Removed since rev. 1:* `OTP_CHANNEL` (codes always go by SMS), `SMS_ENABLED`, `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` (decided: hospitals), `ENFORCE_PROOF_DEADLINE_ON_RELEASE` (decided: always), `REFUND_FEE_POLICY` (decided: net).

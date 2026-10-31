@@ -333,10 +333,13 @@ CREATE INDEX by_user                   ON passwordResets (userId);           -- 
 CREATE INDEX by_user                   ON donorProfiles (userId);
 CREATE INDEX by_optin_type_commune     ON donorProfiles (bloodOptIn, bloodType, commune); -- blood alert targeting
 CREATE INDEX by_status                 ON structures (status);
-CREATE INDEX by_status_category        ON causes (status, category);       -- feed
+CREATE INDEX by_status_deadline        ON causes (status, deadline);       -- feed (default order) + release cron
+CREATE INDEX by_status_category_deadline ON causes (status, category, deadline); -- feed by category
+CREATE INDEX by_status_approved        ON causes (status, approvedAt);     -- feed "Récent"
+CREATE INDEX by_status_category_approved ON causes (status, category, approvedAt); -- "Récent" by category
 CREATE INDEX by_structure              ON causes (structureId);            -- org dashboard
 CREATE INDEX by_featured               ON causes (featuredAt);             -- Coup de cœur
-CREATE INDEX by_status_deadline        ON causes (status, deadline);       -- release cron
+-- Search index search_title ON causes (title), filter fields status, category, urgency: feed search
 CREATE INDEX by_cause                  ON donations (causeId);
 CREATE INDEX by_cause_donor            ON donations (causeId, donorId);    -- distinct donorCount
 CREATE INDEX by_donor                  ON donations (donorId);

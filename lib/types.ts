@@ -52,6 +52,10 @@ export type BloodAlertLevel = (typeof BLOOD_ALERT_LEVELS)[number];
 export const END_TYPES = ["date", "goal"] as const;
 export type EndType = (typeof END_TYPES)[number];
 
+/** Secondary feed filters: Urgent, Presque atteint, Récent (DT-34). One at a time. */
+export const CAUSE_FILTERS = ["urgent", "almost", "recent"] as const;
+export type CauseFilter = (typeof CAUSE_FILTERS)[number];
+
 /** The structure type that marks a hospital account (blood alerts only, no fundraising). */
 export const HOSPITAL_TYPE = "Hôpital (don de sang)";
 
@@ -206,6 +210,62 @@ export interface CreateAlertInput {
   unitsNeeded: number;
   targetCommunes: string[];
   channels: { inApp: boolean; sms: boolean };
+}
+
+// ---------------------------------------------------------------------------
+// Views (what the causes queries return; docs/API_CONTRACT.md "Causes")
+// ---------------------------------------------------------------------------
+
+/** Every cause ends at its deadline; a `goal` cause also ends as soon as the goal is reached. */
+export interface EndCondition {
+  type: EndType;
+  deadline: number;
+}
+
+/** One card of the causes feed. */
+export interface CauseCardView {
+  id: Id<"causes">;
+  title: string;
+  category: Category;
+  organization: { name: string; verified: boolean };
+  bannerUrl: string | null;
+  raised: number;
+  goal: number;
+  /** Integer, 0–100. */
+  percent: number;
+  urgent: boolean;
+  endCondition: EndCondition;
+}
+
+/** A card of the "Causes similaires" row. */
+export interface SimilarCauseView {
+  id: Id<"causes">;
+  title: string;
+  raised: number;
+  goal: number;
+  percent: number;
+  bannerUrl: string | null;
+}
+
+/** The cause detail page. */
+export interface CauseDetailView {
+  id: Id<"causes">;
+  title: string;
+  description: string;
+  category: Category;
+  urgency: Urgency;
+  organization: { id: Id<"structures">; name: string; verified: boolean; city: string };
+  bannerUrl: string | null;
+  raised: number;
+  goal: number;
+  percent: number;
+  donorCount: number;
+  endCondition: EndCondition;
+  /** The goal minus the estimated fees: what the structure would receive. */
+  estimatedNet: number;
+  featured: boolean;
+  status: CauseStatus;
+  similar: SimilarCauseView[];
 }
 
 // ---------------------------------------------------------------------------
