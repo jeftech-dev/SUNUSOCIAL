@@ -212,6 +212,7 @@ input,select,button,textarea{font-family:inherit}
         <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">{{ phoneLabel }}
           <div style="display:flex;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff"><span style="display:flex;align-items:center;gap:6px;padding:0 12px;background:#f6f7f9;border-right:1.5px solid #e2e8f0;font-size:14px;font-weight:600;color:#334155;white-space:nowrap">+221</span><input value="{{ phone }}" onChange="{{ onPhone }}" placeholder="77 123 45 67" style="flex:1;min-width:0;border:0;padding:13px 14px;font-size:15px;outline:none"></input></div>
         </label>
+        <sc-if value="{{ showPhoneHint }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#5b6678;line-height:1.5;margin-top:-6px">Il sera confirmé par un code SMS, puis recevra un code à chaque connexion.</span></sc-if>
         </sc-if>
         <sc-if value="{{ showPayout }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;flex-direction:column;gap:10px;border:1.5px solid #f3dcc4;background:#fffaf5;border-radius:16px;padding:14px">
@@ -243,8 +244,10 @@ input,select,button,textarea{font-family:inherit}
         <sc-if value="{{ showHospitalLogin }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goHospital }}" style="align-self:flex-start;background:none;border:0;padding:0;font-size:13px;color:#b8322a;font-weight:600;cursor:pointer;margin-top:-6px">Vous êtes un hôpital ? Accéder à l'espace alertes →</button></sc-if>
         <sc-if value="{{ showOtp }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;flex-direction:column;gap:8px;border:1.5px solid #cfe0f1;background:#f4f8fc;border-radius:16px;padding:14px">
-            <span style="font-size:13px;color:#334155;line-height:1.5">Un code à 6 chiffres a été envoyé par SMS au <b>{{ otpTarget }}</b>.</span>
-            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Code reçu par SMS<input value="{{ otp }}" onChange="{{ onOtp }}" placeholder="••••••" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff;letter-spacing:.3em;font-weight:700" style-focus="border-color:#174a7c"></input></label>
+            <sc-if value="{{ oneCode }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;color:#334155;line-height:1.5">Un code à 6 chiffres a été envoyé par SMS au <b>{{ otpTarget }}</b>.</span></sc-if>
+            <sc-if value="{{ twoCodes }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#334155;line-height:1.5">Deux codes à 6 chiffres ont été envoyés par SMS : au <b>{{ otpTarget }}</b> (téléphone du responsable) et au <b>{{ otpTarget2 }}</b> (compte de réception des fonds).</span></sc-if>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">{{ otpLabel }}<input value="{{ otp }}" onChange="{{ onOtp }}" placeholder="••••••" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff;letter-spacing:.3em;font-weight:700" style-focus="border-color:#174a7c"></input></label>
+            <sc-if value="{{ twoCodes }}" hint-placeholder-val="{{ false }}"><label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#334155">Code reçu sur le numéro du compte<input value="{{ otp2 }}" onChange="{{ onOtp2 }}" placeholder="••••••" style="border:1.5px solid #e2e8f0;border-radius:14px;padding:13px 14px;font-size:15px;outline:none;background:#fff;letter-spacing:.3em;font-weight:700" style-focus="border-color:#174a7c"></input></label></sc-if>
             <span style="font-size:12px;color:#8a94a6">Prototype : n'importe quel code à 6 chiffres est accepté. <button onClick="{{ resend }}" style="background:none;border:0;padding:0;color:#174a7c;font-weight:600;cursor:pointer;font-size:12px">{{ resendLabel }}</button></span>
           </div>
         </sc-if>
@@ -275,7 +278,7 @@ const GEO = {
 };
 
 class Component extends DCLogic {
-  state = { region: 'Dakar', commune: 'Dakar-Plateau', screen: 'landing', role: 'donor', mode: 'login', name: '', phone: '', file: false, w: 1200, payMethod: 'Orange Money', payPhone: '', payName: '', otpSent: false, otp: '', resent: false };
+  state = { region: 'Dakar', commune: 'Dakar-Plateau', screen: 'landing', role: 'donor', mode: 'login', name: '', phone: '', file: false, w: 1200, payMethod: 'Orange Money', payPhone: '', payName: '', otpSent: false, otp: '', otp2: '', resent: false };
   componentDidMount() {
     this._r = () => this.setState({ w: window.innerWidth });
     window.addEventListener('resize', this._r); this._r();
@@ -285,7 +288,7 @@ class Component extends DCLogic {
     if (h.startsWith('#auth')) this.setState({ screen: 'auth', role: h.includes('org') ? 'org' : 'donor', mode: h.includes('signup') ? 'signup' : 'login' });
   }
   componentWillUnmount() { window.removeEventListener('resize', this._r); if (this._ro) this._ro.disconnect(); }
-  auth(role, mode) { this.setState({ screen: 'auth', role, mode, otpSent: false, otp: '' }); window.scrollTo(0, 0); }
+  auth(role, mode) { this.setState({ screen: 'auth', role, mode, otpSent: false, otp: '', otp2: '' }); window.scrollTo(0, 0); }
   renderVals() {
     const s = this.state, donor = s.role === 'donor', signup = s.mode === 'signup', wide = s.w >= 820;
     const B = '#174a7c', O = '#de7d28';
@@ -293,9 +296,14 @@ class Component extends DCLogic {
     const tab = on => ({ bg: on ? '#fff' : 'transparent', fg: on ? '#1e293b' : '#5b6678', sh: on ? '0 2px 8px -2px rgba(30,41,59,.2)' : 'none' });
     const tl = tab(!signup), ts = tab(signup);
     const hospital = !donor && s.orgType === 'Hôpital (don de sang)';
-    const needsOtp = signup && !hospital, showOtp = needsOtp && s.otpSent;
+    // Every signup confirms a phone by SMS code: the donor's number, or the responsible's phone for
+    // structures and hospitals (it receives the login code). A structure whose payout number is
+    // another number also gets a second code for it.
+    const needsOtp = signup, showOtp = needsOtp && s.otpSent;
     const showPayout = !donor && signup && !hospital;
-    const extraH = (showPayout ? 450 : 0) + (showOtp ? (donor ? 150 : 205) : 0);
+    const digits = v => (v || '').replace(/\D/g, '');
+    const twoCodes = showPayout && digits(s.payPhone) !== '' && digits(s.payPhone) !== digits(s.phone);
+    const extraH = (showPayout ? 450 : 0) + (showOtp ? (donor ? 150 : 205) + (twoCodes ? 90 : 0) : 0) + (!donor && signup ? 24 : 0);
     const om = s.payMethod === 'Orange Money';
     return {
       isLanding: s.screen === 'landing', isAuth: s.screen === 'auth',
@@ -320,8 +328,8 @@ class Component extends DCLogic {
       roleColor, ringColor: donor ? 'rgba(222,125,40,.45)' : 'rgba(23,74,124,.35)',
       pillX: donor ? '0%' : '100%',
       donorTabFg: donor ? '#fff' : '#5b6678', orgTabFg: donor ? '#5b6678' : '#fff',
-      setDonor: () => this.setState({ role: 'donor', otpSent: false, otp: '' }), setOrg: () => this.setState({ role: 'org', otpSent: false, otp: '' }),
-      setLogin: () => this.setState({ mode: 'login', otpSent: false, otp: '' }), setSignup: () => this.setState({ mode: 'signup', otpSent: false, otp: '' }),
+      setDonor: () => this.setState({ role: 'donor', otpSent: false, otp: '', otp2: '' }), setOrg: () => this.setState({ role: 'org', otpSent: false, otp: '', otp2: '' }),
+      setLogin: () => this.setState({ mode: 'login', otpSent: false, otp: '', otp2: '' }), setSignup: () => this.setState({ mode: 'signup', otpSent: false, otp: '', otp2: '' }),
       loginBg: tl.bg, loginFg: tl.fg, loginSh: tl.sh, signupBg: ts.bg, signupFg: ts.fg, signupSh: ts.sh,
       isWide: wide, isNarrow: !wide,
       cardH: wide ? ((donor ? (signup ? 880 : 540) : (signup ? (hospital ? 1150 : 910) : 570)) + extraH) + 'px' : 'auto',
@@ -337,13 +345,17 @@ class Component extends DCLogic {
       name: s.name, phone: s.phone,
       blood: s.blood || '?', addr: s.addr || '', onBlood: e => this.setState({ blood: e.target.value }), regions: Object.keys(GEO), communes: GEO[s.region || 'Dakar'], region: s.region, commune: s.commune,
       onRegion: e => { const r = e.target.value; this.setState({ region: r, commune: GEO[r][0] }); }, onCommune: e => this.setState({ commune: e.target.value }),
-      orgType: s.orgType || 'Orphelinat', onOrgType: e => this.setState({ orgType: e.target.value, otpSent: false, otp: '' }),
+      orgType: s.orgType || 'Orphelinat', onOrgType: e => this.setState({ orgType: e.target.value, otpSent: false, otp: '', otp2: '' }),
       showPayout, payMethod: s.payMethod, payPhone: s.payPhone, payName: s.payName,
       setOM: () => this.setState({ payMethod: 'Orange Money' }), setWave: () => this.setState({ payMethod: 'Wave' }),
       omBg: om ? '#fff' : 'transparent', omFg: om ? '#1e293b' : '#5b6678', waveBg: om ? 'transparent' : '#fff', waveFg: om ? '#5b6678' : '#1e293b',
       onPayPhone: e => this.setState({ payPhone: e.target.value }), onPayName: e => this.setState({ payName: e.target.value }),
       showOtp, otp: s.otp, onOtp: e => this.setState({ otp: e.target.value.replace(/\D/g, '').slice(0, 6) }),
-      otpTarget: '+221 ' + ((donor ? s.phone : s.payPhone) || '77 123 45 67'),
+      otp2: s.otp2, onOtp2: e => this.setState({ otp2: e.target.value.replace(/\D/g, '').slice(0, 6) }),
+      oneCode: !twoCodes, twoCodes,
+      otpLabel: twoCodes ? 'Code reçu sur le téléphone du responsable' : 'Code reçu par SMS',
+      otpTarget: '+221 ' + (s.phone || '77 123 45 67'), otpTarget2: '+221 ' + (s.payPhone || '77 123 45 67'),
+      showPhoneHint: !donor && signup,
       resend: () => this.setState({ resent: true }), resendLabel: s.resent ? 'Code renvoyé ✓' : 'Renvoyer le code',
       showHospitalNote: !donor && signup && s.orgType === 'Hôpital (don de sang)', showHospitalLogin: !donor && !signup,
       goHospital: () => { location.href = 'Hopital-v2.dc.html'; },
@@ -351,11 +363,11 @@ class Component extends DCLogic {
       toggleFile: () => this.setState({ file: !s.file }),
       fileLabel: s.file ? 'recepisse_ministere_2026.pdf ✓' : 'Glissez votre fichier ou cliquez pour parcourir',
       fileBorder: s.file ? '#529e3b' : '#e7b98f', fileBg: s.file ? '#ebf5e6' : '#fffaf5',
-      submitLabel: showOtp ? 'Vérifier le code et continuer' : (signup ? (needsOtp ? 'Recevoir le code par SMS' : 'Envoyer mon dossier') : 'Se connecter'),
+      submitLabel: showOtp ? (donor ? 'Vérifier le code et continuer' : 'Envoyer mon dossier') : (signup ? 'Recevoir le code par SMS' : 'Se connecter'),
       legal: signup ? 'En continuant, vous acceptez les conditions d’utilisation de SUNUSOCIAL.' : 'Vos données sont chiffrées et ne sont jamais revendues.',
       submit: () => {
-        if (needsOtp && !s.otpSent) { this.setState({ otpSent: true, otp: '', resent: false }); return; }
-        if (needsOtp && s.otp.length !== 6) return;
+        if (needsOtp && !s.otpSent) { this.setState({ otpSent: true, otp: '', otp2: '', resent: false }); return; }
+        if (needsOtp && (s.otp.length !== 6 || (twoCodes && s.otp2.length !== 6))) return;
         if (donor) {
           try { if (signup) { localStorage.setItem('sunu_blood', s.blood || '?'); localStorage.setItem('sunu_addr', s.commune + ', ' + s.region); } localStorage.setItem('sunu_name', (s.name || 'Aminata Diop').trim()); if (s.phone) localStorage.setItem('sunu_phone', '+221 ' + s.phone); } catch (e) {}
           location.href = 'Donateur-v2.dc.html';
