@@ -13,7 +13,9 @@
  *   --text  on --brand-orange        #de7d28  4.93:1  dark text only
  *   white   on --brand-green-strong  #3b7a29  5.25:1
  *   --brand-green-strong on --background      4.91:1, on --green-soft 4.68:1
- *   white   on --danger              #b8322a  5.95:1; danger text on background 5.57:1
+ *   white   on --danger              #b8322a  5.95:1; danger text on background 5.57:1,
+ *                                             on --danger-soft 5.19:1 (error notices)
+ *   --brand-orange-strong on --orange-soft    4.65:1  urgent tags, Coup de cœur chip
  *   --text  on --background          #faf7f2 13.69:1
  *   --muted on --background                   5.43:1, on white 5.81:1
  *   --brand-blue on --background              8.52:1, on --primary-soft 7.99:1
