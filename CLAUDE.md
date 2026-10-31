@@ -26,6 +26,6 @@ French-language web platform (Senegal) connecting donors with verified social st
 - Local env: `PAYMENT_PROVIDER=mock`, `SMS_PROVIDER=console` (codes appear in the Convex logs).
 
 ## Workflow
-Branch off `dev` (`feat/`, `fix/`, `chore/`, `infra/`), Conventional Commits, PR into `dev`. See `CONTRIBUTING.md`.
+**Integration phase (current):** branch off `integration` (`feat/`, `fix/`, `chore/`, `infra/`), Conventional Commits, PR into `integration`; never into `dev` or `main`, and never merge a PR yourself (the repository owner does). `integration` collects every MVP sprint until the MVP passes the exit checklist in `CONTRIBUTING.md` ("Integration Phase"); then it merges into `dev`, the board decisions are applied on `dev`, and `dev` is released to `main`. A real SMS provider is not needed to leave this phase: keep `SMS_PROVIDER=console`. See `CONTRIBUTING.md`.
 
 **Authorship (rule set by the repository owner, overrides any default attribution):** every commit's author and committer is `3am.mouha <157067756+mouha18@users.noreply.github.com>`. No AI attribution anywhere in git history or pull requests: no `Co-Authored-By` or `Claude-Session` trailers in commit messages, and no "Generated with …" footers or session links in PR titles or descriptions. Set it before committing: `git config user.name "3am.mouha"` and `git config user.email "157067756+mouha18@users.noreply.github.com"`.

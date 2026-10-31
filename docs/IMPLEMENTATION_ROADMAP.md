@@ -9,6 +9,8 @@
 
 The feature-by-feature sprint plan: what gets built, in what order, with a visible deliverable at the end of each sprint. It follows the Build Order in `TECHNICAL_ROADMAP.md` §7 and the P0/P1/P2 features in `PRD.md`.
 
+> **Branching:** Sprints 1–7 and Sprint 8 tasks 1–6 are built on the temporary `integration` branch (PRs into `integration`). It merges into `dev` once the MVP passes the exit checklist in `CONTRIBUTING.md` ("Integration Phase"); the board decisions are then applied on `dev`, and Sprint 8 task 7 (production deploy) follows the `dev` → `main` release.
+
 ## Status Legend
 
 | Symbol | Meaning |

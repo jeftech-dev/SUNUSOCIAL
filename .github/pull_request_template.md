@@ -12,6 +12,7 @@
 
 ## Checklist
 
+- [ ] Targets `integration` during the integration phase (`dev` afterwards; see `CONTRIBUTING.md`)
 - [ ] `npm run lint`, `npm run typecheck` and `npm test` pass
 - [ ] Follows `docs/DECISIONS.md` (or this PR updates it)
 - [ ] Every new Convex function validates its args and checks role/ownership server-side
