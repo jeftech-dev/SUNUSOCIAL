@@ -253,7 +253,10 @@ A page can hold fewer items than asked when a structure stopped being verified; 
 
 ## Donations
 
+Implementation: `convex/donations.ts`, `convex/payments.ts`, `lib/providers/*`. Only signed-in donors call these functions; every one checks the role and ownership on the server.
+
 ### action `donations.createCheckout`
+Inserts the donation (`pending`, fee recomputed on the server), creates the NabooPay transaction, stores its `order_id`, then answers. The client only redirects to `checkoutUrl` (with the `mock` provider: the in-app simulator `/paiement/simulation/<donationId>`). Amounts and fees sent by the client are never used.
 **Request**
 ```json
 {
@@ -280,9 +283,51 @@ A page can hold fewer items than asked when a structure stopped being verified; 
 ```json
 { "error": { "code": "CONFLICT", "message": "Cette cause n'accepte plus de dons.", "field": null } }
 ```
+| Code | When |
+|---|---|
+| `VALIDATION` (`field: "amount"`) | Not an integer, or under `MIN_DONATION` (500) |
+| `CONFLICT` | The cause is not listed (closed, deleted, from a suspended structure: DB-17) or its deadline has passed |
+| `NOT_FOUND` | Unknown cause |
+| `RATE_LIMITED` | More than 10 checkouts in 10 minutes for this donor |
+| `PAYMENT_FAILED` | NabooPay refused or did not answer; the donation is marked `failed` and nothing is charged |
+| `UNAUTHENTICATED` / `FORBIDDEN` | Not signed in / not a donor |
+
+### query `donations.status`
+The success page (`/dons/<donationId>`, NabooPay's `success_url`) and the simulator read the donation live. Owner only; returns `null` for someone else's donation or a malformed id.
+**Request**
+```json
+{ "donationId": "don_…" }
+```
+**Response (success) — 200**
+```json
+{
+  "id": "don_…",
+  "status": "held",               // pending | held | released | refunded | failed
+  "amount": 5000,
+  "fee": 150,                     // NabooPay's actual fee once paid
+  "net": 4850,
+  "method": "wave",               // chosen in the modal
+  "paidMethod": "wave",           // null until paid
+  "lateRefund": false,            // true: paid after the cause closed, refunded automatically (DB-18)
+  "createdAt": 1760313600000,
+  "cause": { "id": "cau_…", "title": "Lait infantile pour 40 bébés", "raised": 655000, "goal": 800000, "percent": 81, "status": "active" }
+}
+```
+
+### action `donations.refreshStatus`
+Called once by the success page: asks NabooPay (`GET /transactions/{order_id}`) about a donation still `pending` and records it if it is paid, in case the webhook was missed (DT-3). Owner only. Answers the donation status.
+```json
+{ "donationId": "don_…" }   →   { "status": "held" }
+```
+
+### action `payments.simulatePayment` (mock provider only)
+The simulator's buttons. Refused (`FORBIDDEN`) unless `PAYMENT_PROVIDER=mock` and `APP_ENV` is not `production`; owner only, on a `pending` donation. `paid` signs a v2 webhook payload with the mock secret and runs it through the webhook handler; `cancelled` marks the donation `failed`.
+```json
+{ "donationId": "don_…", "outcome": "paid" }   →   { "redirectTo": "/dons/don_…" }   // cancelled → "/causes/cau_…?paiement=echec"
+```
 
 ### `POST /payments/naboopay/webhook` (Convex httpAction, signed)
-> Field names below are placeholders: the real payload and signature header follow NabooPay's documentation (Sprint 4 spike, DT-3).
+Payload checked against the `naboopay` skill (`references/webhooks.md`, Sprint 4 spike). Only `order_id`, `transaction_status` and `amount` exist in both webhook versions; when `fees` or `selected_payment_method` is missing (v1), the handler reads them with `GET /transactions/{order_id}`.
 **Request** (from NabooPay, API v2 webhook — header `X-Signature: <hex HMAC-SHA256 of the raw body>`)
 ```json
 {
@@ -303,12 +348,18 @@ NabooPay only calls this on success and retries 3 times, 5 minutes apart; pendin
 **Response (error)**
 ```json
 HTTP 401 with an empty body when the signature is missing or invalid (nothing is recorded).
+HTTP 400 when the body is not JSON or lacks order_id / transaction_status / amount.
+HTTP 503 when fees must be read from NabooPay and that call fails (NabooPay retries; the 10-minute cron also catches it).
 ```
+`200` is also the answer for an unknown `order_id`, a status other than `paid` / `paid_and_blocked`, a duplicate delivery, and an `amount` that does not match the donation (audit-logged, nothing recorded), so NabooPay does not retry them.
+
+**What a recorded payment does** (`payments.recordPayment`, internal mutation, idempotent on `order_id`): stores NabooPay's actual `fees`, the `net` and `paidMethod`, sets the donation `held`, and logs `donation.paid`. If the cause is still `active`: `raised += amount`, `donorCount + 1` on the donor's first confirmed gift to it, a `donation_confirmed` notification, and, for a goal cause that reaches its goal, the cause closes (DT-24). Otherwise (DB-18): the donation is flagged `lateRefundFlaggedAt`, not counted, and the donor gets a `donation_late_refund` notification and SMS.
 
 ### query `donations.mine`
+The donor's history, newest first, for `usePaginatedQuery` (like `causes.list`). Owner only.
 **Request**
 ```json
-{ "cursor": null, "limit": 20 }
+{ "paginationOpts": { "numItems": 20, "cursor": null } }
 ```
 **Response (success) — 200**
 ```json
@@ -318,10 +369,13 @@ HTTP 401 with an empty body when the signature is missing or invalid (nothing is
       "id": "don_…",
       "cause": "Séances de kinésithérapie",
       "organization": "Centre Aw Handicap",
+      "causeId": "cau_…",
       "amount": 10000,
-      "method": "Wave",
+      "net": 9700,
+      "method": "wave",                                   // the method actually used (paidMethod), else the one chosen
       "date": 1760313600000,
       "status": "held",                                   // pending | held | released | refunded | failed
+      "lateRefund": false,                                // paid after the cause closed: refunded automatically (DB-18)
       "proof": { "available": true, "proofId": "prf_…", "itemCount": 5 },
       "refund": { "eligible": true, "estimatedAmount": 9700 /* net */, "request": null },   // eligible only while held; request: null | { status, refundAmount }
       "causeDeleted": null                                // or { reason, outcome: "refunded"|"paidOut" }
@@ -330,6 +384,12 @@ HTTP 401 with an empty body when the signature is missing or invalid (nothing is
   "isDone": true,
   "continueCursor": null
 }
+```
+
+### query `donations.impact`
+The donor's cumulative impact, for "Vous avez contribué à N causes pour X FCFA": confirmed donations (`held` or `released`, late payments excluded).
+```json
+{}   →   { "total": 12500, "causeCount": 3, "donationCount": 4 }
 ```
 
 ### mutation `donations.requestRefund`

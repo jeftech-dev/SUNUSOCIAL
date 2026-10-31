@@ -80,6 +80,25 @@ graph TD
 - **Framework:** Convex actions + a provider module selected by `PAYMENT_PROVIDER` (`naboopay` | `mock`; `mock` refused in production). Separate API keys: `checkout` scope for transactions, `payout` scope for payouts. The webhook is a Convex `httpAction` at `POST /payments/naboopay/webhook` (DT-3).
 - **Key responsibilities:** create checkouts (`fees_customer_side: false`); verify `X-Signature` HMAC on the raw body and record payments idempotently on `order_id`; re-check pending transactions (success page + cron) because webhooks are success-only and can be dropped; hold funds in the app ledger; run **all payouts through one single-flight worker** (NabooPay allows one payout at a time, has no idempotency key, and reviews > 2,000,000 XOF manually); reconcile the ledger with the NabooPay balance daily.
 
+#### Sprint 4 spike: NabooPay API v2 (checked 31/10/2026 against `.claude/skills/naboopay`)
+
+No sandbox keys yet (SUNUSOCIAL's account is pending, `BOARD_QUESTIONS.md` E1), so the spike is a document check; the adapter is unit-tested with `fetch` mocked, and the first real call (`GET /accounts`) is for when the keys arrive.
+
+| Topic | What NabooPay does | What we built |
+|---|---|---|
+| Create | `POST /api/v2/transactions`, `Authorization: Bearer <key>` (scope `checkout`). Body: `method_of_payment[]`, `products[]` (the total is `Σ price × quantity`, > 10 XOF), `customer`, `success_url`, `error_url`, `fees_customer_side`, `is_escrow`. Answers `order_id` (UUID) + `checkout_url` | One product (the cause title, `price = amount`), `fees_customer_side: false`, `is_escrow: false`, the method the donor picked. `order_id` stored before the redirect |
+| Return URLs | No percent-encoded characters; NabooPay appends nothing | `SITE_URL/dons/<donationId>` and `SITE_URL/causes/<causeId>?paiement=echec` (Convex ids are alphanumeric) |
+| Webhook | `POST`, event `payment_status`, sent **only on success**; `X-Signature` = lowercase hex HMAC-SHA256 of the raw body with the webhook's secret; 5 s timeout, 3 retries 5 min apart, then dropped | `httpAction` reads `request.text()`, verifies in constant time, then parses. Accepts `paid` and `paid_and_blocked` |
+| Payload versions | v2 (default) has `fees`, `selected_payment_method`, `customer`, `paid_at`…; legacy v1 only `order_id`, `amount`, `currency`, `transaction_status`, `payment_method` | Only the three common fields are required; missing `fees` / method are read with `GET /transactions/{order_id}`. **Register the webhook as v2** |
+| Status check | `GET /transactions/{order_id}`: `pending`, `paid`, `paid_and_blocked`, `cancelled`, `refunded`; `fees` and `selected_payment_method` once paid | Success page (`donations.refreshStatus`) and a 10-minute cron for donations pending > 5 min |
+| Cancel | `DELETE /transactions/{order_id}` on an unpaid transaction → `cancelled` | Cron: still unpaid after 2 h → cancel, donation `failed` |
+| Limits | 100 requests / 60 s per endpoint; unverified organisations capped at 200,000 XOF / month (`403`) | The cron checks at most 50 donations per run |
+| Errors | `400` invalid, `401` bad key, `403` scope / limit / feature off, `503` temporarily disabled: not retryable by us | Checkout failure → donation `failed`, donor sees "paiement indisponible", raw error in the logs |
+
+**Still to ask NabooPay** (with SUNUSOCIAL, part E1): whether escrow has a release API (DT-3), whether payouts have fees, and whether the 2,000,000 XOF manual-review threshold can be raised for a verified account.
+
+**To set up once the account exists:** register `https://<deployment>.convex.site/payments/naboopay/webhook` (webhook **v2**) in the dashboard (Settings → Integration → Webhooks), then `npx convex env set` `NABOOPAY_CHECKOUT_KEY`, `NABOOPAY_WEBHOOK_SECRET` and `PAYMENT_PROVIDER=naboopay`.
+
 ### 3.6 SMS & notifications
 - **Purpose:** one `otp` module (donor signup verification, org/hospital/moderator 2FA, donor password reset) and `notify.send` (in-app + SMS + email).
 - **Framework:** SMS adapter selected by `SMS_PROVIDER` (`console` in dev/preview; real provider pending the board).

@@ -4,7 +4,7 @@
 |---|---|
 | **Database** | Convex (document database). The shapes below are the logical model; the authoritative source is `convex/schema.ts` |
 | **Naming convention** | Tables: plural `camelCase` (`causes`, `bloodAlerts`). Fields: `camelCase`. IDs: Convex `Id<"table">`. Amounts: integer **FCFA**. Timestamps: epoch ms (`number`) |
-| **Last Updated** | 29 October 2026 (rev. 2). Reflects `DECISIONS.md`: NabooPay API v2 with funds held in the app ledger, SMS codes, payout worker, extensions, activity log |
+| **Last Updated** | 31 October 2026 (rev. 3: `donations.lateRefundFlaggedAt` and the `donation_late_refund` notification, DB-18). Reflects `DECISIONS.md`: NabooPay API v2 with funds held in the app ledger, SMS codes, payout worker, extensions, activity log |
 
 > Convex documents are typed through `defineSchema` / `defineTable` with `v.*` validators. The "Type / Constraints" columns describe those validators. Foreign keys are `v.id("table")` references. There is no SQL-level cascade: deletes and state transitions are handled in mutations.
 
@@ -126,7 +126,8 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `provider` | string | `naboopay`\|`mock` | |
 | `providerTxnId` | string | optional; unique once set | The NabooPay `order_id`, stored **before** the redirect. The donation row is created first (its id builds `success_url`), then the `order_id` is set. Idempotency key for webhooks and status checks |
 | `paidMethod` | string | optional | NabooPay `selected_payment_method`. A refund is sent back on this method |
-| `status` | string | `pending`\|`held`\|`released`\|`refunded`\|`failed` | |
+| `status` | string | `pending`\|`held`\|`released`\|`refunded`\|`failed` | `failed`: NabooPay refused the checkout, or the payment was abandoned and cancelled after 2 h |
+| `lateRefundFlaggedAt` | number | optional | Set when the payment was confirmed after its cause stopped being `active` (DB-18, DT-7). The donation is not counted in the cause's `raised`/`donorCount`; it stays `held` until the payout worker (Sprint 6) refunds its `net` automatically |
 | `createdAt` | number | required | |
 
 ### refundRequests
@@ -255,7 +256,7 @@ In-app notifications (DT-17).
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `userId` | Id<"users"> | FK | Recipient |
-| `kind` | string | enum | `donation_confirmed`\|`proof_published`\|`cause_decision`\|`deletion_decision`\|`refund_decision`\|`blood_alert`\|`blood_thanks`\|`account_suspended`\|… |
+| `kind` | string | enum | `donation_confirmed`\|`donation_late_refund`\|`proof_published`\|`cause_decision`\|`deletion_decision`\|`refund_decision`\|`blood_alert`\|`blood_thanks`\|`account_suspended`\|… |
 | `title` | string | required | French |
 | `body` | string | required | French |
 | `link` | string | optional | Deep link |
@@ -345,6 +346,7 @@ CREATE INDEX by_cause_donor            ON donations (causeId, donorId);    -- di
 CREATE INDEX by_donor                  ON donations (donorId);
 CREATE INDEX by_txn                    ON donations (providerTxnId);       -- webhook idempotency (uniqueness enforced in mutation)
 CREATE INDEX by_status_created         ON donations (status, createdAt);   -- pending re-check cron
+CREATE INDEX by_late_refund            ON donations (lateRefundFlaggedAt); -- late payments to refund automatically (DB-18)
 CREATE INDEX by_status                 ON refundRequests (status);
 CREATE INDEX by_donation               ON refundRequests (donationId);
 CREATE INDEX by_status_created         ON payouts (status, createdAt);     -- worker + reconciliation

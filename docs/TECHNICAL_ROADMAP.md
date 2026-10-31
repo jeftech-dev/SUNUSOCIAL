@@ -20,6 +20,8 @@ sunusocial/
 │   │   ├── causes/page.tsx           # 03 feed (categories, filters, featured)
 │   │   ├── causes/[id]/page.tsx      # 04 cause detail (+ 05 donation modal)
 │   │   ├── profil/page.tsx           # 06 donor dashboard (+ 06b proof dossier)
+│   │   ├── dons/[donationId]/page.tsx # 05b NabooPay success_url: live donation status (DT-3)
+│   │   ├── paiement/simulation/[donationId]/page.tsx # mock provider's checkout page (dev/preview only)
 │   │   └── sang/page.tsx             # 07 blood module (+ 08 confirm visit)
 │   ├── (structure)/
 │   │   ├── structure/page.tsx        # 07 org dashboard
@@ -75,9 +77,11 @@ sunusocial/
 │   ├── money.ts                      # fee/net math (DT-6); FCFA formatting
 │   ├── config.ts                     # typed access to product flags (DECISIONS.md §3)
 │   ├── providers/index.ts            # provider adapter selector (PAYMENT_PROVIDER)
-│   ├── providers/naboopay.ts         # API v2: transactions, X-Signature verify, payouts, balance
+│   ├── providers/types.ts            # PaymentProvider interface + webhook payload parsing
+│   ├── providers/naboopay.ts         # API v2: transactions, X-Signature verify (payouts, balance: Sprint 6)
+│   ├── providers/mock.ts             # signs/verifies with a dev secret; checkout = in-app simulator
+│   ├── providers/signature.ts        # HMAC-SHA256 hex + constant-time compare (Web Crypto)
 │   ├── sms/index.ts                  # SMS adapter selector (SMS_PROVIDER: console | provider)
-│   ├── providers/mock.ts             # instant-success provider for dev/preview/e2e
 │   ├── geo.ts                        # region→commune lists — single source, shared with Convex (DT-22)
 │   ├── strings.fr.ts                 # centralized French UI copy
 │   └── authz.ts                      # client-side route-role helpers
@@ -162,17 +166,21 @@ export const request: Mutation<{ kind: "cause_deadline" | "proof_deadline"; targ
 
 ```typescript
 // convex/donations.ts  (checkout is an action — external side effect)
-export const createCheckout: Action<CreateDonationInput, { donationId: Id<"donations">; checkoutUrl: string } & FeeBreakdown>;
-export const mine: Query<{ cursor?: string | null; limit: number }, PaginatedResponse<DonationHistoryView>>;
+export const createCheckout: Action<CreateDonationInput, { donationId: Id<"donations">; checkoutUrl: string; status: "pending" } & FeeBreakdown>; // row inserted first, order_id stored before answering
+export const status: Query<{ donationId: string }, DonationStatusView | null>;        // success page + simulator, owner only
+export const refreshStatus: Action<{ donationId: string }, { status: DonationStatus }>; // GET /transactions fallback (DT-3)
+export const mine: Query<{ paginationOpts: PaginationOptions }, PaginatedResponse<DonationHistoryView>>;
+export const impact: Query<{}, { total: number; causeCount: number; donationCount: number }>;
 export const requestRefund: Mutation<{ donationId: Id<"donations">; reason: string; receivingPhone?: string }, { requestId: Id<"refundRequests"> }>; // only while held; net amount
 export const forCause: Query<{ causeId: Id<"causes"> }, { total: number; count: number }>;
 ```
 
 ```typescript
 // convex/payments.ts
-// convex/http.ts: POST /payments/naboopay/webhook → httpAction: verify signature, then:
-export const recordPayment: InternalMutation<{ orderId: string; status: "paid" | "paid_and_blocked"; amount: number; fees: number; method: Method }, { ok: boolean; duplicate: boolean }>;
-export const checkPending: InternalAction<{}, { checked: number; paid: number; cancelled: number }>;   // cron 10 min + success page
+// convex/http.ts: POST /payments/naboopay/webhook → payments.naboopayWebhook (httpAction) → handleWebhook(ctx, rawBody, signature)
+export const recordPayment: InternalMutation<{ orderId: string; amount: number; fees: number; method?: Method }, { outcome: "counted" | "late" | "duplicate" | "unknown_order" | "mismatch" }>;
+export const recheckPending: InternalAction<{}, { checked: number; paid: number; failed: number }>;   // cron 10 min: pending > 5 min; cancels unpaid > 2 h
+export const simulatePayment: Action<{ donationId: string; outcome: "paid" | "cancelled" }, { redirectTo: string }>; // mock provider only
 export const releaseCause: InternalAction<{ causeId: Id<"causes"> }, { released: boolean }>;   // goal reached (scheduled) or deadline (cron); one lump-sum payout; idempotent
 export const releaseDue: InternalMutation<{}, { scheduled: number }>;           // hourly cron: schedules releaseCause for causes past deadline
 // convex/payouts.ts — single-flight worker (@convex-dev/workpool, maxParallelism 1)
@@ -252,8 +260,9 @@ export function formatFCFA(amount: number): string;                   // "4 500 
 
 // lib/providers/index.ts  (adapter interface, selected by PAYMENT_PROVIDER)
 export interface PaymentProvider {
-  createCheckout(input: { donationId: string; amount: number; method: Method }): Promise<{ checkoutUrl: string; providerTxnId: string }>;
-  verifyWebhook(payload: unknown, signature: string): boolean;
+  name: Provider;
+  createCheckout(input: { donationId: string; amount: number; method: Method; causeTitle: string; customer: { firstName: string; lastName: string; phone?: string }; successUrl: string; errorUrl: string }): Promise<{ checkoutUrl: string; providerTxnId: string }>;
+  verifyWebhook(rawBody: string, signature: string | null): Promise<boolean>; // HMAC over the raw body, constant-time compare
   getTransaction(orderId: string): Promise<{ status: "pending" | "paid" | "paid_and_blocked" | "cancelled" | "refunded"; amount: number; fees: number; method?: Method }>;
   cancelTransaction(orderId: string): Promise<void>;                  // unpaid > 2 h
   payout(input: { method: Method; amount: number; phone: string; name: string; reason: string }): Promise<{ orderId: string; status: "completed" | "pending" | "failed" }>; // NEVER auto-retried on timeout/5xx
@@ -285,17 +294,21 @@ Donate (core loop)
     → lib/money.computeFee(amount, provider)   [live fee line + net, client preview]
   "Confirmer le don"                      → useDonation.confirm()
     → convex action donations.createCheckout
-        → lib/money.computeFee (authoritative, server)
-        → lib/providers.createCheckout()       [Orange Money / Wave]
-        → insert donations row (status: pending)
-    ← { checkoutUrl }                     → browser redirects to provider
+        → internal mutation donations.prepareCheckout: donor role, listed cause (DB-17), deadline,
+          MIN_DONATION, rate limit; lib/money.computeFee (authoritative, server);
+          insert donations row (status: pending)
+        → lib/providers.createCheckout()       [the method picked: Orange Money or Wave]
+        → internal mutation donations.attachOrder: providerTxnId = order_id   (before redirecting)
+    ← { checkoutUrl }                     → browser redirects to provider (mock: /paiement/simulation/<id>)
   NabooPay → POST /payments/naboopay/webhook (convex/http.ts httpAction)
-        → lib/providers.verifyWebhook(signature)
+        → lib/providers.verifyWebhook(rawBody, X-Signature)   → 401 if invalid
         → internal mutation payments.recordPayment
-            → dedupe on providerTxnId
-            → donations.status = held; causes.raised += amount; donorCount bump on first gift
-            → if raised ≥ goal: scheduler.runAfter(0, payments.releaseCause)
-            → notify donor (donation_confirmed)
+            → dedupe on providerTxnId; amount must match
+            → donations.status = held, actual fee/net, paidMethod
+            → cause active: causes.raised += amount; donorCount bump on first gift; notify (donation_confirmed)
+              goal cause reaching its goal: status = closed (release payout: Sprint 6)
+            → cause no longer active (DB-18): lateRefundFlaggedAt, not counted; notify + SMS
+  NabooPay → success_url /dons/<id> → donations.refreshStatus (GET /transactions) + live donations.status
   ← live query causes.get pushes new progress → ProgressBar animates for all viewers
 ```
 
