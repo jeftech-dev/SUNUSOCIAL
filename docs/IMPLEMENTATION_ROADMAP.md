@@ -101,18 +101,23 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 0 | Spike: NabooPay API (checkout, signature, hold, payout, refund) — confirm against docs | `chore` | notes in `docs/ARCHITECTURE.md` | 📋 |
-| 1 | Payment adapter interface + NabooPay + mock modules | `feat` | `lib/providers/*` | 📋 |
-| 2 | `donations.createCheckout` (server fee math, min donation, provider redirect) | `feat` | `convex/donations.ts` | 📋 |
-| 3 | Webhook `httpAction` + `payments.recordPayment` (signature, idempotent, progress, release at goal) | `feat` | `convex/http.ts`, `convex/payments.ts` | 📋 |
-| 4 | `DonationModal` (presets, custom, live fee line, net, provider note, success) | `feat` | `components/cause/DonationModal.tsx`, `hooks/useDonation.ts` | 📋 |
-| 5 | Donor dashboard: history + cumulative impact | `feat` | `app/(donor)/profil/page.tsx`, `convex/donations.ts` | 📋 |
+| 0 | Spike: NabooPay API (checkout, signature, hold, payout, refund) — confirm against docs | `chore` | notes in `docs/ARCHITECTURE.md` §3.4 | ✅ |
+| 1 | Payment adapter interface + NabooPay + mock modules | `feat` | `lib/providers/*` | ✅ |
+| 2 | `donations.createCheckout` (server fee math, min donation, provider redirect) | `feat` | `convex/donations.ts` | ✅ |
+| 3 | Webhook `httpAction` + `payments.recordPayment` (signature, idempotent, progress, close at goal) + late-payment flag (DB-18) + pending re-check cron | `feat` | `convex/http.ts`, `convex/payments.ts`, `convex/crons.ts` | ✅ |
+| 3b | Mock payment simulator *(the in-app stand-in for NabooPay's checkout page)* | `feat` | `app/(donor)/paiement/simulation/[donationId]`, `components/cause/PaymentSimulator.tsx` | ✅ |
+| 4 | `DonationModal` (presets, custom, live fee line, net, provider note) + success page | `feat` | `components/cause/DonationModal.tsx`, `components/cause/DonationResult.tsx`, `hooks/useDonation.ts`, `app/(donor)/dons/[donationId]` | ✅ |
+| 5 | Donor dashboard: history + cumulative impact | `feat` | `app/(donor)/profil/page.tsx`, `components/donor/DonorProfile.tsx`, `convex/donations.ts` | ✅ |
 
 **Definition of Done:**
-- [ ] Only Orange Money + Wave offered; fee/net recompute live and match the server.
-- [ ] Webhook is idempotent on `providerTxnId`; no double-counting.
-- [ ] Success increments progress and records the donation in history.
-- [ ] Provider note says funds are held until the cause ends.
+- [x] Only Orange Money + Wave offered; fee/net recompute live and match the server. *(The modal shows a preview; `createCheckout` recomputes with `computeFee` and ignores client numbers.)*
+- [x] Webhook is idempotent on `providerTxnId`; no double-counting. *(A duplicate delivery is a no-op; `donorCount` moves only on a donor's first confirmed gift.)*
+- [x] Success increments progress and records the donation in history.
+- [x] Provider note says funds are held until the cause ends.
+- [x] A payment confirmed after the cause closed is flagged and not counted; the donor is told it will be refunded (DB-18). *(The net refund payout itself is Sprint 6.)*
+- [x] A goal cause closes when its goal is reached, accepting the last donation in full.
+
+*Verified with `convex-test` (checkout guards, webhook signature/idempotency/amount-match, first-gift donor count, goal close, late-payment flag, simulator, donor views — `convex/payments.test.ts`) plus `lib/providers` unit tests, and `lint` / `typecheck` / `next build`. Not yet run against a real Convex deployment or in a browser: this environment has no Convex backend. The real NabooPay adapter is unit-tested with `fetch` mocked; the first live call waits on SUNUSOCIAL's keys (`BOARD_QUESTIONS.md` E1). Development uses `PAYMENT_PROVIDER=mock` through the in-app simulator.*
 
 ---
 
@@ -210,8 +215,8 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [x] Causes feed with categories + filters — Sprint 3
 - [x] Weekly "Coup de cœur" featured — Sprint 3 (picker included)
 - [x] Cause detail (end condition, similar, WhatsApp) — Sprint 3
-- [ ] Donation modal with live fee + net (Orange Money/Wave) — Sprint 4
-- [ ] Donor dashboard (history + cumulative impact) — Sprint 4
+- [x] Donation modal with live fee + net (Orange Money/Wave) — Sprint 4
+- [x] Donor dashboard (history + cumulative impact) — Sprint 4
 - [ ] Create/edit/withdraw cause + status timeline — Sprint 5
 - [ ] Proof dossier (≥5 items + report + spend) + auto-flag — Sprint 5
 - [ ] Moderation queues: structures, causes, proofs — Sprint 5
