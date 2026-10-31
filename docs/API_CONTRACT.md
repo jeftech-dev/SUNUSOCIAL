@@ -143,7 +143,7 @@ Same shape as `bloodProfile` above. Logged as `blood.optIn` or `profile.update`.
 
 ## Causes
 
-All three require a donor or moderator session. They only show **listed** causes: `active`, from a structure that is `approved` and not suspended (DT-34; G4 interim). `causes.get` also shows a `closed` cause of such a structure.
+All three require a donor or moderator session. They only show **listed** causes: `active`, from a structure that is `approved` and not suspended (DT-34, DB-17). `causes.get` also shows a `closed` cause of such a structure.
 
 ### query `causes.list`
 Paginated with Convex's standard pagination, for `usePaginatedQuery`.

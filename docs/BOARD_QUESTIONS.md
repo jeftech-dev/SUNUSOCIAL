@@ -25,6 +25,9 @@ Merci pour vos réponses. Voici ce que nous avons retenu, pour validation finale
 | Utilisation des SMS | Double authentification des structures, hôpitaux et modérateurs · **vérification du numéro des donateurs à l'inscription** · récupération du mot de passe des donateurs · alertes de sang · notifications importantes |
 | Durée des sessions | **1 semaine au maximum**, puis il faut se reconnecter |
 | Historique d'activité | Les actions des donateurs sont enregistrées : inscription, connexions, dons, modifications du profil |
+| Circuit de l'argent (Q4) | **Validé le 31/10/2026** : les dons arrivent sur le compte marchand NabooPay de SUNUSOCIAL, y restent bloqués jusqu'à la fin de la cause, puis sont versés automatiquement |
+| Structure suspendue (G4) | **Décidé le 31/10/2026** : les causes d'une structure suspendue sont **masquées** (plus de nouveaux dons) jusqu'à la levée de la suspension |
+| Paiement confirmé après la clôture (G15) | **Décidé le 31/10/2026** : le don est **remboursé automatiquement** au montant net, et le donateur reçoit un **message clair** qui explique pourquoi |
 
 Il reste les questions ci-dessous (parties A à C), la liste de ce que SUNUSOCIAL doit créer et nous transmettre (partie E), et l'organisation du lancement (partie F). Le développement peut avancer sans attendre, mais **le lancement en dépend**.
 
@@ -87,7 +90,7 @@ Le prototype couvre 8 régions. La version finale doit couvrir **les 14 régions
 
 Une fois ce compte configuré (voir la partie E), **aucune manipulation manuelle n'est nécessaire** : ni pour les versements aux structures, ni pour les remboursements. La plateforme vérifie aussi chaque jour que le solde du compte correspond aux dons en attente.
 
-**À valider :** le bureau confirme-t-il ce fonctionnement ?
+**Décision (31/10/2026) :** ✅ fonctionnement validé. Reste à ouvrir le compte et à nous transmettre les clés (partie E1).
 
 ## B. Règles à préciser
 
@@ -199,7 +202,7 @@ Une **carte de paiement au nom de SUNUSOCIAL**, à enregistrer sur Vercel et Con
 | Q1 | Fournisseur SMS, budget, expéditeur | Inscription des donateurs, connexions, alertes | 🔴 Haute |
 | Q2 | Modèle de revenus | Calcul des frais affiché | 🔴 Haute |
 | Q3 | Liste des 14 régions et communes | Inscriptions, alertes | 🔴 Haute |
-| Q4 | Validation du circuit de l'argent (compte NabooPay de SUNUSOCIAL) | Versements | 🔴 Haute |
+| Q4 | Validation du circuit de l'argent (compte NabooPay de SUNUSOCIAL) | — (validé le 31/10/2026) | ✅ Décidé |
 | Q5 | Phase 2 d'inscription des structures | Versements, si la phase 2 est rendue obligatoire | 🟠 Moyenne |
 | Q6 | Don minimum | — (500 FCFA en attendant) | 🟢 Basse |
 | Q7 | Statut juridique | Vérification NabooPay (E1) | 🔴 Haute |

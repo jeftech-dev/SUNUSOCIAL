@@ -48,10 +48,10 @@ SCENARIOS = [
             ]),
             ("Code faux ou expiré", [
                 M("Y", "D", "« Code incorrect ou expiré » (5 essais au maximum)"),
-                M("D", "Y", "Redemande un code après 60 s (3 fois max. en 10 min)", "Renvoyer le code"),
+                M("D", "Y", "Redemande un code après 60 s (3 fois max. en 10 min, 10 par jour)", "Renvoyer le code"),
             ]),
             ("Numéro déjà inscrit", [
-                M("Y", "D", "« Ce numéro est déjà utilisé » avec liens vers la connexion et le mot de passe oublié"),
+                M("Y", "D", "Pas de code : un SMS « Un compte existe déjà avec ce numéro » invite à se connecter ou à utiliser « Mot de passe oublié » (l'écran ne révèle pas si le numéro est inscrit)"),
             ]),
         ]),
     ]),
@@ -109,9 +109,9 @@ SCENARIOS = [
     SC("S09", "Structures et hôpitaux", "Inscription d'une structure (phase 1) et validation", [
         M("S", "S", "Saisit nom, type, région et commune, e-mail, téléphone du responsable, mot de passe, récépissé (PDF/JPG/PNG, 5 Mo)"),
         M("S", "S", "Compte de réception : choisit Orange Money ou Wave, numéro et nom du responsable"),
-        M("S", "Y", "Demande le code de vérification du numéro de versement", "Recevoir le code par SMS"),
-        M("Y", "S", "Envoie un code SMS à ce numéro"),
-        M("S", "Y", "Valide le code : le numéro est prouvé", "Vérifier le code et continuer"),
+        M("S", "Y", "Demande les codes de vérification", "Recevoir le code par SMS"),
+        M("Y", "S", "Envoie un code au téléphone du responsable (il recevra le code de chaque connexion) et, si c'est un autre numéro, un code au numéro de versement"),
+        M("S", "Y", "Saisit le ou les deux codes : les numéros sont prouvés, le récépissé est envoyé", "Envoyer mon dossier"),
         M("Y", "S", "« Dossier envoyé, vérification en cours » : ne peut pas encore publier"),
         M("Y", "M", "Nouvelle ligne dans « Inscriptions à valider » (récépissé affiché + infos + compte de versement)"),
         ALT("M", [
@@ -129,7 +129,9 @@ SCENARIOS = [
     ]),
     SC("S10", "Structures et hôpitaux", "Inscription d'un hôpital et validation", [
         M("H", "H", "Saisit nom, type « Hôpital », région et commune, e-mail, téléphone, mot de passe, agrément du ministère de la Santé (pas de compte de versement)"),
-        M("H", "Y", "Envoie son dossier", "Envoyer mon dossier"),
+        M("H", "Y", "Demande le code de vérification du téléphone du responsable", "Recevoir le code par SMS"),
+        M("Y", "H", "Envoie un code SMS à ce numéro (il recevra le code de chaque connexion)"),
+        M("H", "Y", "Saisit le code et envoie son dossier", "Envoyer mon dossier"),
         M("Y", "M", "Nouvelle ligne dans « Inscriptions à valider », étiquette DON DE SANG"),
         ALT("M", [
             ("Valider", [
@@ -271,7 +273,8 @@ SCENARIOS = [
                 M("Y", "Y", "Le paiement en attente est annulé automatiquement au bout de 2 h"),
             ]),
             ("Paiement confirmé après la clôture de la cause", [
-                GAP("G15"),
+                M("Y", "Y", "Le don n'est pas compté pour la cause : il est remboursé automatiquement au montant net sur le numéro du donateur"),
+                M("Y", "D", "Message clair (notification + SMS) : la cause était déjà clôturée, montant remboursé, causes similaires"),
             ]),
         ]),
         M("D", "Y", "Pour un don en nature ou une question", "Nous contacter sur WhatsApp"),
@@ -382,7 +385,7 @@ SCENARIOS = [
     SC("S26", "Preuves", "Preuve en retard : suspension automatique", [
         M("Y", "Y", "Chaque jour : une échéance de preuve est dépassée sans preuve validée"),
         M("Y", "S", "« Compte suspendu » (notification + e-mail) : plus de nouvelle cause"),
-        GAP("G4"),
+        M("Y", "D", "Les causes de la structure sont masquées (plus de nouveaux dons) jusqu'à la levée de la suspension"),
         M("Y", "M", "La structure apparaît « Compte suspendu » dans le suivi des preuves"),
         ALT("M", [
             ("Relancer", [
@@ -446,9 +449,6 @@ GAPS = {
     "G3": ("Demande de prolongation en attente à la date limite",
            "La date limite arrive avant que le modérateur ait décidé.",
            "Une demande envoyée avant la date limite la gèle jusqu'à la décision. Les demandes ne sont plus acceptées dans les 24 h qui précèdent la date limite."),
-    "G4": ("Structure suspendue qui a des causes actives",
-           "La suspension empêche de créer des causes, mais les causes déjà actives ?",
-           "Les causes actives sont mises en pause (plus de nouveaux dons) et leurs versements bloqués jusqu'à la levée de la suspension. Les donateurs voient un bandeau."),
     "G5": ("Structure ou hôpital refusé : nouvelle tentative ?",
            "Après un refus, que peut faire la structure ?",
            "Elle corrige son dossier (documents, informations) et le renvoie. Il revient dans « Inscriptions à valider » avec l'historique des refus."),
@@ -479,9 +479,6 @@ GAPS = {
     "G14": ("Annuler sa venue pour un don de sang",
             "Un donneur qui a confirmé un créneau peut-il se désister ?",
             "Oui : « Annuler ma venue » retire son nom de la liste de l'hôpital, qui est prévenu."),
-    "G15": ("Paiement confirmé après la clôture de la cause",
-            "Un donateur a commencé à payer avant la clôture, mais NabooPay confirme après, quand le versement est déjà parti.",
-            "Le don est remboursé automatiquement au montant net et le donateur est prévenu, avec une suggestion de causes similaires."),
     "G16": ("Donneurs qui ne connaissent pas leur groupe sanguin",
             "Ils ne correspondent à aucune alerte ciblée par groupe.",
             "Ils ne reçoivent que les alertes marquées « Tous groupes » par l'hôpital, et voient un message les invitant à connaître leur groupe lors de leur premier don."),

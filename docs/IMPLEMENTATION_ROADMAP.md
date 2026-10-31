@@ -87,7 +87,7 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | 5 | Empty/loading states | `feat` | feed + detail pages | ✅ |
 
 **Definition of Done:**
-- [x] Only approved causes from verified structures show. *(Suspended structures are hidden too: G4 interim, DT-34.)*
+- [x] Only approved causes from verified structures show. *(Suspended structures are hidden too: DB-17, DT-34.)*
 - [x] Filters and categories narrow the list; empty state renders.
 - [x] Progress and donor count reflect live data. *(Live Convex queries; donations start moving them in Sprint 4.)*
 

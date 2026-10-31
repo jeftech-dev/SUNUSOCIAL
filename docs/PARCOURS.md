@@ -12,7 +12,7 @@ Ce document décrit **tout ce qui va être développé**, sous la forme d'un seu
 
 **Les repères :** `▶ Bouton` indique le bouton cliqué. ⚠ **Gn** signale un point **non décidé** : la proposition de JËFTECH figure dans le tableau sous le schéma.
 
-Le schéma couvre 31 scénarios, 76 boutons et 16 points à trancher.
+Le schéma couvre 31 scénarios, 77 boutons et 14 points à trancher.
 
 ## Le schéma complet
 
@@ -100,8 +100,8 @@ sequenceDiagram
   Note over D,H: S09 · Inscription d'une structure (phase 1) et validation
   S->>S: Saisit nom, type, région et commune, e-mail,<br/>téléphone du responsable, mot de passe,<br/>récépissé (PDF/JPG/PNG, 5 Mo)
   S->>S: Compte de réception : choisit Orange Money ou<br/>Wave, numéro et nom du responsable
-  S->>Y: ▶ Recevoir le code par SMS · Demande les<br/>codes de vérification
-  Y->>S: Envoie un code au téléphone du responsable<br/>(il recevra le code de chaque connexion) et, si<br/>c'est un autre numéro, un code au numéro de<br/>versement
+  S->>Y: ▶ Recevoir le code par SMS · Demande les codes<br/>de vérification
+  Y->>S: Envoie un code au téléphone du responsable (il<br/>recevra le code de chaque connexion) et, si<br/>c'est un autre numéro, un code au numéro de<br/>versement
   S->>Y: ▶ Envoyer mon dossier · Saisit le ou les deux<br/>codes : les numéros sont prouvés, le récépissé<br/>est envoyé
   Y->>S: « Dossier envoyé, vérification en cours » : ne<br/>peut pas encore publier
   Y->>M: Nouvelle ligne dans « Inscriptions à valider »<br/>(récépissé affiché + infos + compte de<br/>versement)
@@ -119,7 +119,7 @@ sequenceDiagram
   Note over D,H: S10 · Inscription d'un hôpital et validation
   H->>H: Saisit nom, type « Hôpital », région et<br/>commune, e-mail, téléphone, mot de passe,<br/>agrément du ministère de la Santé (pas de<br/>compte de versement)
   H->>Y: ▶ Recevoir le code par SMS · Demande le code<br/>de vérification du téléphone du responsable
-  Y->>H: Envoie un code SMS à ce numéro (il recevra<br/>le code de chaque connexion)
+  Y->>H: Envoie un code SMS à ce numéro (il recevra le<br/>code de chaque connexion)
   H->>Y: ▶ Envoyer mon dossier · Saisit le code et<br/>envoie son dossier
   Y->>M: Nouvelle ligne dans « Inscriptions à valider<br/>», étiquette DON DE SANG
   alt Modérateur · Valider
@@ -244,7 +244,8 @@ sequenceDiagram
     Y->>D: Retour sur la cause, rien n'est compté
     Y->>Y: Le paiement en attente est annulé<br/>automatiquement au bout de 2 h
   else Donateur · Paiement confirmé après la clôture de la cause
-    Note over D,Y: ⚠ G15 non décidé · Paiement confirmé après la clôture de la cause
+    Y->>Y: Le don n'est pas compté pour la cause : il est<br/>remboursé automatiquement au montant net sur<br/>le numéro du donateur
+    Y->>D: Message clair (notification + SMS) : la cause<br/>était déjà clôturée, montant remboursé, causes<br/>similaires
   end
   D->>Y: ▶ Nous contacter sur WhatsApp · Pour un don en<br/>nature ou une question
   Y->>D: Ouvre WhatsApp avec le numéro de SUNUSOCIAL
@@ -342,7 +343,7 @@ sequenceDiagram
   Note over D,H: S26 · Preuve en retard : suspension automatique
   Y->>Y: Chaque jour : une échéance de preuve est<br/>dépassée sans preuve validée
   Y->>S: « Compte suspendu » (notification + e-mail) :<br/>plus de nouvelle cause
-  Note over S,M: ⚠ G4 non décidé · Structure suspendue qui a des causes actives
+  Y->>D: Les causes de la structure sont masquées (plus<br/>de nouveaux dons) jusqu'à la levée de la<br/>suspension
   Y->>M: La structure apparaît « Compte suspendu » dans<br/>le suivi des preuves
   alt Modérateur · Relancer
     M->>Y: ▶ Relancer la structure · Envoie un rappel
@@ -405,7 +406,6 @@ Pour chaque point, JËFTECH propose une règle. Cochez « OK » ou indiquez votr
 | **G1** · Demande de remboursement en attente au moment où la cause se termine | S20 | La cause atteint son objectif ou sa date limite pendant qu'une demande de remboursement attend : les fonds partent et le remboursement devient impossible. | Le versement de la cause attend que les demandes de remboursement en cours soient décidées (le modérateur a 48 h), puis part automatiquement. | ☐ OK · ☐ Autre : |
 | **G2** · Dons pendant une demande de suppression | S17 | Faut-il continuer à accepter des dons sur une cause dont la structure demande la suppression ? | La cause est mise en pause (plus de nouveaux dons, bandeau « En cours d'examen ») jusqu'à la décision du modérateur. | ☐ OK · ☐ Autre : |
 | **G3** · Demande de prolongation en attente à la date limite | S16, S23 | La date limite arrive avant que le modérateur ait décidé. | Une demande envoyée avant la date limite la gèle jusqu'à la décision. Les demandes ne sont plus acceptées dans les 24 h qui précèdent la date limite. | ☐ OK · ☐ Autre : |
-| **G4** · Structure suspendue qui a des causes actives | S26 | La suspension empêche de créer des causes, mais les causes déjà actives ? | Les causes actives sont mises en pause (plus de nouveaux dons) et leurs versements bloqués jusqu'à la levée de la suspension. Les donateurs voient un bandeau. | ☐ OK · ☐ Autre : |
 | **G5** · Structure ou hôpital refusé : nouvelle tentative ? | S09, S10 | Après un refus, que peut faire la structure ? | Elle corrige son dossier (documents, informations) et le renvoie. Il revient dans « Inscriptions à valider » avec l'historique des refus. | ☐ OK · ☐ Autre : |
 | **G6** · Cause refusée : correction et nouvel envoi ? | S12 | Après un refus, la structure doit-elle tout recréer ? | Un bouton « Modifier et renvoyer » remet la même cause en modération, avec la raison du refus précédent visible par le modérateur. | ☐ OK · ☐ Autre : |
 | **G7** · Modifier une cause déjà active | S14 | Quels champs une structure peut-elle changer une fois la cause publiée, sachant que des donateurs ont donné sur cette base ? | Seuls la description et la bannière sont modifiables, et la modification repasse en modération (l'ancienne version reste affichée en attendant). Montant, catégorie et date limite sont verrouillés (la date ne change que par une prolongation). | ☐ OK · ☐ Autre : |
@@ -416,7 +416,6 @@ Pour chaque point, JËFTECH propose une règle. Cochez « OK » ou indiquez votr
 | **G12** · Blocage d'un compte pour fraude | S08 | Un champ « compte bloqué » existe, mais aucun parcours n'est défini. | Le modérateur bloque le compte avec une raison : connexion impossible, causes en pause, versements gelés. Le sort des fonds est décidé comme une suppression (rembourser ou verser). Décision à valider par le bureau. | ☐ OK · ☐ Autre : |
 | **G13** · Alerte fermée par un modérateur | S31 | L'hôpital est-il prévenu, et avec quelle explication ? | Oui : l'hôpital reçoit la raison. Après 3 alertes fermées, son droit d'envoyer des alertes est revu par le modérateur. | ☐ OK · ☐ Autre : |
 | **G14** · Annuler sa venue pour un don de sang | S29 | Un donneur qui a confirmé un créneau peut-il se désister ? | Oui : « Annuler ma venue » retire son nom de la liste de l'hôpital, qui est prévenu. | ☐ OK · ☐ Autre : |
-| **G15** · Paiement confirmé après la clôture de la cause | S18 | Un donateur a commencé à payer avant la clôture, mais NabooPay confirme après, quand le versement est déjà parti. | Le don est remboursé automatiquement au montant net et le donateur est prévenu, avec une suggestion de causes similaires. | ☐ OK · ☐ Autre : |
 | **G16** · Donneurs qui ne connaissent pas leur groupe sanguin | S27 | Ils ne correspondent à aucune alerte ciblée par groupe. | Ils ne reçoivent que les alertes marquées « Tous groupes » par l'hôpital, et voient un message les invitant à connaître leur groupe lors de leur premier don. | ☐ OK · ☐ Autre : |
 
 ## Index des scénarios
@@ -477,7 +476,7 @@ Chaque bouton du produit, qui le voit, et le scénario du schéma où ses consé
 | Mot de passe oublié ? | Donateur | Saisit son numéro | S04 |
 | Nous contacter sur WhatsApp | Donateur | Pour un don en nature ou une question | S18 |
 | Recevoir le code par SMS | Donateur | Demande le code | S02 |
-| Renvoyer le code | Donateur | Redemande un code après 60 s (3 fois max. en 10 min) | S02 |
+| Renvoyer le code | Donateur | Redemande un code après 60 s (3 fois max. en 10 min, 10 par jour) | S02 |
 | Se connecter | Donateur | Téléphone + mot de passe, sans code SMS | S03 |
 | Supprimer mon compte | Donateur | Demande la suppression de son compte | S07 |
 | Tout marquer comme lu | Donateur | Marque tout comme lu | S06 |
@@ -489,8 +488,9 @@ Chaque bouton du produit, qui le voit, et le scénario du schéma où ses consé
 | Confirmer le don | Hôpital | Le donneur est venu et a donné | S30 |
 | Envoyer l'alerte | Hôpital | Envoie | S28 |
 | Envoyer le remerciement | Hôpital | Rédige son message de remerciement | S31 |
-| Envoyer mon dossier | Hôpital | Envoie son dossier | S10 |
+| Envoyer mon dossier | Hôpital | Saisit le code et envoie son dossier | S10 |
 | Modifier le stock | Hôpital | Corrige ses réserves à la main | S30 |
+| Recevoir le code par SMS | Hôpital | Demande le code de vérification du téléphone du responsable | S10 |
 | Émettre une alerte | Hôpital | Choisit les groupes recherchés, le nombre de poches, l'urgence et les communes de sa région | S28 |
 | Accorder | Modérateur | Accorde | S16 |
 | Accorder | Modérateur | Accorde | S25 |
@@ -523,17 +523,17 @@ Chaque bouton du produit, qui le voit, et le scénario du schéma où ses consé
 | Envoyer la demande au modérateur | Structure | Envoie la demande | S17 |
 | Envoyer la demande au modérateur | Structure | Envoie la demande | S25 |
 | Envoyer la preuve | Structure | Envoie le dossier | S24 |
+| Envoyer mon dossier | Structure | Saisit le ou les deux codes : les numéros sont prouvés, le récépissé est envoyé | S09 |
 | Modifier | Structure | Modifie librement | S14 |
 | Modifier | Structure | Ouvre la modification | S14 |
 | Modifier le compte de versement | Structure | Saisit le nouveau moyen (Orange Money ou Wave), numéro et nom | S11 |
 | Mot de passe oublié ? | Structure | Structure, hôpital ou modérateur : saisit son e-mail | S04 |
 | Prolonger | Structure | Choisit une nouvelle date (30 jours de plus au maximum) et explique pourquoi | S16 |
 | Publier la preuve | Structure | Ajoute au moins 5 fichiers (photos, vidéo jusqu'à 50 Mo et 90 s, facture, bon de livraison), un compte rendu et le détail des dépenses | S24 |
-| Recevoir le code par SMS | Structure | Demande le code de vérification du numéro de versement | S09 |
+| Recevoir le code par SMS | Structure | Demande les codes de vérification | S09 |
 | Se connecter | Structure | E-mail + mot de passe (les modérateurs se connectent sur l'adresse de modération) | S05 |
 | Soumettre | Structure | Soumet la cause | S12 |
 | Supprimer | Structure | Retire la cause (aucun don n'est encore possible) | S13 |
 | Supprimer | Structure | Explique pourquoi (5 caractères min.) | S17 |
 | Valider | Structure | Valide le code | S05 |
 | Vérifier le code | Structure | Valide le code | S11 |
-| Vérifier le code et continuer | Structure | Valide le code : le numéro est prouvé | S09 |
