@@ -190,13 +190,19 @@ export default defineSchema({
     /** NabooPay selected_payment_method. Refunds go back on it. */
     paidMethod: v.optional(methodV),
     status: donationStatusV,
+    /**
+     * Paid after its cause stopped being active (DB-18, DT-7): not counted in `raised` /
+     * `donorCount`, stays `held` until the payout worker refunds its `net` automatically.
+     */
+    lateRefundFlaggedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_cause", ["causeId"])
     .index("by_cause_donor", ["causeId", "donorId"])
     .index("by_donor", ["donorId"])
     .index("by_txn", ["providerTxnId"])
-    .index("by_status_created", ["status", "createdAt"]),
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_late_refund", ["lateRefundFlaggedAt"]),
 
   /** Refund requests, possible while the donation is held. The decision is final (DB-13). */
   refundRequests: defineTable({

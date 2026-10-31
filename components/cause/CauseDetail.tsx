@@ -2,6 +2,8 @@
 
 import { useQuery } from "convex/react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 import { VerifiedBadge } from "@/components/common/VerifiedBadge";
 import { WhatsAppButton } from "@/components/common/WhatsAppButton";
@@ -13,6 +15,7 @@ import type { CauseDetailView, SimilarCauseView } from "@/lib/types";
 
 import { CauseBanner } from "./CauseBanner";
 import { CauseTags } from "./CauseTags";
+import { DonationModal } from "./DonationModal";
 import { EndCondition } from "./EndCondition";
 import { ProgressBar } from "./ProgressBar";
 
@@ -36,9 +39,19 @@ export function CauseDetail({ id }: { id: string }) {
 
 function Detail({ cause }: { cause: CauseDetailView }) {
   const closed = cause.status === "closed";
+  const [donating, setDonating] = useState(false);
+  const paymentFailed = useSearchParams().get("paiement") === "echec";
   return (
     <article className="flex flex-col gap-6">
       <BackLink />
+      {paymentFailed && (
+        <p
+          role="status"
+          className="rounded-lg bg-accent p-3 text-sm font-semibold text-brand-orange-strong"
+        >
+          {fr.causeDetail.paymentFailed}
+        </p>
+      )}
       <div className="relative overflow-hidden rounded-xl">
         <CauseBanner
           url={cause.bannerUrl}
@@ -105,15 +118,9 @@ function Detail({ cause }: { cause: CauseDetailView }) {
               {fr.causeDetail.closed}
             </p>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {/* The donation modal comes with the payment flow (Sprint 4). */}
-              <Button variant="cta" size="lg" disabled aria-describedby="donate-soon">
-                {fr.common.donate}
-              </Button>
-              <span id="donate-soon" className="text-center text-xs text-muted-foreground">
-                {fr.causeDetail.donateSoon}
-              </span>
-            </div>
+            <Button variant="cta" size="lg" onClick={() => setDonating(true)}>
+              {fr.common.donate}
+            </Button>
           )}
           <p className="text-sm text-muted-foreground">
             {fr.causeDetail.estimatedNet(formatFCFA(cause.estimatedNet))}
@@ -140,6 +147,13 @@ function Detail({ cause }: { cause: CauseDetailView }) {
             ))}
           </ul>
         </section>
+      )}
+
+      {donating && (
+        <DonationModal
+          cause={{ id: cause.id, title: cause.title, organization: cause.organization.name }}
+          onClose={() => setDonating(false)}
+        />
       )}
     </article>
   );

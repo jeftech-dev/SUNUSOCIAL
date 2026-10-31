@@ -133,6 +133,7 @@ export type ExtensionStatus = (typeof EXTENSION_STATUSES)[number];
 /** In-app notification kinds (DT-17). */
 export const NOTIFICATION_KINDS = [
   "donation_confirmed",
+  "donation_late_refund",
   "proof_published",
   "cause_decision",
   "structure_decision",
@@ -301,6 +302,58 @@ export interface PaginatedResponse<T> {
 // ---------------------------------------------------------------------------
 // Derived views
 // ---------------------------------------------------------------------------
+
+/** A donation as its donor sees it on the success page and in the simulator (`donations.status`). */
+export interface DonationStatusView {
+  id: Id<"donations">;
+  status: DonationStatus;
+  amount: number;
+  fee: number;
+  net: number;
+  /** Picked in the donation modal. */
+  method: Method;
+  /** NabooPay `selected_payment_method`, once paid. */
+  paidMethod: Method | null;
+  /** Paid after the cause closed: not counted, refunded automatically (DB-18). */
+  lateRefund: boolean;
+  createdAt: number;
+  cause: {
+    id: Id<"causes">;
+    title: string;
+    raised: number;
+    goal: number;
+    percent: number;
+    status: CauseStatus;
+  } | null;
+}
+
+/** One row of the donor's history (`donations.mine`, docs/API_CONTRACT.md). */
+export interface DonationHistoryView {
+  id: Id<"donations">;
+  causeId: Id<"causes">;
+  cause: string;
+  organization: string;
+  amount: number;
+  net: number;
+  method: Method;
+  date: number;
+  status: DonationStatus;
+  lateRefund: boolean;
+  proof: { available: boolean; proofId: Id<"proofs"> | null; itemCount: number };
+  refund: {
+    eligible: boolean;
+    estimatedAmount: number;
+    request: { status: RefundStatus; refundAmount: number | null } | null;
+  };
+  causeDeleted: { reason: string; outcome: "refunded" | "paidOut" } | null;
+}
+
+/** "Vous avez contribué à N causes pour X FCFA" (`donations.impact`). */
+export interface DonorImpact {
+  total: number;
+  causeCount: number;
+  donationCount: number;
+}
 
 /** Fee breakdown shown in the donation modal and recomputed on the server (DT-6). */
 export interface FeeBreakdown {

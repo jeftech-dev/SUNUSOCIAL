@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Last Updated** | 31 October 2026 (rev. 5: DB-16 NabooPay money circuit, DB-17 suspended structures, DB-18 payments confirmed after a cause closes) |
+| **Last Updated** | 31 October 2026 (rev. 6: Sprint 4 payment details in DT-3, DT-7 and DT-24. Rev. 5: DB-16 NabooPay money circuit, DB-17 suspended structures, DB-18 payments confirmed after a cause closes) |
 | **Status** | Authoritative. If another document disagrees with this log, this log wins and the other document is a bug |
 
 Two kinds of entries:
@@ -95,7 +95,7 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 
 *Creating the payment:*
 - `donations.createCheckout` calls `POST /transactions` with:
-  - `method_of_payment: ["wave", "orange_money"]`;
+  - `method_of_payment: [<the method the donor picked>]`: the donation modal asks for Orange Money or Wave (PARCOURS S18), so the checkout page offers only that one. *(Rev. 6: was both methods, which made the modal's choice meaningless.)* The method actually used is still read from `selected_payment_method`;
   - one product line (the cause title, `price = amount`, `quantity = 1`);
   - `customer` = the donor (name and verified phone);
   - `fees_customer_side: false`, so the fee is deducted from what SUNUSOCIAL receives;
@@ -119,7 +119,14 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 *Holding the funds:*
 - **The hold is implemented in our app**: the money stays in SUNUSOCIAL's main NabooPay account, and the app's ledger records which cause each amount belongs to.
 - NabooPay's `is_escrow` flag is **not** used. It must be enabled per account, and its API documentation has no release endpoint.
-- The Sprint 4 spike asks NabooPay whether escrow plus a documented release would be better. If so, we switch the adapter and nothing else changes.
+- The Sprint 4 spike asks NabooPay whether escrow plus a documented release would be better. If so, we switch the adapter and nothing else changes. *(Rev. 6: the spike notes are in `ARCHITECTURE.md` §3.4; the question is still open with NabooPay.)*
+
+*Details settled in Sprint 4 (rev. 6):*
+- The donation row is inserted (`pending`, server-side fee estimate) **before** `POST /transactions`, because its id builds the return URLs: `success_url = SITE_URL/dons/<donationId>`, `error_url = SITE_URL/causes/<causeId>?paiement=echec`. If NabooPay refuses the checkout, the donation is marked `failed`.
+- `createCheckout` refuses a cause that is not listed (DT-34: closed, deleted, or from a suspended structure, DB-17) or whose deadline has passed, an amount under `MIN_DONATION`, and more than 10 checkouts per donor in 10 minutes.
+- Webhook v1 payloads have no `fees` or `selected_payment_method`: the handler then reads them with `GET /transactions/{order_id}`, and answers `503` (so NabooPay retries) if that call fails. Unknown `order_id`s and non-paid statuses get `200` and are ignored. An `amount` that differs from the donation is audit-logged and nothing is recorded.
+- A paid webhook for a donation already marked `failed` (paid just before our cancellation) is still recorded: the money was received.
+- The `mock` provider sends the donor to an in-app simulator (`/paiement/simulation/<donationId>`) whose "Payer" button signs a v2 payload and runs it through the same webhook handler, signature check included. The simulator is refused unless `PAYMENT_PROVIDER=mock` and `APP_ENV` is not `production`.
 
 **DT-4 — Payouts (release and refunds).**
 
@@ -171,10 +178,10 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 - An approved refund queues a `refund` payout of **`net`** to the donor's verified phone, on the method they paid with (`selected_payment_method`).
 - The refund form lets the donor confirm the receiving number, which defaults to their verified phone.
 - NabooPay's `GET /refund/{order_id}` is **not** used: it can only refund the full amount, and as a `GET` it is easy to trigger by accident.
-- **Late payments (DB-18, G15).** When `payments.recordPayment` confirms a payment whose cause is no longer `active` (closed, released, deleted), the donation is **not** added to the cause's `raised` or `donorCount`. It is recorded as paid and flagged for an automatic `refund` payout of its `net`, with no moderator decision needed, and the donor gets a clear message (in-app notification and SMS, French copy in `lib/strings.fr.ts`): the cause was already closed, the amount refunded, and similar causes. Sprint 4 records and flags these donations; the refund payout itself goes out once the payout worker exists (Sprint 6).
+- **Late payments (DB-18, G15).** When `payments.recordPayment` confirms a payment whose cause is no longer `active` (closed, released, deleted), the donation is **not** added to the cause's `raised` or `donorCount`. It is recorded as paid and flagged for an automatic `refund` payout of its `net`, with no moderator decision needed, and the donor gets a clear message (in-app notification and SMS, French copy in `lib/strings.fr.ts`): the cause was already closed, the amount refunded, and similar causes. Sprint 4 records and flags these donations (`donations.lateRefundFlaggedAt`, status stays `held`); the refund payout itself goes out once the payout worker exists (Sprint 6), which looks them up by that flag. A cause counts as closed here when its `status` is not `active`; a suspended structure's still-active cause keeps counting payments started before the suspension.
 
 **DT-24 — When funds are released.**
-- **Goal reached:** `recordPayment` schedules `payments.releaseCause` straight away. The cause closes and stops accepting donations.
+- **Goal reached:** for a cause whose end condition is the goal (`endType = goal`), the payment that reaches it is accepted in full, even above the goal (PARCOURS S21); the cause closes (`status = closed`, `closedAt`) in the same transaction and stops accepting donations, and `recordPayment` schedules `payments.releaseCause` straight away. A `date` cause stays open until its deadline, as its detail page says. *(Rev. 6, Sprint 4: the cause closes, but `releaseCause` and the payout worker only arrive in Sprint 6. `releaseDue` then also releases every closed cause without `fundsReleasedAt`, so nothing is stubbed.)*
 - **Deadline passed:** an hourly cron releases due causes.
 - `releaseCause` queues one `release` payout to the verified account, marks the donations `released`, sets `fundsReleasedAt`, and creates the proof deadline (DB-12). It is idempotent, and it is skipped while a payout-account change is pending.
 

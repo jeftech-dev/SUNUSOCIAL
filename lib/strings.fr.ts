@@ -48,6 +48,9 @@ export const fr = {
   },
 
   nav: {
+    main: "Navigation principale",
+    causes: "Causes",
+    profile: "Mon profil",
     login: "Se connecter",
     signup: "Créer un compte",
     logout: "Se déconnecter",
@@ -275,10 +278,95 @@ export const fr = {
     fundsRule: "RÈGLE VALIDÉE",
     fundsNote:
       "Les dons sont conservés par NabooPay puis versés à la structure à la fin de la cause\u00a0: à l'objectif ou à la date limite, au premier des deux.",
-    donateSoon: "Le don en ligne arrive très bientôt.",
+    paymentFailed:
+      "Le paiement n'a pas abouti\u00a0: votre don n'a pas été compté. Vous pouvez réessayer.",
     similar: "Causes similaires",
     notFound: "Cette cause n'existe plus.",
     notFoundBack: "Voir les causes ouvertes",
+  },
+
+  /** 05 Modal de don (PARCOURS S18). */
+  donation: {
+    dialogLabel: (title: string) => `Faire un don pour «\u00a0${title}\u00a0»`,
+    support: (organization: string) => `Soutenir · ${organization}`,
+    close: "Fermer",
+    amountLabel: "Montant de votre don",
+    other: "Autre",
+    otherLabel: "Montant libre en FCFA",
+    otherPlaceholder: "Saisissez un montant",
+    minimum: (min: string) => `Don minimum\u00a0: ${min}.`,
+    methodLabel: "Moyen de paiement",
+    yourGift: "Votre don",
+    fee: (rate: string) => `Frais NabooPay (${rate})`,
+    structureReceives: "La structure recevra",
+    holdNote: (rate: string, net: string) =>
+      `NabooPay prélève ${rate} → la structure recevra ${net} · conservé jusqu'à la fin de la cause.`,
+    confirm: (amount: string) => `Confirmer le don · ${amount}`,
+    redirecting: "Redirection vers le paiement…",
+    secure: "Paiement sécurisé par NabooPay",
+  },
+
+  /** 05b Retour de paiement (success_url de NabooPay). */
+  donationResult: {
+    title: "Votre don",
+    pendingTitle: "Confirmation du paiement…",
+    pendingBody:
+      "Nous attendons la confirmation de NabooPay. Cette page se met à jour toute seule, vous pouvez aussi revenir plus tard\u00a0: votre don apparaîtra dans votre profil.",
+    heldTitle: "Merci\u00a0! Votre don est confirmé.",
+    heldBody: (amount: string, method: string, title: string) =>
+      `${amount} via ${method} pour «\u00a0${title}\u00a0». Les fonds restent bloqués jusqu'à la fin de la cause, puis sont versés à la structure. Vous serez prévenu dès qu'elle publiera sa preuve de réception.`,
+    newProgress: "Nouvelle progression",
+    progressOf: (raised: string, goal: string) => `${raised} / ${goal}`,
+    lateTitle: "Cette cause était déjà clôturée",
+    lateBody: (net: string) =>
+      `Votre paiement est arrivé après la clôture de la cause\u00a0: il ne lui est pas compté. ${net} vous seront remboursés automatiquement sur votre numéro (votre don moins les frais NabooPay).`,
+    failedTitle: "Le paiement n'a pas abouti",
+    failedBody: "Rien n'a été compté. Vous pouvez réessayer depuis la page de la cause.",
+    notFound: "Ce don est introuvable.",
+    again: "Faire un autre don",
+    browse: "Parcourir d'autres causes",
+    history: "Voir mes dons",
+    backToCause: "Retour à la cause",
+  },
+
+  /** Simulateur de paiement (PAYMENT_PROVIDER=mock, développement et préproduction). */
+  simulator: {
+    badge: "Simulateur · aucun argent réel",
+    title: "Paiement simulé",
+    intro:
+      "Cette page remplace la page de paiement NabooPay en développement. «\u00a0Payer\u00a0» confirme le paiement comme le ferait NabooPay\u00a0; «\u00a0Annuler\u00a0» simule un abandon.",
+    summary: (amount: string, method: string) => `${amount} via ${method}`,
+    pay: "Payer",
+    cancel: "Annuler",
+    notPending: "Ce don n'attend plus de paiement.",
+    seeDonation: "Voir le don",
+  },
+
+  /** 06 Profil donateur (PARCOURS S19). */
+  profile: {
+    title: "Mon profil",
+    total: "Total donné",
+    causes: "Causes soutenues",
+    impact: (count: number, total: string) =>
+      `Vous avez contribué à ${count} cause${count > 1 ? "s" : ""} pour un total de ${total}.`,
+    history: "Mes donations",
+    empty: "Vous n'avez pas encore fait de don.",
+    emptyCta: "Découvrir les causes",
+    loadMore: "Afficher plus",
+    dateMethod: (date: string, method: string) => `${date} · ${method}`,
+    proofValidated: (count: number) => `Preuve de réception validée · ${count} éléments`,
+    proofPending: "En attente de preuve",
+    lateRefund: (net: string) =>
+      `Cause déjà clôturée à l'arrivée du paiement\u00a0: ${net} vous seront remboursés automatiquement.`,
+  },
+
+  notifications: {
+    donationConfirmedTitle: "Don confirmé",
+    donationConfirmedBody: (amount: string, title: string) =>
+      `Votre don de ${amount} pour «\u00a0${title}\u00a0» est confirmé. Les fonds restent bloqués jusqu'à la fin de la cause.`,
+    lateRefundTitle: "Cause déjà clôturée\u00a0: don remboursé",
+    lateRefundBody: (amount: string, net: string, title: string) =>
+      `La cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement de ${amount} est arrivé. Il ne lui est pas compté\u00a0: ${net} (votre don moins les frais NabooPay) vous seront remboursés automatiquement sur votre numéro. Découvrez des causes similaires sur SUNUSOCIAL.`,
   },
 
   whatsapp: {
@@ -340,6 +428,8 @@ export const fr = {
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
     accountExists:
       "SUNUSOCIAL\u00a0: un compte donateur existe déjà avec ce numéro. Connectez-vous, ou utilisez «\u00a0Mot de passe oublié\u00a0».",
+    lateRefund: (title: string, net: string) =>
+      `SUNUSOCIAL\u00a0: la cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement est arrivé. ${net} vous seront remboursés sur ce numéro. Découvrez d'autres causes sur SUNUSOCIAL.`,
   },
 
   email: {
@@ -381,6 +471,12 @@ export const fr = {
     payoutRequired: "Indiquez le compte de réception des fonds.",
     resetLinkInvalid: "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
     rateLimited: "Trop de demandes. Réessayez dans quelques minutes.",
+    causeNotOpen: "Cette cause n'accepte plus de dons.",
+    causeNotFound: "Cette cause n'existe plus.",
+    donationNotFound: "Ce don est introuvable.",
+    paymentUnavailable:
+      "Le paiement est momentanément indisponible. Réessayez dans quelques minutes.",
+    simulatorOff: "Le simulateur de paiement n'est pas disponible ici.",
     causeNotEligible:
       "Cette cause ne peut pas être choisie\u00a0: elle doit être active et publiée par une structure vérifiée.",
   },

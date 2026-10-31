@@ -2,6 +2,7 @@
 // Generate secrets in actions only: queries and mutations run with seeded randomness.
 
 import { loadConfig } from "../../lib/config";
+import { hmacSha256Hex } from "../../lib/hmac";
 
 export async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -35,19 +36,6 @@ function otpHashSecret(env: Record<string, string | undefined> = process.env): s
     throw new Error("OTP_HASH_SECRET is required in production");
   }
   return DEV_OTP_HASH_SECRET;
-}
-
-async function hmacSha256Hex(key: string, text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(key),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(text));
-  return Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
