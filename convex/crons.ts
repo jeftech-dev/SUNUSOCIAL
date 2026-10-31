@@ -14,4 +14,7 @@ crons.daily(
   {},
 );
 
+// Pending payments whose webhook was missed, and transactions abandoned for 2 h (convex/payments.ts, DT-3).
+crons.interval("recheck pending payments", { minutes: 10 }, internal.payments.recheckPending, {});
+
 export default crons;
