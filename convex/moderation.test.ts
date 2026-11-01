@@ -156,3 +156,247 @@ describe("moderation.featuredCandidates", () => {
     ]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Queues + decisions (Sprint 5)
+// ---------------------------------------------------------------------------
+
+async function storeFile(t: T, type = "image/png"): Promise<string> {
+  return t.run((ctx) => ctx.storage.store(new Blob([new Uint8Array(256)], { type })));
+}
+
+/** A pending structure (with a payout account) and its responsible user. */
+async function pendingStructure(t: T) {
+  const receiptFileId = await storeFile(t, "application/pdf");
+  const structureId = await t.run((ctx) =>
+    ctx.db.insert("structures", {
+      name: "Foyer Keur Yaay",
+      type: "Foyer",
+      region: "Dakar",
+      commune: "Rufisque",
+      contactName: "Awa Diop",
+      phone: "+221770000009",
+      email: "keur@example.sn",
+      receiptFileId: receiptFileId as never,
+      payout: {
+        method: "wave",
+        accountNumber: "+221770000009",
+        holderName: "Awa Diop",
+        phoneVerifiedAt: Date.now(),
+      },
+      status: "pending",
+      onboardingPhase: 1,
+      createdAt: Date.now(),
+    }),
+  );
+  const userId = await t.run((ctx) =>
+    ctx.db.insert("users", {
+      name: "Awa Diop",
+      role: "structure",
+      structureId,
+      disabled: false,
+      createdAt: Date.now(),
+    }),
+  );
+  return { structureId, userId };
+}
+
+async function pendingCause(t: T, structureId: string) {
+  const bannerFileId = await storeFile(t);
+  return t.run((ctx) =>
+    ctx.db.insert("causes", {
+      structureId: structureId as never,
+      title: "Réfection du dortoir",
+      description: "x".repeat(30),
+      category: "Matériel",
+      bannerFileId: bannerFileId as never,
+      endType: "goal",
+      goalAmount: 500000,
+      deadline: Date.now() + 10 * DAY_MS,
+      extensionCount: 0,
+      urgency: "normal",
+      raised: 0,
+      donorCount: 0,
+      status: "pending_review",
+      submittedAt: Date.now(),
+    }),
+  );
+}
+
+const notificationsFor = (t: T, userId: string) =>
+  t.run((ctx) =>
+    ctx.db
+      .query("notifications")
+      .withIndex("by_user_read", (q) => q.eq("userId", userId as never))
+      .collect(),
+  );
+
+describe("moderation.queues", () => {
+  it("requires a moderator who passed the SMS code", async () => {
+    const t = setup();
+    await expectAppError(t.query(api.moderation.queues, {}), "UNAUTHENTICATED");
+    const { client: donor } = await as(t, "donor");
+    await expectAppError(donor.query(api.moderation.queues, {}), "FORBIDDEN");
+    const { client: noMfa } = await as(t, "moderator", { mfa: false });
+    await expectAppError(noMfa.query(api.moderation.queues, {}), "MFA_REQUIRED");
+  });
+
+  it("lists pending structures, causes and proofs", async () => {
+    const t = setup();
+    const { structureId } = await pendingStructure(t);
+    await pendingCause(t, structureId);
+    const { client } = await as(t, "moderator");
+    const q = await client.query(api.moderation.queues, {});
+    expect(q.structures.count).toBe(1);
+    expect(q.causes.count).toBe(1);
+    expect(q.structures.items[0].hasPayout).toBe(true);
+    expect(q.deletions.count).toBe(0);
+  });
+});
+
+describe("moderation.decideStructure", () => {
+  it("approves (verifying the payout account) and refuses with a required reason", async () => {
+    const t = setup();
+    const { structureId, userId } = await pendingStructure(t);
+    const { client } = await as(t, "moderator");
+
+    await expectAppError(
+      client.mutation(api.moderation.decideStructure, { structureId, decision: "refuse" }),
+      "VALIDATION",
+    );
+
+    await client.mutation(api.moderation.decideStructure, { structureId, decision: "approve" });
+    const structure = await t.run((ctx) => ctx.db.get(structureId));
+    expect(structure!.status).toBe("approved");
+    expect(structure!.payout?.verifiedAt).toBeDefined();
+    const notes = await notificationsFor(t, userId);
+    expect(notes.some((n) => n.kind === "structure_decision")).toBe(true);
+  });
+});
+
+describe("moderation.decideCause", () => {
+  it("approves a cause to active and refuses with a reason, notifying the structure", async () => {
+    const t = setup();
+    const { structureId, userId } = await pendingStructure(t);
+    const toApprove = await pendingCause(t, structureId);
+    const toRefuse = await pendingCause(t, structureId);
+    const { client } = await as(t, "moderator");
+
+    await client.mutation(api.moderation.decideCause, { causeId: toApprove, decision: "approve" });
+    const approved = await t.run((ctx) => ctx.db.get(toApprove));
+    expect(approved!.status).toBe("active");
+    expect(approved!.approvedAt).toBeDefined();
+
+    await expectAppError(
+      client.mutation(api.moderation.decideCause, { causeId: toRefuse, decision: "refuse" }),
+      "VALIDATION",
+    );
+    await client.mutation(api.moderation.decideCause, {
+      causeId: toRefuse,
+      decision: "refuse",
+      reason: "Le devis est manquant.",
+    });
+    const refused = await t.run((ctx) => ctx.db.get(toRefuse));
+    expect(refused).toMatchObject({ status: "refused", refusalReason: "Le devis est manquant." });
+
+    const notes = await notificationsFor(t, userId);
+    expect(notes.filter((n) => n.kind === "cause_decision")).toHaveLength(2);
+  });
+});
+
+describe("moderation.decideProof", () => {
+  it("validates a dossier: marks the deadline met and notifies donors", async () => {
+    const t = setup();
+    const { structureId } = await pendingStructure(t);
+    const cause = await pendingCause(t, structureId);
+    await t.run((ctx) => ctx.db.patch(cause, { status: "closed", fundsReleasedAt: Date.now() }));
+
+    const { proofId, donorId } = await t.run(async (ctx) => {
+      const proofId = await ctx.db.insert("proofs", {
+        causeId: cause,
+        structureId: structureId as never,
+        report: "Compte rendu de la distribution.",
+        spend: [],
+        status: "submitted",
+        dossierFlags: [],
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("proofDeadlines", {
+        causeId: cause,
+        structureId: structureId as never,
+        reason: "release",
+        dueAt: Date.now() + 7 * DAY_MS,
+        enforced: true,
+      });
+      const donorId = await ctx.db.insert("users", {
+        name: "Donor",
+        role: "donor",
+        disabled: false,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("donations", {
+        causeId: cause,
+        donorId,
+        amount: 1000,
+        fee: 30,
+        platformFee: 0,
+        net: 970,
+        method: "wave",
+        provider: "mock",
+        status: "held",
+        createdAt: Date.now(),
+      });
+      return { proofId, donorId };
+    });
+
+    const { client } = await as(t, "moderator");
+    await client.mutation(api.moderation.decideProof, { proofId, decision: "validate" });
+
+    const proof = await t.run((ctx) => ctx.db.get(proofId));
+    expect(proof!.status).toBe("validated");
+    const deadline = await t.run((ctx) =>
+      ctx.db
+        .query("proofDeadlines")
+        .withIndex("by_cause", (q) => q.eq("causeId", cause))
+        .unique(),
+    );
+    expect(deadline!.metAt).toBeDefined();
+    const donorNotes = await notificationsFor(t, donorId);
+    expect(donorNotes.some((n) => n.kind === "proof_published")).toBe(true);
+
+    // Deciding again is refused (no longer submitted).
+    await expectAppError(
+      client.mutation(api.moderation.decideProof, { proofId, decision: "validate" }),
+      "CONFLICT",
+    );
+  });
+
+  it("requires a reason to escalate", async () => {
+    const t = setup();
+    const { structureId } = await pendingStructure(t);
+    const cause = await pendingCause(t, structureId);
+    await t.run((ctx) => ctx.db.patch(cause, { fundsReleasedAt: Date.now() }));
+    const proofId = await t.run((ctx) =>
+      ctx.db.insert("proofs", {
+        causeId: cause,
+        structureId: structureId as never,
+        report: "Compte rendu.",
+        spend: [],
+        status: "submitted",
+        dossierFlags: [],
+        createdAt: Date.now(),
+      }),
+    );
+    const { client } = await as(t, "moderator");
+    await expectAppError(
+      client.mutation(api.moderation.decideProof, { proofId, decision: "escalate" }),
+      "VALIDATION",
+    );
+    await client.mutation(api.moderation.decideProof, {
+      proofId,
+      decision: "escalate",
+      reason: "Ajoutez la facture du fournisseur.",
+    });
+    expect((await t.run((ctx) => ctx.db.get(proofId)))!.status).toBe("escalated");
+  });
+});

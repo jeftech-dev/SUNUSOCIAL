@@ -236,6 +236,32 @@ export const fr = {
     queuesTitle: "Files de modération",
     queuesSoon: "Les files (inscriptions, causes, preuves…) arrivent au sprint 5.",
     featuredLink: "Choisir le Coup de cœur de la semaine →",
+    tabs: {
+      structures: "Inscriptions",
+      causes: "Causes",
+      proofs: "Preuves",
+    },
+    tabCount: (label: string, count: number) => `${label} (${count})`,
+    loading: "Chargement des files…",
+    emptyStructures: "Aucune inscription à valider.",
+    emptyCauses: "Aucune cause à valider.",
+    emptyProofs: "Aucune preuve à valider.",
+    structureMeta: (type: string, region: string) => `${type} · ${region}`,
+    hasPayout: "Compte de réception fourni",
+    approve: "Approuver",
+    refuse: "Refuser",
+    validate: "Valider la preuve",
+    escalate: "Demander des compléments",
+    reviewProof: "Voir le dossier",
+    hideProof: "Masquer le dossier",
+    flaggedBadge: "Éléments signalés",
+    refuseReasonLabel: "Motif du refus (visible par la structure)",
+    refuseReasonRequired: "Indiquez un motif de refus.",
+    refuseReasonPlaceholder: "Ex. : le devis des travaux est manquant.",
+    confirmRefuse: "Confirmer le refus",
+    escalateReasonLabel: "Ce qui manque (visible par la structure)",
+    cancel: "Annuler",
+    done: "Décision enregistrée.",
   },
 
   /** 03 Accueil donateur. */
@@ -368,6 +394,24 @@ export const fr = {
     lateRefundTitle: "Cause déjà clôturée\u00a0: don remboursé",
     lateRefundBody: (amount: string, net: string, title: string) =>
       `La cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement de ${amount} est arrivé. Il ne lui est pas compté\u00a0: ${net} (votre don moins les frais NabooPay) vous seront remboursés automatiquement sur votre numéro. Découvrez des causes similaires sur SUNUSOCIAL.`,
+    structureApprovedTitle: "Structure validée",
+    structureApprovedBody: "Votre structure est validée. Vous pouvez maintenant publier des causes.",
+    structureRefusedTitle: "Inscription refusée",
+    structureRefusedBody: (reason: string) => `Votre inscription a été refusée : ${reason}`,
+    causeApprovedTitle: "Cause approuvée",
+    causeApprovedBody: (title: string) => `Votre cause « ${title} » est publiée.`,
+    causeRefusedTitle: "Cause refusée",
+    causeRefusedBody: (title: string, reason: string) =>
+      `Votre cause « ${title} » a été refusée : ${reason}. Vous pouvez la modifier et la renvoyer.`,
+    proofPublishedTitle: "Preuve de réception disponible",
+    proofPublishedBody: (title: string) =>
+      `La structure a publié la preuve de réception de la cause « ${title} ». Vous pouvez la consulter.`,
+    proofValidatedTitle: "Preuve validée",
+    proofValidatedBody: (title: string) =>
+      `La preuve de réception de « ${title} » a été validée. Merci !`,
+    proofEscalatedTitle: "Preuve à compléter",
+    proofEscalatedBody: (title: string, reason: string) =>
+      `Le dossier de « ${title} » doit être complété : ${reason}`,
   },
 
   whatsapp: {

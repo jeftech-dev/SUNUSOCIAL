@@ -62,7 +62,9 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("email", ["email"])
-    .index("phone", ["phone"]),
+    .index("phone", ["phone"])
+    // The responsible account of a structure/hospital, for moderation notifications.
+    .index("by_structure", ["structureId"]),
 
   /** Extends Convex Auth sessions with the SMS 2FA step for organisations and moderators (DT-2). */
   authSessions: defineTable({
