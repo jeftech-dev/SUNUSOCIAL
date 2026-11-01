@@ -306,6 +306,54 @@ export interface CauseDetailView {
 }
 
 // ---------------------------------------------------------------------------
+// Proofs (reception dossier; docs/API_CONTRACT.md "Proofs")
+// ---------------------------------------------------------------------------
+
+/** A flagged item reported back to the structure on submission ({ index, reason }). */
+export interface ProofAutoFlag {
+  index: number;
+  reason: string;
+}
+
+/** One item of a dossier, as shown in the gallery. `flagged`/`flagReason` are moderator-only. */
+export interface ProofItemView {
+  id: Id<"proofItems">;
+  kind: ProofItemKind;
+  url: string | null;
+  caption: string | null;
+  supplier: string | null;
+  ref: string | null;
+  flagged: boolean;
+  flagReason: string | null;
+}
+
+/** The full dossier of a cause (structure, moderator, or a donor once validated). */
+export interface ProofDossierView {
+  proofId: Id<"proofs">;
+  causeId: Id<"causes">;
+  causeTitle: string;
+  organization: string;
+  report: string;
+  spend: SpendLine[];
+  status: ProofStatus;
+  /** Whole-dossier flags; empty for donors (moderator-only). */
+  dossierFlags: string[];
+  items: ProofItemView[];
+  validatedAt: number | null;
+}
+
+/** A card in the donor dashboard / public feed of validated dossiers. */
+export interface ProofFeedCard {
+  proofId: Id<"proofs">;
+  causeId: Id<"causes">;
+  causeTitle: string;
+  organization: string;
+  itemCount: number;
+  coverUrl: string | null;
+  validatedAt: number | null;
+}
+
+// ---------------------------------------------------------------------------
 // API wrappers
 // ---------------------------------------------------------------------------
 

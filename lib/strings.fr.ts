@@ -9,6 +9,7 @@ import type {
   CauseStatus,
   DonationStatus,
   Method,
+  ProofItemKind,
   StructureStatus,
   Urgency,
 } from "./types";
@@ -473,6 +474,54 @@ export const fr = {
     done: "Cause envoyée en modération. Vous serez prévenu après vérification.",
   },
 
+  /** Proof dossier (PARCOURS S24): submission by the structure, gallery for all. */
+  proof: {
+    title: "Publier la preuve de réception",
+    intro: (min: number) =>
+      `Ajoutez au moins ${min} fichiers (photos, vidéo, facture, bon de livraison), un compte rendu et le détail des dépenses.`,
+    report: "Compte rendu",
+    reportPlaceholder: "Décrivez ce qui a été reçu et distribué, quand et à qui.",
+    items: "Fichiers",
+    itemCount: (count: number, min: number) => `${count} / ${min} fichiers minimum`,
+    addItem: "Ajouter un fichier",
+    removeItem: "Retirer",
+    itemKind: {
+      photo: "Photo",
+      video: "Vidéo",
+      invoice: "Facture",
+      delivery_note: "Bon de livraison",
+    } satisfies Record<ProofItemKind, string>,
+    caption: "Légende (facultatif)",
+    supplier: "Fournisseur",
+    ref: "Référence du document",
+    spend: "Utilisation des fonds",
+    spendLabel: "Poste de dépense",
+    spendAmount: "Montant (FCFA)",
+    addSpend: "Ajouter une ligne",
+    submit: "Envoyer la preuve",
+    submitting: "Envoi…",
+    sent: "Preuve envoyée, en attente de validation.",
+    flaggedNotice: (count: number) =>
+      `${count} élément${count > 1 ? "s" : ""} signalé${count > 1 ? "s" : ""} automatiquement : le modérateur les vérifiera.`,
+    gallery: "Dossier de réception",
+    reportHeading: "Compte rendu",
+    spendHeading: "Utilisation des fonds",
+    flagBadge: "Signalé",
+    viewProof: "Voir la preuve",
+    pending: "La preuve de cette cause n'est pas encore validée.",
+    empty: "Aucune preuve validée pour le moment.",
+  },
+
+  /** French reasons for the automatic proof flags (DT-13). Advisory; the moderator decides. */
+  proofFlags: {
+    duplicateImage: "Image identique à une photo déjà publiée.",
+    exifMissing: "La date de prise de vue de la photo est absente.",
+    exifOld: "La photo a été prise avant la création de la cause.",
+    invoiceReused: "Cette référence de facture a déjà été utilisée.",
+    spendMismatch: (spend: string, net: string) =>
+      `Le total des dépenses (${spend}) s'écarte de plus de 5 % du montant reçu (${net}).`,
+  },
+
   sms: {
     code: (code: string) =>
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
@@ -542,6 +591,10 @@ export const fr = {
       "Seules les causes en modération ou refusées peuvent être modifiées pour le moment.",
     causeNotWithdrawable:
       "Cette cause ne peut plus être retirée : elle a déjà reçu des dons ou n'est plus en modération.",
+    proofItemsTooFew: (min: number) => `Ajoutez au moins ${min} fichiers.`,
+    proofReportTooShort: "Le compte rendu doit comporter au moins 10 caractères.",
+    proofNotDue: "Une preuve n'est attendue qu'après le versement des fonds à votre structure.",
+    proofAlreadySubmitted: "Une preuve a déjà été envoyée pour cette cause.",
   },
 } as const;
 
