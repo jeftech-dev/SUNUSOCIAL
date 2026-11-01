@@ -72,8 +72,14 @@ export function CauseWizard({ cause }: { cause?: OwnedCauseView }) {
   // Captured once at mount: reading the clock during render is impure. The server re-validates the
   // deadline against its own clock, so a little drift here is harmless.
   const [now] = useState(() => Date.now());
+  const maxDeadlineMs = now + config.maxCauseDurationDays * DAY_MS;
   const minDate = toDateInput(now + DAY_MS);
-  const maxDate = toDateInput(now + config.maxCauseDurationDays * DAY_MS);
+  const maxDate = toDateInput(maxDeadlineMs);
+
+  // A date input yields end-of-day (23:59:59); on the last offered date that instant would overrun
+  // maxDeadlineMs and be rejected, so clamp it to the window boundary. `now` is captured at mount,
+  // before the server reads its own (later) clock, so the clamped value stays inside the server's window.
+  const deadlineMs = (value: string): number => Math.min(fromDateInput(value), maxDeadlineMs);
 
   const validateStep = (index: number): boolean => {
     const next: FieldErrors = {};
@@ -90,8 +96,8 @@ export function CauseWizard({ cause }: { cause?: OwnedCauseView }) {
     if (index === 2) {
       const amount = Number(goalAmount);
       if (!Number.isSafeInteger(amount) || amount <= 0) next.goalAmount = fr.errors.causeGoalInvalid;
-      const ms = deadline ? fromDateInput(deadline) : 0;
-      if (!deadline || ms <= now || ms > now + config.maxCauseDurationDays * DAY_MS) {
+      const ms = deadline ? deadlineMs(deadline) : 0;
+      if (!deadline || ms <= now || ms > maxDeadlineMs) {
         next.deadline = fr.errors.causeDeadlineInvalid(config.maxCauseDurationDays);
       }
     }
@@ -127,7 +133,7 @@ export function CauseWizard({ cause }: { cause?: OwnedCauseView }) {
         category,
         endType,
         goalAmount: Number(goalAmount),
-        deadline: fromDateInput(deadline),
+        deadline: deadlineMs(deadline),
         urgency: urgent ? ("urgent" as const) : ("normal" as const),
       };
 

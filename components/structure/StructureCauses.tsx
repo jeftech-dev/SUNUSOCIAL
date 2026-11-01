@@ -83,9 +83,7 @@ export function StructureCauses() {
         <ul className="flex flex-col gap-3">
           {causes.map((cause) => {
             const editable = cause.status === "pending_review" || cause.status === "refused";
-            const withdrawable =
-              cause.status === "pending_review" ||
-              (cause.status === "active" && cause.donorCount === 0);
+            const withdrawable = cause.withdrawable;
             return (
               <li
                 key={cause.id}

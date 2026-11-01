@@ -18,13 +18,13 @@ import {
   type OwnedCauseView,
   type StructureCauseView,
 } from "../lib/types";
-import type { DataModel, Id } from "./_generated/dataModel";
+import type { DataModel, Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { logAudit } from "./audit";
 import { validateUpload } from "./files";
 import { isListed, isVerified, structureLoader, toCardView, toSimilarView } from "./lib/causeViews";
 import { appError } from "./lib/errors";
-import { requireOwner, requireRole } from "./lib/guards";
+import { requireRole } from "./lib/guards";
 import { categoryV, endTypeV, literals, urgencyV } from "./validators";
 
 const TITLE_MIN = 4;
@@ -242,6 +242,21 @@ async function requirePublishingStructure(ctx: QueryCtx) {
   return { user, structure };
 }
 
+/**
+ * Whether a cause may be withdrawn right now: while in moderation, or once active only if it has
+ * never had a donation row (any status — a pending payment may still settle). Single source of truth
+ * for both the `withdraw` mutation and the dashboard's withdraw action, so they never disagree.
+ */
+async function isWithdrawable(ctx: QueryCtx, cause: Doc<"causes">): Promise<boolean> {
+  if (cause.status === "pending_review") return true;
+  if (cause.status !== "active") return false;
+  const donation = await ctx.db
+    .query("donations")
+    .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
+    .first();
+  return donation === null;
+}
+
 /** The structure's own causes, newest first, for the dashboard (excludes deleted). */
 export const mine = query({
   args: {},
@@ -253,27 +268,34 @@ export const mine = query({
       .withIndex("by_structure", (q) => q.eq("structureId", user.structureId!))
       .collect();
     causes.sort((a, b) => b.submittedAt - a.submittedAt);
-    const views: StructureCauseView[] = [];
-    for (const cause of causes) {
-      if (cause.status === "deleted") continue;
-      views.push({
-        id: cause._id,
-        title: cause.title,
-        category: cause.category,
-        bannerUrl: await ctx.storage.getUrl(cause.bannerFileId),
-        raised: cause.raised,
-        goal: cause.goalAmount,
-        percent: percentOf(cause.raised, cause.goalAmount),
-        urgent: cause.urgency === "urgent",
-        status: cause.status,
-        refusalReason: cause.refusalReason ?? null,
-        endCondition: endConditionOf(cause),
-        donorCount: cause.donorCount,
-        submittedAt: cause.submittedAt,
-        fundsReleased: cause.fundsReleasedAt !== undefined,
-      });
-    }
-    return views;
+    const visible = causes.filter((cause) => cause.status !== "deleted");
+    // Resolve the banner URLs concurrently: one awaited getUrl per cause in a loop serialises the
+    // storage round-trips and makes dashboard latency scale linearly with the number of causes.
+    return Promise.all(
+      visible.map(async (cause) => {
+        const [bannerUrl, withdrawable] = await Promise.all([
+          ctx.storage.getUrl(cause.bannerFileId),
+          isWithdrawable(ctx, cause),
+        ]);
+        return {
+          id: cause._id,
+          title: cause.title,
+          category: cause.category,
+          bannerUrl,
+          raised: cause.raised,
+          goal: cause.goalAmount,
+          percent: percentOf(cause.raised, cause.goalAmount),
+          urgent: cause.urgency === "urgent",
+          status: cause.status,
+          refusalReason: cause.refusalReason ?? null,
+          endCondition: endConditionOf(cause),
+          donorCount: cause.donorCount,
+          withdrawable,
+          submittedAt: cause.submittedAt,
+          fundsReleased: cause.fundsReleasedAt !== undefined,
+        };
+      }),
+    );
   },
 });
 
@@ -364,9 +386,13 @@ export const update = mutation({
     urgency: v.optional(urgencyV),
   },
   handler: async (ctx, args): Promise<{ ok: true }> => {
+    // Authorise before revealing anything about the id: a missing cause and a cause owned by someone
+    // else both answer FORBIDDEN, so a signed-in structure can't probe which causeIds exist.
+    const { user } = await requireRole(ctx, "structure", "hospital");
     const cause = await ctx.db.get(args.causeId);
-    if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "causeId");
-    const { user } = await requireOwner(ctx, cause.structureId);
+    if (!cause || cause.structureId !== user.structureId) {
+      throw appError("FORBIDDEN", fr.errors.forbidden, "causeId");
+    }
     if (cause.status !== "pending_review" && cause.status !== "refused") {
       throw appError("CONFLICT", fr.errors.causeNotEditable, "causeId");
     }
@@ -413,18 +439,16 @@ export const update = mutation({
 export const withdraw = mutation({
   args: { causeId: v.id("causes") },
   handler: async (ctx, { causeId }): Promise<{ ok: true }> => {
+    // Authorise before revealing anything about the id (see `update`): missing and not-owned both FORBIDDEN.
+    const { user } = await requireRole(ctx, "structure", "hospital");
     const cause = await ctx.db.get(causeId);
-    if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "causeId");
-    const { user } = await requireOwner(ctx, cause.structureId);
+    if (!cause || cause.structureId !== user.structureId) {
+      throw appError("FORBIDDEN", fr.errors.forbidden, "causeId");
+    }
 
-    const withdrawable =
-      cause.status === "pending_review" ||
-      (cause.status === "active" &&
-        (await ctx.db
-          .query("donations")
-          .withIndex("by_cause", (q) => q.eq("causeId", causeId))
-          .first()) === null);
-    if (!withdrawable) throw appError("CONFLICT", fr.errors.causeNotWithdrawable, "causeId");
+    if (!(await isWithdrawable(ctx, cause))) {
+      throw appError("CONFLICT", fr.errors.causeNotWithdrawable, "causeId");
+    }
 
     await ctx.db.patch(causeId, { status: "withdrawn" });
     await logAudit(ctx, {
