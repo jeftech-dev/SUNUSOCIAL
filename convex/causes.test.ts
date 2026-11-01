@@ -295,3 +295,223 @@ describe("causes.get", () => {
     await expectAppError(hospital.query(api.causes.get, { id: cause._id }), "FORBIDDEN");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Structure write path: create / update / withdraw / mine
+// ---------------------------------------------------------------------------
+
+/** Stores a dummy file and returns its storage id (for banners and récépissés). */
+async function storeFile(t: T, type = "image/png", bytes = 1024): Promise<Id<"_storage">> {
+  return t.run((ctx) => ctx.storage.store(new Blob([new Uint8Array(bytes)], { type })));
+}
+
+/** A signed-in structure account linked to a structure doc (approved by default). */
+async function asStructure(
+  t: T,
+  opts: { status?: Doc<"structures">["status"]; suspended?: boolean } = {},
+) {
+  const receiptFileId = await storeFile(t, "application/pdf");
+  const structureId = await t.run((ctx) =>
+    ctx.db.insert("structures", {
+      name: "Foyer Test",
+      type: "Foyer",
+      region: "Dakar",
+      commune: "Dakar-Plateau",
+      contactName: "Awa Diop",
+      phone: "+221770000000",
+      email: "foyer@example.sn",
+      receiptFileId,
+      status: opts.status ?? "approved",
+      onboardingPhase: 1,
+      createdAt: Date.now(),
+      ...(opts.suspended ? { suspendedAt: Date.now() } : {}),
+    }),
+  );
+  const userId = await t.run((ctx) =>
+    ctx.db.insert("users", {
+      name: "Awa Diop",
+      role: "structure",
+      structureId,
+      disabled: false,
+      createdAt: Date.now(),
+    }),
+  );
+  const sessionId = await t.run((ctx) =>
+    ctx.db.insert("authSessions", {
+      userId,
+      expirationTime: Date.now() + DAY_MS,
+      mfaVerifiedAt: Date.now(),
+    }),
+  );
+  return { structureId, userId, client: t.withIdentity({ subject: `${userId}|${sessionId}` }) };
+}
+
+/** A valid create payload with a fresh banner. */
+async function createArgs(t: T, overrides: Record<string, unknown> = {}) {
+  const bannerFileId = await storeFile(t);
+  return {
+    title: "Réfection du dortoir",
+    description: "Nous devons refaire la toiture du dortoir avant la saison des pluies.",
+    category: "Matériel" as const,
+    bannerFileId,
+    endType: "goal" as const,
+    goalAmount: 500000,
+    deadline: Date.now() + 10 * DAY_MS,
+    urgency: "normal" as const,
+    ...overrides,
+  };
+}
+
+describe("causes.create", () => {
+  it("refuses non-structures and unapproved or suspended structures", async () => {
+    const t = await seeded();
+    const { client: donor } = await as(t, "donor");
+    await expectAppError(donor.mutation(api.causes.create, await createArgs(t)), "FORBIDDEN");
+
+    const pending = await asStructure(t, { status: "pending" });
+    await expectAppError(
+      pending.client.mutation(api.causes.create, await createArgs(t)),
+      "FORBIDDEN",
+    );
+
+    const suspended = await asStructure(t, { suspended: true });
+    await expectAppError(
+      suspended.client.mutation(api.causes.create, await createArgs(t)),
+      "FORBIDDEN",
+    );
+  });
+
+  it("validates title, goal, deadline window and banner", async () => {
+    const t = await seeded();
+    const { client } = await asStructure(t);
+    await expectAppError(
+      client.mutation(api.causes.create, await createArgs(t, { title: "ab" })),
+      "VALIDATION",
+    );
+    await expectAppError(
+      client.mutation(api.causes.create, await createArgs(t, { goalAmount: 0 })),
+      "VALIDATION",
+    );
+    await expectAppError(
+      client.mutation(api.causes.create, await createArgs(t, { deadline: Date.now() + 40 * DAY_MS })),
+      "VALIDATION",
+    );
+    const badBanner = await storeFile(t, "text/plain");
+    await expectAppError(
+      client.mutation(api.causes.create, await createArgs(t, { bannerFileId: badBanner })),
+      "VALIDATION",
+    );
+  });
+
+  it("creates a pending_review cause owned by the structure and logs it", async () => {
+    const t = await seeded();
+    const { client, structureId, userId } = await asStructure(t);
+    const { id, status } = await client.mutation(api.causes.create, await createArgs(t));
+    expect(status).toBe("pending_review");
+
+    const cause = await t.run((ctx) => ctx.db.get(id));
+    expect(cause).toMatchObject({ structureId, status: "pending_review", raised: 0, donorCount: 0 });
+
+    const mine = await client.query(api.causes.mine, {});
+    expect(mine.map((c) => c.id)).toContain(id);
+
+    const audit = await t.run((ctx) =>
+      ctx.db
+        .query("auditLog")
+        .withIndex("by_target", (q) => q.eq("targetTable", "causes").eq("targetId", id))
+        .collect(),
+    );
+    expect(audit.some((a) => a.action === "cause.create" && a.actorId === userId)).toBe(true);
+  });
+});
+
+describe("causes.update", () => {
+  it("edits a refused cause and sends it back to moderation, clearing the reason", async () => {
+    const t = await seeded();
+    const { client } = await asStructure(t);
+    const { id } = await client.mutation(api.causes.create, await createArgs(t));
+    await t.run((ctx) => ctx.db.patch(id, { status: "refused", refusalReason: "Devis manquant" }));
+
+    await client.mutation(api.causes.update, { causeId: id, title: "Réfection complète" });
+    const cause = await t.run((ctx) => ctx.db.get(id));
+    expect(cause).toMatchObject({ status: "pending_review", title: "Réfection complète" });
+    expect(cause!.refusalReason).toBeUndefined();
+  });
+
+  it("refuses editing an active cause (G7 deferred) and non-owners", async () => {
+    const t = await seeded();
+    const owner = await asStructure(t);
+    const { id } = await owner.client.mutation(api.causes.create, await createArgs(t));
+    await t.run((ctx) => ctx.db.patch(id, { status: "active" }));
+    await expectAppError(
+      owner.client.mutation(api.causes.update, { causeId: id, description: "x".repeat(30) }),
+      "CONFLICT",
+    );
+
+    await t.run((ctx) => ctx.db.patch(id, { status: "pending_review" }));
+    const other = await asStructure(t);
+    await expectAppError(
+      other.client.mutation(api.causes.update, { causeId: id, title: "pirate" }),
+      "FORBIDDEN",
+    );
+  });
+});
+
+describe("causes.withdraw", () => {
+  it("withdraws a cause in moderation", async () => {
+    const t = await seeded();
+    const { client } = await asStructure(t);
+    const { id } = await client.mutation(api.causes.create, await createArgs(t));
+    await client.mutation(api.causes.withdraw, { causeId: id });
+    expect((await t.run((ctx) => ctx.db.get(id)))!.status).toBe("withdrawn");
+  });
+
+  it("refuses to withdraw an active cause that has donations", async () => {
+    const t = await seeded();
+    const { client } = await asStructure(t);
+    const { id } = await client.mutation(api.causes.create, await createArgs(t));
+    await t.run(async (ctx) => {
+      await ctx.db.patch(id, { status: "active", raised: 10000, donorCount: 1 });
+      const donor = await ctx.db.insert("users", {
+        name: "Donor",
+        role: "donor",
+        disabled: false,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("donations", {
+        causeId: id,
+        donorId: donor,
+        amount: 10000,
+        fee: 300,
+        platformFee: 0,
+        net: 9700,
+        method: "wave",
+        provider: "mock",
+        status: "held",
+        createdAt: Date.now(),
+      });
+    });
+    await expectAppError(client.mutation(api.causes.withdraw, { causeId: id }), "CONFLICT");
+  });
+});
+
+describe("causes.mine", () => {
+  it("returns only the structure's own causes, newest first, without deleted ones", async () => {
+    const t = await seeded();
+    const { client } = await asStructure(t);
+    const first = await client.mutation(api.causes.create, await createArgs(t, { title: "Première" }));
+    const second = await client.mutation(
+      api.causes.create,
+      await createArgs(t, { title: "Deuxième" }),
+    );
+    await t.run((ctx) => ctx.db.patch(first.id, { status: "deleted" }));
+
+    const mine = await client.query(api.causes.mine, {});
+    expect(mine.map((c) => c.title)).toEqual(["Deuxième"]);
+    expect(mine[0].id).toBe(second.id);
+
+    // Another structure sees none of these.
+    const other = await asStructure(t);
+    expect(await other.client.query(api.causes.mine, {})).toEqual([]);
+  });
+});

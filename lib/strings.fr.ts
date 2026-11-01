@@ -423,6 +423,56 @@ export const fr = {
     hello: (name: string) => `Bonjour ${name}`,
   },
 
+  /** Structure dashboard: the structure's own causes and their status timeline (PARCOURS S11–S14). */
+  structureCauses: {
+    heading: "Mes causes",
+    new: "Publier une cause",
+    newShort: "Nouvelle cause",
+    empty: "Vous n'avez pas encore de cause. Publiez-en une pour commencer à collecter.",
+    emptyApprovedCta: "Publier ma première cause",
+    loading: "Chargement de vos causes…",
+    refusalReason: (reason: string) => `Motif du refus : ${reason}`,
+    raisedOf: (raised: string, goal: string) => `${raised} collectés sur ${goal}`,
+    donors: (count: number) => (count > 1 ? `${count} donateurs` : `${count} donateur`),
+    edit: "Modifier",
+    editResend: "Modifier et renvoyer",
+    withdraw: "Retirer",
+    withdrawConfirm: "Retirer cette cause ? Elle ne sera plus visible.",
+    submitProof: "Publier la preuve",
+    actionFailed: "L'action n'a pas abouti. Réessayez.",
+    withdrawn: "Cause retirée.",
+  },
+
+  /** Create-cause wizard (PARCOURS S11). */
+  createCause: {
+    title: "Publier une cause",
+    intro: "Décrivez votre besoin. Votre cause sera vérifiée avant d'être publiée.",
+    steps: ["Description", "Bannière", "Objectif"],
+    next: "Continuer",
+    back: "Retour",
+    submit: "Envoyer en modération",
+    submitting: "Envoi…",
+    fields: {
+      title: "Titre de la cause",
+      titlePlaceholder: "Ex. : Réfection de la toiture du dortoir",
+      description: "Description",
+      descriptionPlaceholder:
+        "Expliquez le besoin, à qui il profite et comment les fonds seront utilisés.",
+      category: "Catégorie",
+      banner: "Image de bannière",
+      bannerHint: "JPG, PNG ou WebP · 5 Mo max.",
+      endType: "Condition de fin",
+      endTypeDate: "À une date limite",
+      endTypeGoal: "À l'objectif atteint (ou à la date limite)",
+      goalAmount: "Objectif en FCFA",
+      deadline: "Date limite",
+      deadlineHint: (maxDays: number) => `Au plus ${maxDays} jours après aujourd'hui.`,
+      urgency: "Marquer comme urgent",
+    },
+    uploading: "Envoi de l'image…",
+    done: "Cause envoyée en modération. Vous serez prévenu après vérification.",
+  },
+
   sms: {
     code: (code: string) =>
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
@@ -479,6 +529,19 @@ export const fr = {
     simulatorOff: "Le simulateur de paiement n'est pas disponible ici.",
     causeNotEligible:
       "Cette cause ne peut pas être choisie\u00a0: elle doit être active et publiée par une structure vérifiée.",
+    uploadMissing: "Le fichier n'a pas été reçu. Réessayez l'envoi.",
+    uploadInvalid: "Fichier refusé : vérifiez le format et la taille autorisés.",
+    structureNotApproved:
+      "Votre structure doit être validée par notre équipe avant de publier une cause.",
+    causeTitleInvalid: "Le titre doit comporter entre 4 et 120 caractères.",
+    causeDescriptionInvalid: "La description doit comporter au moins 20 caractères.",
+    causeGoalInvalid: "Indiquez un objectif en FCFA (nombre entier supérieur à 0).",
+    causeDeadlineInvalid: (maxDays: number) =>
+      `La date limite doit être dans le futur et au plus dans ${maxDays} jours.`,
+    causeNotEditable:
+      "Seules les causes en modération ou refusées peuvent être modifiées pour le moment.",
+    causeNotWithdrawable:
+      "Cette cause ne peut plus être retirée : elle a déjà reçu des dons ou n'est plus en modération.",
   },
 } as const;
 

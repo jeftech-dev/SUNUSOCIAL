@@ -5,20 +5,31 @@ import { paginationOptsValidator, type OrderedQuery } from "convex/server";
 import { v } from "convex/values";
 
 import { ALMOST_REACHED_PERCENT, endConditionOf, percentOf } from "../lib/causes";
-import { loadConfig } from "../lib/config";
+import { DAY_MS, loadConfig } from "../lib/config";
 import { computeFee } from "../lib/money";
+import { fr } from "../lib/strings.fr";
 import {
   CAUSE_FILTERS,
   type CauseCardView,
   type CauseDetailView,
   type CauseFilter,
+  type CauseStatus,
   type Category,
+  type OwnedCauseView,
+  type StructureCauseView,
 } from "../lib/types";
-import type { DataModel } from "./_generated/dataModel";
-import { query, type QueryCtx } from "./_generated/server";
+import type { DataModel, Id } from "./_generated/dataModel";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+import { logAudit } from "./audit";
+import { validateUpload } from "./files";
 import { isListed, isVerified, structureLoader, toCardView, toSimilarView } from "./lib/causeViews";
-import { requireRole } from "./lib/guards";
-import { categoryV, literals } from "./validators";
+import { appError } from "./lib/errors";
+import { requireOwner, requireRole } from "./lib/guards";
+import { categoryV, endTypeV, literals, urgencyV } from "./validators";
+
+const TITLE_MIN = 4;
+const TITLE_MAX = 120;
+const DESCRIPTION_MIN = 20;
 
 /** Largest feed page a client may ask for. */
 export const MAX_PAGE_SIZE = 48;
@@ -180,5 +191,248 @@ export const get = query({
       status: cause.status,
       similar,
     };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Structure write path (PARCOURS S11–S14)
+// ---------------------------------------------------------------------------
+
+/** The content fields of a cause, validated for both create and edit. */
+interface CauseContent {
+  title: string;
+  description: string;
+  goalAmount: number;
+  deadline: number;
+}
+
+/** Validates the title, description, goal and deadline; throws `VALIDATION` on the first bad one. */
+function validateCauseContent(content: CauseContent, now: number): void {
+  const title = content.title.trim();
+  if (title.length < TITLE_MIN || title.length > TITLE_MAX) {
+    throw appError("VALIDATION", fr.errors.causeTitleInvalid, "title");
+  }
+  if (content.description.trim().length < DESCRIPTION_MIN) {
+    throw appError("VALIDATION", fr.errors.causeDescriptionInvalid, "description");
+  }
+  if (!Number.isSafeInteger(content.goalAmount) || content.goalAmount <= 0) {
+    throw appError("VALIDATION", fr.errors.causeGoalInvalid, "goalAmount");
+  }
+  const { maxCauseDurationDays } = loadConfig(process.env);
+  const maxDeadline = now + maxCauseDurationDays * DAY_MS;
+  if (content.deadline <= now || content.deadline > maxDeadline) {
+    throw appError(
+      "VALIDATION",
+      fr.errors.causeDeadlineInvalid(maxCauseDurationDays),
+      "deadline",
+    );
+  }
+}
+
+/**
+ * The caller's structure, or an error if it is not an approved, unsuspended structure. A hospital
+ * (which never fundraises) and a pending/refused/suspended structure cannot publish causes.
+ */
+async function requirePublishingStructure(ctx: QueryCtx) {
+  const { user } = await requireRole(ctx, "structure");
+  const structure = user.structureId ? await ctx.db.get(user.structureId) : null;
+  if (!structure || structure.status !== "approved" || structure.suspendedAt !== undefined) {
+    throw appError("FORBIDDEN", fr.errors.structureNotApproved);
+  }
+  return { user, structure };
+}
+
+/** The structure's own causes, newest first, for the dashboard (excludes deleted). */
+export const mine = query({
+  args: {},
+  handler: async (ctx): Promise<StructureCauseView[]> => {
+    const { user } = await requireRole(ctx, "structure");
+    if (!user.structureId) return [];
+    const causes = await ctx.db
+      .query("causes")
+      .withIndex("by_structure", (q) => q.eq("structureId", user.structureId!))
+      .collect();
+    causes.sort((a, b) => b.submittedAt - a.submittedAt);
+    const views: StructureCauseView[] = [];
+    for (const cause of causes) {
+      if (cause.status === "deleted") continue;
+      views.push({
+        id: cause._id,
+        title: cause.title,
+        category: cause.category,
+        bannerUrl: await ctx.storage.getUrl(cause.bannerFileId),
+        raised: cause.raised,
+        goal: cause.goalAmount,
+        percent: percentOf(cause.raised, cause.goalAmount),
+        urgent: cause.urgency === "urgent",
+        status: cause.status,
+        refusalReason: cause.refusalReason ?? null,
+        endCondition: endConditionOf(cause),
+        donorCount: cause.donorCount,
+        submittedAt: cause.submittedAt,
+        fundsReleased: cause.fundsReleasedAt !== undefined,
+      });
+    }
+    return views;
+  },
+});
+
+/** One of the caller's own causes with its editable fields, or null if not theirs. */
+export const getOwned = query({
+  args: { causeId: v.id("causes") },
+  handler: async (ctx, { causeId }): Promise<OwnedCauseView | null> => {
+    const { user } = await requireRole(ctx, "structure");
+    const cause = await ctx.db.get(causeId);
+    if (!cause || cause.structureId !== user.structureId) return null;
+    return {
+      id: cause._id,
+      title: cause.title,
+      description: cause.description,
+      category: cause.category,
+      endType: cause.endType,
+      goalAmount: cause.goalAmount,
+      deadline: cause.deadline,
+      urgency: cause.urgency,
+      bannerUrl: await ctx.storage.getUrl(cause.bannerFileId),
+      status: cause.status,
+      refusalReason: cause.refusalReason ?? null,
+    };
+  },
+});
+
+/** Creates a cause, owned by the caller's structure, as `pending_review` (PARCOURS S11). */
+export const create = mutation({
+  args: {
+    title: v.string(),
+    description: v.string(),
+    category: categoryV,
+    bannerFileId: v.id("_storage"),
+    endType: endTypeV,
+    goalAmount: v.number(),
+    deadline: v.number(),
+    urgency: urgencyV,
+  },
+  handler: async (ctx, args): Promise<{ id: Id<"causes">; status: CauseStatus }> => {
+    const { user, structure } = await requirePublishingStructure(ctx);
+    const now = Date.now();
+    validateCauseContent(args, now);
+    await validateUpload(ctx, args.bannerFileId, ["image"], "bannerFileId");
+
+    const id = await ctx.db.insert("causes", {
+      structureId: structure._id,
+      title: args.title.trim(),
+      description: args.description.trim(),
+      category: args.category,
+      bannerFileId: args.bannerFileId,
+      endType: args.endType,
+      goalAmount: args.goalAmount,
+      deadline: args.deadline,
+      extensionCount: 0,
+      urgency: args.urgency,
+      raised: 0,
+      donorCount: 0,
+      status: "pending_review",
+      submittedAt: now,
+    });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "cause.create",
+      targetTable: "causes",
+      targetId: id,
+    });
+    return { id, status: "pending_review" };
+  },
+});
+
+/**
+ * Edits a cause and sends it back to moderation ("Modifier et renvoyer", G6 interim default).
+ * Only a cause that is `pending_review` or `refused` can be edited for now. Editing an `active`
+ * cause (G7) is deferred: honouring "the old version stays visible during review" needs a schema
+ * field for a shadow copy, and silently pulling a cause that already has donations out of the feed
+ * would be worse — so it is refused until the board confirms G7.
+ */
+export const update = mutation({
+  args: {
+    causeId: v.id("causes"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    category: v.optional(categoryV),
+    bannerFileId: v.optional(v.id("_storage")),
+    endType: v.optional(endTypeV),
+    goalAmount: v.optional(v.number()),
+    deadline: v.optional(v.number()),
+    urgency: v.optional(urgencyV),
+  },
+  handler: async (ctx, args): Promise<{ ok: true }> => {
+    const cause = await ctx.db.get(args.causeId);
+    if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "causeId");
+    const { user } = await requireOwner(ctx, cause.structureId);
+    if (cause.status !== "pending_review" && cause.status !== "refused") {
+      throw appError("CONFLICT", fr.errors.causeNotEditable, "causeId");
+    }
+
+    const merged: CauseContent = {
+      title: args.title ?? cause.title,
+      description: args.description ?? cause.description,
+      goalAmount: args.goalAmount ?? cause.goalAmount,
+      deadline: args.deadline ?? cause.deadline,
+    };
+    validateCauseContent(merged, Date.now());
+    if (args.bannerFileId) {
+      await validateUpload(ctx, args.bannerFileId, ["image"], "bannerFileId");
+    }
+
+    await ctx.db.patch(cause._id, {
+      title: merged.title.trim(),
+      description: merged.description.trim(),
+      goalAmount: merged.goalAmount,
+      deadline: merged.deadline,
+      ...(args.category ? { category: args.category } : {}),
+      ...(args.endType ? { endType: args.endType } : {}),
+      ...(args.urgency ? { urgency: args.urgency } : {}),
+      ...(args.bannerFileId ? { bannerFileId: args.bannerFileId } : {}),
+      // Re-enters moderation and the previous refusal reason no longer applies.
+      status: "pending_review",
+      refusalReason: undefined,
+      submittedAt: Date.now(),
+    });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "cause.update",
+      targetTable: "causes",
+      targetId: cause._id,
+    });
+    return { ok: true };
+  },
+});
+
+/**
+ * Withdraws a cause from moderation (S13), or an active cause that has not received any donation.
+ * A cause with donations cannot be withdrawn: its funds are governed by the deletion flow (Sprint 6).
+ */
+export const withdraw = mutation({
+  args: { causeId: v.id("causes") },
+  handler: async (ctx, { causeId }): Promise<{ ok: true }> => {
+    const cause = await ctx.db.get(causeId);
+    if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "causeId");
+    const { user } = await requireOwner(ctx, cause.structureId);
+
+    const withdrawable =
+      cause.status === "pending_review" ||
+      (cause.status === "active" &&
+        (await ctx.db
+          .query("donations")
+          .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+          .first()) === null);
+    if (!withdrawable) throw appError("CONFLICT", fr.errors.causeNotWithdrawable, "causeId");
+
+    await ctx.db.patch(causeId, { status: "withdrawn" });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "cause.withdraw",
+      targetTable: "causes",
+      targetId: causeId,
+    });
+    return { ok: true };
   },
 });
