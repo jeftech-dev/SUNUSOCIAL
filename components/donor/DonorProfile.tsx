@@ -3,6 +3,7 @@
 import { usePaginatedQuery, useQuery } from "convex/react";
 import Link from "next/link";
 
+import { DonorProofLink } from "@/components/donor/DonorProofLink";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatDate } from "@/lib/dates";
@@ -102,10 +103,13 @@ function DonationRow({ donation }: { donation: DonationHistoryView }) {
           {fr.profile.lateRefund(formatFCFA(donation.net))}
         </p>
       )}
-      {!donation.lateRefund && donation.proof.available ? (
-        <p className="text-xs font-semibold text-brand-green-strong">
-          {fr.profile.proofValidated(donation.proof.itemCount)}
-        </p>
+      {!donation.lateRefund && donation.proof.available && donation.proof.proofId ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold text-brand-green-strong">
+            {fr.profile.proofValidated(donation.proof.itemCount)}
+          </p>
+          <DonorProofLink proofId={donation.proof.proofId} />
+        </div>
       ) : (
         !donation.lateRefund &&
         donation.status === "held" && (

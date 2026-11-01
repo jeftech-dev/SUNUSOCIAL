@@ -354,6 +354,48 @@ export interface ProofFeedCard {
 }
 
 // ---------------------------------------------------------------------------
+// Moderation queues (docs/API_CONTRACT.md "Moderation")
+// ---------------------------------------------------------------------------
+
+export interface StructureQueueItem {
+  id: Id<"structures">;
+  name: string;
+  type: StructureType;
+  region: string;
+  submittedAt: number;
+  hasPayout: boolean;
+}
+
+export interface CauseQueueItem {
+  id: Id<"causes">;
+  title: string;
+  organization: string;
+  urgent: boolean;
+}
+
+export interface ProofQueueItem {
+  id: Id<"proofs">;
+  cause: string;
+  flagged: boolean;
+}
+
+export interface ModerationQueue<T> {
+  count: number;
+  items: T[];
+}
+
+export interface ModerationQueues {
+  structures: ModerationQueue<StructureQueueItem>;
+  causes: ModerationQueue<CauseQueueItem>;
+  proofs: ModerationQueue<ProofQueueItem>;
+  /** Filled in Sprint 6. */
+  deletions: ModerationQueue<never>;
+  refunds: ModerationQueue<never>;
+  payoutChanges: ModerationQueue<never>;
+  featured: { causeId: Id<"causes">; since: number } | null;
+}
+
+// ---------------------------------------------------------------------------
 // API wrappers
 // ---------------------------------------------------------------------------
 
