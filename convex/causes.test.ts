@@ -393,7 +393,10 @@ describe("causes.create", () => {
       "VALIDATION",
     );
     await expectAppError(
-      client.mutation(api.causes.create, await createArgs(t, { deadline: Date.now() + 40 * DAY_MS })),
+      client.mutation(
+        api.causes.create,
+        await createArgs(t, { deadline: Date.now() + 40 * DAY_MS }),
+      ),
       "VALIDATION",
     );
     const badBanner = await storeFile(t, "text/plain");
@@ -410,7 +413,12 @@ describe("causes.create", () => {
     expect(status).toBe("pending_review");
 
     const cause = await t.run((ctx) => ctx.db.get(id));
-    expect(cause).toMatchObject({ structureId, status: "pending_review", raised: 0, donorCount: 0 });
+    expect(cause).toMatchObject({
+      structureId,
+      status: "pending_review",
+      raised: 0,
+      donorCount: 0,
+    });
 
     const mine = await client.query(api.causes.mine, {});
     expect(mine.map((c) => c.id)).toContain(id);
@@ -493,13 +501,47 @@ describe("causes.withdraw", () => {
     });
     await expectAppError(client.mutation(api.causes.withdraw, { causeId: id }), "CONFLICT");
   });
+
+  it("refuses withdraw and flags not-withdrawable when a pending donation exists but donorCount is 0", async () => {
+    const t = await seeded();
+    const { client } = await asStructure(t);
+    const { id } = await client.mutation(api.causes.create, await createArgs(t));
+    await t.run(async (ctx) => {
+      // Active, no counted donors, but an in-flight payment row exists (may still settle).
+      await ctx.db.patch(id, { status: "active", raised: 0, donorCount: 0 });
+      const donor = await ctx.db.insert("users", {
+        name: "Donor",
+        role: "donor",
+        disabled: false,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("donations", {
+        causeId: id,
+        donorId: donor,
+        amount: 10000,
+        fee: 300,
+        platformFee: 0,
+        net: 9700,
+        method: "wave",
+        provider: "mock",
+        status: "pending",
+        createdAt: Date.now(),
+      });
+    });
+    const mine = await client.query(api.causes.mine, {});
+    expect(mine.find((c) => c.id === id)!.withdrawable).toBe(false);
+    await expectAppError(client.mutation(api.causes.withdraw, { causeId: id }), "CONFLICT");
+  });
 });
 
 describe("causes.mine", () => {
   it("returns only the structure's own causes, newest first, without deleted ones", async () => {
     const t = await seeded();
     const { client } = await asStructure(t);
-    const first = await client.mutation(api.causes.create, await createArgs(t, { title: "Première" }));
+    const first = await client.mutation(
+      api.causes.create,
+      await createArgs(t, { title: "Première" }),
+    );
     const second = await client.mutation(
       api.causes.create,
       await createArgs(t, { title: "Deuxième" }),

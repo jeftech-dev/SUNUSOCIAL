@@ -256,7 +256,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_cause", ["causeId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_status_validated", ["status", "validatedAt"]),
 
   proofItems: defineTable({
     proofId: v.id("proofs"),

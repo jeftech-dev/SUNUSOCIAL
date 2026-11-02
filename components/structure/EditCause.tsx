@@ -16,5 +16,10 @@ export function EditCause({ id }: { id: string }) {
   if (cause === null) {
     return <p className="text-sm text-muted-foreground">{fr.causeDetail.notFound}</p>;
   }
+  // Only causes still in moderation or refused can be edited (mirrors `causes.update`); for any other
+  // status, say so up front rather than render an editable wizard whose submit the server will reject.
+  if (cause.status !== "pending_review" && cause.status !== "refused") {
+    return <p className="text-sm text-muted-foreground">{fr.errors.causeNotEditable}</p>;
+  }
   return <CauseWizard cause={cause} />;
 }

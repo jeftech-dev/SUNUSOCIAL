@@ -254,6 +254,9 @@ export interface StructureCauseView {
   refusalReason: string | null;
   endCondition: EndCondition;
   donorCount: number;
+  /** Whether `causes.withdraw` would currently succeed (in moderation, or active with no donation
+   * row at all). Computed server-side so the dashboard never offers a withdraw the server rejects. */
+  withdrawable: boolean;
   submittedAt: number;
   /** Funds released to the structure → a reception proof is due (Sprint 5 proof flow). */
   fundsReleased: boolean;
