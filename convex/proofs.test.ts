@@ -67,7 +67,12 @@ async function asStructure(t: T) {
 
 async function donorClient(t: T) {
   const userId = await t.run((ctx) =>
-    ctx.db.insert("users", { name: "Donor", role: "donor", disabled: false, createdAt: Date.now() }),
+    ctx.db.insert("users", {
+      name: "Donor",
+      role: "donor",
+      disabled: false,
+      createdAt: Date.now(),
+    }),
   );
   const sessionId = await t.run((ctx) =>
     ctx.db.insert("authSessions", { userId, expirationTime: Date.now() + DAY_MS }),
@@ -119,10 +124,17 @@ async function fundedCause(t: T, structureId: Id<"structures">): Promise<Id<"cau
 }
 
 async function photoItems(t: T, n: number) {
-  const items: Array<{ kind: Doc<"proofItems">["kind"]; fileId: Id<"_storage">; caption?: string }> =
-    [];
+  const items: Array<{
+    kind: Doc<"proofItems">["kind"];
+    fileId: Id<"_storage">;
+    caption?: string;
+  }> = [];
   for (let i = 0; i < n; i++) {
-    items.push({ kind: "photo", fileId: await storeFile(t, "image/png", 512 + i), caption: `p${i}` });
+    items.push({
+      kind: "photo",
+      fileId: await storeFile(t, "image/png", 512 + i),
+      caption: `p${i}`,
+    });
   }
   return items;
 }
@@ -313,10 +325,7 @@ describe("proofs.submit", () => {
       });
     });
 
-    const items = [
-      { kind: "photo" as const, fileId: dupFile },
-      ...(await photoItems(t, 4)),
-    ];
+    const items = [{ kind: "photo" as const, fileId: dupFile }, ...(await photoItems(t, 4))];
     const { proofId } = await owner.client.mutation(api.proofs.submit, {
       causeId: cause,
       report: REPORT,

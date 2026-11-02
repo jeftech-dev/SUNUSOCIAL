@@ -10,12 +10,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { loadConfig } from "../lib/config";
 import { formatFCFA } from "../lib/money";
 import { fr } from "../lib/strings.fr";
-import type {
-  ProofAutoFlag,
-  ProofDossierView,
-  ProofFeedCard,
-  ProofItemView,
-} from "../lib/types";
+import type { ProofAutoFlag, ProofDossierView, ProofFeedCard, ProofItemView } from "../lib/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
@@ -152,7 +147,11 @@ export const submit = mutation({
     const autoFlagged: ProofAutoFlag[] = [];
     for (let i = 0; i < args.items.length; i++) {
       const item = args.items[i];
-      if ((item.kind !== "invoice" && item.kind !== "delivery_note") || !item.supplier || !item.ref) {
+      if (
+        (item.kind !== "invoice" && item.kind !== "delivery_note") ||
+        !item.supplier ||
+        !item.ref
+      ) {
         continue;
       }
       const matches = await ctx.db

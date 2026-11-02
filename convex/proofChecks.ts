@@ -29,10 +29,7 @@ function jpegExifDate(bytes: Uint8Array): number | null {
     if (marker === 0xda) break; // start of scan — no metadata beyond here
     if (marker === 0xe1 && offset + 10 <= view.byteLength) {
       // "Exif\0\0"
-      if (
-        view.getUint32(offset + 4) === 0x45786966 &&
-        view.getUint16(offset + 8) === 0x0000
-      ) {
+      if (view.getUint32(offset + 4) === 0x45786966 && view.getUint16(offset + 8) === 0x0000) {
         exifStart = offset + 10;
         break;
       }
