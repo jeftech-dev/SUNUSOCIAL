@@ -393,7 +393,10 @@ describe("causes.create", () => {
       "VALIDATION",
     );
     await expectAppError(
-      client.mutation(api.causes.create, await createArgs(t, { deadline: Date.now() + 40 * DAY_MS })),
+      client.mutation(
+        api.causes.create,
+        await createArgs(t, { deadline: Date.now() + 40 * DAY_MS }),
+      ),
       "VALIDATION",
     );
     const badBanner = await storeFile(t, "text/plain");
@@ -410,7 +413,12 @@ describe("causes.create", () => {
     expect(status).toBe("pending_review");
 
     const cause = await t.run((ctx) => ctx.db.get(id));
-    expect(cause).toMatchObject({ structureId, status: "pending_review", raised: 0, donorCount: 0 });
+    expect(cause).toMatchObject({
+      structureId,
+      status: "pending_review",
+      raised: 0,
+      donorCount: 0,
+    });
 
     const mine = await client.query(api.causes.mine, {});
     expect(mine.map((c) => c.id)).toContain(id);
@@ -530,7 +538,10 @@ describe("causes.mine", () => {
   it("returns only the structure's own causes, newest first, without deleted ones", async () => {
     const t = await seeded();
     const { client } = await asStructure(t);
-    const first = await client.mutation(api.causes.create, await createArgs(t, { title: "Première" }));
+    const first = await client.mutation(
+      api.causes.create,
+      await createArgs(t, { title: "Première" }),
+    );
     const second = await client.mutation(
       api.causes.create,
       await createArgs(t, { title: "Deuxième" }),

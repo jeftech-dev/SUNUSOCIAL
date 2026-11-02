@@ -221,11 +221,7 @@ function validateCauseContent(content: CauseContent, now: number): void {
   const { maxCauseDurationDays } = loadConfig(process.env);
   const maxDeadline = now + maxCauseDurationDays * DAY_MS;
   if (content.deadline <= now || content.deadline > maxDeadline) {
-    throw appError(
-      "VALIDATION",
-      fr.errors.causeDeadlineInvalid(maxCauseDurationDays),
-      "deadline",
-    );
+    throw appError("VALIDATION", fr.errors.causeDeadlineInvalid(maxCauseDurationDays), "deadline");
   }
 }
 

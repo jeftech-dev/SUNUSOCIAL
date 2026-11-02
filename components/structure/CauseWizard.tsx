@@ -95,7 +95,8 @@ export function CauseWizard({ cause }: { cause?: OwnedCauseView }) {
     }
     if (index === 2) {
       const amount = Number(goalAmount);
-      if (!Number.isSafeInteger(amount) || amount <= 0) next.goalAmount = fr.errors.causeGoalInvalid;
+      if (!Number.isSafeInteger(amount) || amount <= 0)
+        next.goalAmount = fr.errors.causeGoalInvalid;
       const ms = deadline ? deadlineMs(deadline) : 0;
       if (!deadline || ms <= now || ms > maxDeadlineMs) {
         next.deadline = fr.errors.causeDeadlineInvalid(config.maxCauseDurationDays);

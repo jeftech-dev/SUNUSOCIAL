@@ -107,10 +107,7 @@ export function StructureCauses() {
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground">
-                    {fr.structureCauses.raisedOf(
-                      formatFCFA(cause.raised),
-                      formatFCFA(cause.goal),
-                    )}{" "}
+                    {fr.structureCauses.raisedOf(formatFCFA(cause.raised), formatFCFA(cause.goal))}{" "}
                     · {fr.structureCauses.donors(cause.donorCount)}
                   </p>
                   <div className="flex flex-wrap gap-2">
