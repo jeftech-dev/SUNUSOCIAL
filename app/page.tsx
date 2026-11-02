@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { LocationDemo } from "@/components/common/LocationDemo";
+import { PublicProofFeed } from "@/components/common/PublicProofFeed";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/lib/strings.fr";
 
@@ -60,6 +61,8 @@ export default function Home() {
         </div>
         <LocationDemo />
       </section>
+
+      <PublicProofFeed />
     </main>
   );
 }
