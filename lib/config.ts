@@ -31,6 +31,8 @@ export interface Config {
   maxExtensionDays: number;
   /** Decided (DB-12). */
   proofDueDays: number;
+  /** Items a reception dossier must have at least (DB-12, "≥ 5 items"). */
+  minProofItems: number;
   /** Decided (DB-8). */
   sessionTotalDays: number;
   /** Waiting on the phase 2 definition (DT-31). */
@@ -47,6 +49,7 @@ export const DEFAULTS: Config = {
   maxCauseDurationDays: 30,
   maxExtensionDays: 30,
   proofDueDays: 7,
+  minProofItems: 5,
   sessionTotalDays: 7,
   requirePhase2BeforePayout: false,
 };
@@ -118,6 +121,7 @@ export function loadConfig(env: Env): Config {
     ),
     maxExtensionDays: positiveInt(env, "MAX_EXTENSION_DAYS", DEFAULTS.maxExtensionDays),
     proofDueDays: positiveInt(env, "PROOF_DUE_DAYS", DEFAULTS.proofDueDays),
+    minProofItems: positiveInt(env, "MIN_PROOF_ITEMS", DEFAULTS.minProofItems),
     sessionTotalDays: positiveInt(env, "SESSION_TOTAL_DAYS", DEFAULTS.sessionTotalDays),
     requirePhase2BeforePayout: bool(
       env,

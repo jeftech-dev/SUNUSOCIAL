@@ -238,6 +238,45 @@ export interface CauseCardView {
   endCondition: EndCondition;
 }
 
+/** One of the structure's own causes, with its moderation status (structure dashboard). */
+export interface StructureCauseView {
+  id: Id<"causes">;
+  title: string;
+  category: Category;
+  bannerUrl: string | null;
+  raised: number;
+  goal: number;
+  /** Integer, 0–100. */
+  percent: number;
+  urgent: boolean;
+  status: CauseStatus;
+  /** Shown when the cause was refused. */
+  refusalReason: string | null;
+  endCondition: EndCondition;
+  donorCount: number;
+  /** Whether `causes.withdraw` would currently succeed (in moderation, or active with no donation
+   * row at all). Computed server-side so the dashboard never offers a withdraw the server rejects. */
+  withdrawable: boolean;
+  submittedAt: number;
+  /** Funds released to the structure → a reception proof is due (Sprint 5 proof flow). */
+  fundsReleased: boolean;
+}
+
+/** A structure's own cause with every editable field, to prefill the edit wizard. */
+export interface OwnedCauseView {
+  id: Id<"causes">;
+  title: string;
+  description: string;
+  category: Category;
+  endType: EndType;
+  goalAmount: number;
+  deadline: number;
+  urgency: Urgency;
+  bannerUrl: string | null;
+  status: CauseStatus;
+  refusalReason: string | null;
+}
+
 /** A card of the "Causes similaires" row. */
 export interface SimilarCauseView {
   id: Id<"causes">;
