@@ -131,7 +131,7 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 **DT-4 — Payouts (release and refunds).**
 
 *How payouts are made:*
-- Every outgoing transfer goes through a `payouts` table processed by a **single worker**, because NabooPay allows one payout at a time per organisation and answers `409` otherwise. The worker uses `@convex-dev/workpool` with `maxParallelism: 1`.
+- Every outgoing transfer goes through a `payouts` table processed by a **single worker**, because NabooPay allows one payout at a time per organisation and answers `409` otherwise. The worker uses `@convex-dev/workpool` with `maxParallelism: 1`. *(Rev. 7, Sprint 6: implemented instead as a **cron-driven single-flight worker** — an interval cron (`internal.payouts.drainNext`) claims one `queued` row at a time from `payouts.by_status_created` and refuses to start while another is `sending`. Same one-at-a-time guarantee, no extra Convex component, and fully testable under `convex-test`. The `@convex-dev/workpool` variant stays a drop-in alternative if the volume ever needs it.)*
 - Each payout row records: `kind` (`release` | `refund`), `amount`, `method`, `phone`, `name`, `status`, NabooPay's `order_id`, and `attempts`.
 
 *What happens on each outcome:*

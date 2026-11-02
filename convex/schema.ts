@@ -64,7 +64,9 @@ export default defineSchema({
     .index("email", ["email"])
     .index("phone", ["phone"])
     // The responsible account of a structure/hospital, for moderation notifications.
-    .index("by_structure", ["structureId"]),
+    .index("by_structure", ["structureId"])
+    // All moderators, e.g. to alert them when a payout stops on a short balance (DT-4).
+    .index("by_role", ["role"]),
 
   /** Extends Convex Auth sessions with the SMS 2FA step for organisations and moderators (DT-2). */
   authSessions: defineTable({
@@ -225,7 +227,7 @@ export default defineSchema({
   /** Every outgoing transfer, processed one at a time by the payout worker (DT-4). */
   payouts: defineTable({
     kind: payoutKindV,
-    /** Cause id (release) or refund-request id (refund). */
+    /** Cause id (release / deletion payout) or donation id (refund). */
     targetId: v.string(),
     amount: v.number(),
     method: methodV,

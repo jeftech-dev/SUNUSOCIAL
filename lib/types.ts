@@ -141,6 +141,8 @@ export const NOTIFICATION_KINDS = [
   "extension_decision",
   "deletion_decision",
   "refund_decision",
+  "funds_released",
+  "payout_alert",
   "blood_alert",
   "blood_thanks",
   "account_suspended",

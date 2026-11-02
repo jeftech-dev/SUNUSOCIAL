@@ -1,7 +1,7 @@
 // The payment provider interface (DT-3, DT-4). Feature code talks to this, never to NabooPay
 // directly; `PAYMENT_PROVIDER` picks the implementation (lib/providers/index.ts).
-// Payouts (`payout`, `getPayout`, `listPayouts`, `getBalance`) join the interface with the payout
-// worker in Sprint 6.
+// Checkout (`createCheckout`, `verifyWebhook`, `getTransaction`, `cancelTransaction`) and payouts
+// (`payout`, `getPayout`, `listPayouts`, `getBalance`) use least-privilege keys of their own (DT-4).
 
 import { METHODS, type Method, type Provider } from "../types";
 
@@ -55,6 +55,40 @@ export interface TransactionInfo {
   method?: Method;
 }
 
+/** A payout request: money out of SUNUSOCIAL's main account to a wallet (DT-4). */
+export interface PayoutInput {
+  /** The wallet's method; NabooPay's `selected_payment_method`. */
+  method: Method;
+  /** Integer FCFA, greater than 10 (NabooPay rule). */
+  amount: number;
+  /** E.164 recipient wallet number; a wrong number sends money to a stranger, irreversibly (DT-5). */
+  phone: string;
+  /** Recipient name — information only, NabooPay does not check it against the wallet holder. */
+  name: string;
+  /** Free text, shown on the payout; e.g. the cause title. */
+  reason: string;
+}
+
+/** The three outcomes a `payout` call can report. `pending` = NabooPay manual review (> 2M XOF). */
+export type PayoutOutcome = "completed" | "pending" | "failed";
+
+export interface PayoutResult {
+  /** NabooPay `order_id`, stored on the payout row. */
+  orderId: string;
+  status: PayoutOutcome;
+}
+
+export interface PayoutInfo {
+  status: "pending" | "completed" | "failed" | "cancelled";
+}
+
+/** One payout as returned by `listPayouts`, used to reconcile an `unknown` outcome. */
+export interface PayoutListItem {
+  orderId: string;
+  amount: number;
+  status: string;
+}
+
 export interface PaymentProvider {
   readonly name: Provider;
   createCheckout(input: CheckoutInput): Promise<CheckoutResult>;
@@ -63,6 +97,14 @@ export interface PaymentProvider {
   getTransaction(orderId: string): Promise<TransactionInfo>;
   /** Cancels an unpaid transaction (abandoned for 2 h). */
   cancelTransaction(orderId: string): Promise<void>;
+  // --- Payouts (DT-4). NEVER auto-retried after a timeout or 5xx: reconcile instead. ---
+  /** Sends one payout. A `409` means another payout is running (the per-org lock). */
+  payout(input: PayoutInput): Promise<PayoutResult>;
+  getPayout(orderId: string): Promise<PayoutInfo>;
+  /** Payouts to a recipient since a timestamp — to resolve an `unknown` outcome without resending. */
+  listPayouts(filter: { recipientPhone: string; since: number }): Promise<PayoutListItem[]>;
+  /** The `main` account balance in integer FCFA; checked before a payout (DT-4). */
+  getBalance(): Promise<number>;
 }
 
 /** A failed provider call. `status` is the HTTP status, absent for network errors and timeouts. */

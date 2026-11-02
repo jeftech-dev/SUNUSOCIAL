@@ -11,6 +11,7 @@ import { isPaidStatus, parseWebhookPayload } from "../lib/providers/types";
 import { fr } from "../lib/strings.fr";
 import type { Method } from "../lib/types";
 import { errorPath, successPath } from "./donations";
+import { enqueuePayout } from "./payouts";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import {
@@ -170,6 +171,8 @@ export const recordPayment = internalMutation({
         targetId: cause._id,
         details: { raised, goal: cause.goalAmount },
       });
+      // Goal reached: release straight away (DT-24). The cron also catches it if this does not run.
+      await ctx.scheduler.runAfter(0, internal.payments.releaseCause, { causeId: cause._id });
     }
     await notifyUser(ctx, {
       userId: donation.donorId,
@@ -308,6 +311,192 @@ export const recheckPending = internalAction({
       }
     }
     return { checked: pending.length, paid, failed };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Fund release (DT-24) — one lump-sum payout per cause, at goal or deadline
+// ---------------------------------------------------------------------------
+
+/**
+ * Releases a cause's held funds in a single payout to its structure's verified account. Idempotent
+ * (guarded by `fundsReleasedAt`) and skipped while a payout-account change is pending (DT-24). Marks
+ * the cause closed if it was still active; the donations flip to `released` and the proof deadline
+ * opens only once the payout actually completes (in the worker).
+ */
+export const releaseCause = internalMutation({
+  args: { causeId: v.id("causes") },
+  handler: async (ctx, { causeId }): Promise<{ released: boolean }> => {
+    const cause = await ctx.db.get(causeId);
+    if (!cause) return { released: false };
+    if (cause.fundsReleasedAt !== undefined) return { released: false }; // already released
+    if (cause.status === "deleted" || cause.status === "refused" || cause.status === "withdrawn") {
+      return { released: false };
+    }
+    const structure = await ctx.db.get(cause.structureId);
+    if (!structure || !structure.payout) {
+      console.error(`releaseCause ${causeId}: structure has no verified payout account`);
+      return { released: false };
+    }
+    if (structure.payoutPending !== undefined) return { released: false }; // blocked during change
+
+    const donations = await ctx.db
+      .query("donations")
+      .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+      .collect();
+    const total = donations
+      .filter((d) => d.status === "held")
+      .reduce((sum, d) => sum + d.net, 0);
+
+    const now = Date.now();
+    const patch: Partial<Doc<"causes">> = { fundsReleasedAt: now };
+    if (cause.status === "active") {
+      patch.status = "closed";
+      patch.closedAt = now;
+    }
+    if (total <= 0) {
+      // No confirmed donations: nothing reaches the structure, so no payout and no proof is due.
+      await ctx.db.patch(causeId, patch);
+      await logAudit(ctx, {
+        action: "funds.release_empty",
+        targetTable: "causes",
+        targetId: causeId,
+        details: { total: 0 },
+      });
+      return { released: true };
+    }
+    const payoutId = await enqueuePayout(ctx, {
+      kind: "release",
+      targetId: causeId,
+      amount: total,
+      method: structure.payout.method,
+      phone: structure.payout.accountNumber,
+      name: structure.payout.holderName,
+    });
+    patch.releasePayoutId = payoutId;
+    await ctx.db.patch(causeId, patch);
+    return { released: true };
+  },
+});
+
+/** Hourly cron: schedule a release for every due cause (past deadline, or closed-but-not-released). */
+export const releaseDue = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ scheduled: number }> => {
+    const now = Date.now();
+    const pastDeadline = await ctx.db
+      .query("causes")
+      .withIndex("by_status_deadline", (q) => q.eq("status", "active").lte("deadline", now))
+      .collect();
+    const closed = await ctx.db
+      .query("causes")
+      .withIndex("by_status_deadline", (q) => q.eq("status", "closed"))
+      .collect();
+    let scheduled = 0;
+    for (const cause of [...pastDeadline, ...closed]) {
+      if (cause.fundsReleasedAt === undefined) {
+        await ctx.scheduler.runAfter(0, internal.payments.releaseCause, { causeId: cause._id });
+        scheduled += 1;
+      }
+    }
+    return { scheduled };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Late-payment refunds (DB-18, DT-7) — flagged by recordPayment, paid out here
+// ---------------------------------------------------------------------------
+
+/**
+ * Cron: for each donation flagged late (its cause was already closed when the money arrived), record
+ * an automatic refund request and queue a `refund` payout of its net — no moderator decision (DB-18).
+ * The refund request doubles as the idempotency guard: a flagged donation that already has one is
+ * skipped, and once the payout completes the donation becomes `refunded` and leaves this scan.
+ */
+export const lateRefundDue = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ queued: number }> => {
+    const flagged = await ctx.db
+      .query("donations")
+      .withIndex("by_late_refund", (q) => q.gt("lateRefundFlaggedAt", 0))
+      .take(RECHECK_BATCH);
+    let queued = 0;
+    for (const donation of flagged) {
+      if (donation.status !== "held") continue; // already refunded / failed
+      const existing = await ctx.db
+        .query("refundRequests")
+        .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
+        .unique();
+      if (existing) continue; // already being refunded
+      const donor = await ctx.db.get(donation.donorId);
+      if (!donor?.phone) {
+        console.error(`late refund for ${donation._id}: donor has no phone`);
+        continue;
+      }
+      await ctx.db.insert("refundRequests", {
+        donationId: donation._id,
+        donorId: donation.donorId,
+        reason: "late_payment",
+        status: "pending",
+        receivingPhone: donor.phone,
+        createdAt: Date.now(),
+      });
+      await enqueuePayout(ctx, {
+        kind: "refund",
+        targetId: donation._id,
+        amount: donation.net,
+        method: donation.paidMethod ?? donation.method,
+        phone: donor.phone,
+        name: donor.name,
+      });
+      queued += 1;
+    }
+    return { queued };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Proof-deadline enforcement (DB-12, DT-25) — auto-suspend on a missed deadline
+// ---------------------------------------------------------------------------
+
+/** Cron: suspend the structure of any proof deadline that passed without a validated proof. */
+export const enforceProofDeadlines = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ suspended: number }> => {
+    const now = Date.now();
+    const overdue = await ctx.db
+      .query("proofDeadlines")
+      .withIndex("by_met_due", (q) => q.eq("metAt", undefined).lt("dueAt", now))
+      .take(RECHECK_BATCH);
+    let suspended = 0;
+    for (const deadline of overdue) {
+      if (!deadline.enforced) continue;
+      const structure = await ctx.db.get(deadline.structureId);
+      if (!structure || structure.suspendedAt !== undefined) continue;
+      await ctx.db.patch(structure._id, { suspendedAt: now });
+      await logAudit(ctx, {
+        action: "structure.suspend",
+        targetTable: "structures",
+        targetId: structure._id,
+        details: { reason: "proof_deadline_missed", causeId: deadline.causeId },
+      });
+      const cause = await ctx.db.get(deadline.causeId);
+      const responsible = await ctx.db
+        .query("users")
+        .withIndex("by_structure", (q) => q.eq("structureId", structure._id))
+        .first();
+      if (responsible) {
+        await notifyUser(ctx, {
+          userId: responsible._id,
+          kind: "account_suspended",
+          title: fr.notifications.suspendedTitle,
+          body: fr.notifications.suspendedBody(cause?.title ?? structure.name),
+          link: "/structure",
+        });
+      }
+      suspended += 1;
+    }
+    return { suspended };
   },
 });
 
