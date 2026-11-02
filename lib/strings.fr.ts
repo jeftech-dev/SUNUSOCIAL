@@ -259,9 +259,18 @@ export const fr = {
     refuseReasonRequired: "Indiquez un motif de refus.",
     refuseReasonPlaceholder: "Ex. : le devis des travaux est manquant.",
     confirmRefuse: "Confirmer le refus",
+    confirmEscalate: "Confirmer la demande",
     escalateReasonLabel: "Ce qui manque (visible par la structure)",
     cancel: "Annuler",
     done: "Décision enregistrée.",
+    decided: {
+      structureApproved: "Structure approuvée — elle a été notifiée.",
+      structureRefused: "Structure refusée — elle a été notifiée.",
+      causeApproved: "Cause approuvée — la structure a été notifiée.",
+      causeRefused: "Cause refusée — la structure a été notifiée.",
+      proofValidated: "Preuve validée et publiée.",
+      proofEscalated: "Compléments demandés — la structure a été notifiée.",
+    },
   },
 
   /** 03 Accueil donateur. */
@@ -627,6 +636,7 @@ export const fr = {
     uploadInvalid: "Fichier refusé : vérifiez le format et la taille autorisés.",
     structureNotApproved:
       "Votre structure doit être validée par notre équipe avant de publier une cause.",
+    structureAlreadyDecided: "Cette structure a déjà été traitée.",
     causeTitleInvalid: "Le titre doit comporter entre 4 et 120 caractères.",
     causeDescriptionInvalid: "La description doit comporter au moins 20 caractères.",
     causeGoalInvalid: "Indiquez un objectif en FCFA (nombre entier supérieur à 0).",

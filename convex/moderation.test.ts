@@ -272,6 +272,29 @@ describe("moderation.decideStructure", () => {
     const notes = await notificationsFor(t, userId);
     expect(notes.some((n) => n.kind === "structure_decision")).toBe(true);
   });
+
+  it("returns the documented shape and refuses to re-decide an already-decided structure", async () => {
+    const t = setup();
+    const { structureId } = await pendingStructure(t);
+    const { client } = await as(t, "moderator");
+
+    const res = await client.mutation(api.moderation.decideStructure, {
+      structureId,
+      decision: "approve",
+    });
+    expect(res).toMatchObject({ ok: true, status: "approved" });
+    expect(typeof res.message).toBe("string");
+
+    // A replayed/concurrent decision on a structure that is no longer pending is rejected.
+    await expectAppError(
+      client.mutation(api.moderation.decideStructure, {
+        structureId,
+        decision: "refuse",
+        reason: "trop tard",
+      }),
+      "CONFLICT",
+    );
+  });
 });
 
 describe("moderation.decideCause", () => {
@@ -351,6 +374,8 @@ describe("moderation.decideProof", () => {
 
     const { client } = await as(t, "moderator");
     await client.mutation(api.moderation.decideProof, { proofId, decision: "validate" });
+    // Donor notifications fan out in a scheduled batch job; run it before asserting on them.
+    await t.finishAllScheduledFunctions(() => {});
 
     const proof = await t.run((ctx) => ctx.db.get(proofId));
     expect(proof!.status).toBe("validated");

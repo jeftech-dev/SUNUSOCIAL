@@ -135,7 +135,9 @@ export function ModerationQueues() {
               {fr.moderation.cancel}
             </Button>
             <Button variant="cta" size="sm" disabled={busy} onClick={confirmReason}>
-              {fr.moderation.confirmRefuse}
+              {reason.target.kind === "proof"
+                ? fr.moderation.confirmEscalate
+                : fr.moderation.confirmRefuse}
             </Button>
           </div>
         </div>

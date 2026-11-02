@@ -6,8 +6,9 @@ import { v } from "convex/values";
 import { percentOf } from "../lib/causes";
 import { fr } from "../lib/strings.fr";
 import type { Category, ModerationQueues } from "../lib/types";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, type MutationCtx, query } from "./_generated/server";
+import { internalMutation, mutation, type MutationCtx, query } from "./_generated/server";
 import { logAudit } from "./audit";
 import { isListed, structureLoader } from "./lib/causeViews";
 import { appError } from "./lib/errors";
@@ -130,18 +131,24 @@ export const queues = query({
   handler: async (ctx): Promise<ModerationQueues> => {
     await requireRole(ctx, "moderator");
 
-    const structures = await ctx.db
+    // Collect the full pending set for an honest backlog count, then show only the first MAX_QUEUE.
+    // These queues are drained by moderators, so their size is bounded by review throughput (unlike,
+    // say, a cause's donations); `count` is the true pending total (API_CONTRACT), not the page length.
+    const allStructures = await ctx.db
       .query("structures")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .take(MAX_QUEUE);
-    const causes = await ctx.db
+      .collect();
+    const allCauses = await ctx.db
       .query("causes")
       .withIndex("by_status_deadline", (q) => q.eq("status", "pending_review"))
-      .take(MAX_QUEUE);
-    const submitted = await ctx.db
+      .collect();
+    const allSubmitted = await ctx.db
       .query("proofs")
       .withIndex("by_status", (q) => q.eq("status", "submitted"))
-      .take(MAX_QUEUE);
+      .collect();
+    const structures = allStructures.slice(0, MAX_QUEUE);
+    const causes = allCauses.slice(0, MAX_QUEUE);
+    const submitted = allSubmitted.slice(0, MAX_QUEUE);
 
     const structureOf = structureLoader(ctx);
     const causeItems = [];
@@ -176,7 +183,7 @@ export const queues = query({
 
     return {
       structures: {
-        count: structures.length,
+        count: allStructures.length,
         items: structures.map((s) => ({
           id: s._id,
           name: s.name,
@@ -186,8 +193,8 @@ export const queues = query({
           hasPayout: s.payout !== undefined,
         })),
       },
-      causes: { count: causeItems.length, items: causeItems },
-      proofs: { count: proofItems.length, items: proofItems },
+      causes: { count: allCauses.length, items: causeItems },
+      proofs: { count: allSubmitted.length, items: proofItems },
       deletions: { count: 0, items: [] },
       refunds: { count: 0, items: [] },
       payoutChanges: { count: 0, items: [] },
@@ -202,10 +209,18 @@ export const queues = query({
 /** Approve or refuse a structure's documents and payout account together (DB-3). */
 export const decideStructure = mutation({
   args: { structureId: v.id("structures"), decision: decisionV, reason: v.optional(v.string()) },
-  handler: async (ctx, { structureId, decision, reason }): Promise<{ ok: true }> => {
+  handler: async (
+    ctx,
+    { structureId, decision, reason },
+  ): Promise<{ ok: true; status: "approved" | "refused"; message: string }> => {
     const { user } = await requireRole(ctx, "moderator");
     const structure = await ctx.db.get(structureId);
     if (!structure) throw appError("NOT_FOUND", fr.errors.generic, "structureId");
+    // Only a structure still pending can be decided (as decideCause/decideProof guard their status),
+    // so a replayed or concurrent call can't resurrect a refused structure or re-send its notification.
+    if (structure.status !== "pending") {
+      throw appError("CONFLICT", fr.errors.structureAlreadyDecided, "structureId");
+    }
     const trimmed = reason?.trim();
     if (decision === "refuse" && !trimmed) {
       throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
@@ -244,14 +259,19 @@ export const decideStructure = mutation({
             : fr.notifications.structureRefusedBody(trimmed!),
       });
     }
-    return { ok: true };
+    return decision === "approve"
+      ? { ok: true, status: "approved", message: fr.moderation.decided.structureApproved }
+      : { ok: true, status: "refused", message: fr.moderation.decided.structureRefused };
   },
 });
 
 /** Approve (→ active) or refuse (→ refused, reason required) a cause in moderation. */
 export const decideCause = mutation({
   args: { causeId: v.id("causes"), decision: decisionV, reason: v.optional(v.string()) },
-  handler: async (ctx, { causeId, decision, reason }): Promise<{ ok: true }> => {
+  handler: async (
+    ctx,
+    { causeId, decision, reason },
+  ): Promise<{ ok: true; status: "active" | "refused"; message: string }> => {
     const { user } = await requireRole(ctx, "moderator");
     const cause = await ctx.db.get(causeId);
     if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "causeId");
@@ -297,7 +317,9 @@ export const decideCause = mutation({
         link: `/structure`,
       });
     }
-    return { ok: true };
+    return decision === "approve"
+      ? { ok: true, status: "active", message: fr.moderation.decided.causeApproved }
+      : { ok: true, status: "refused", message: fr.moderation.decided.causeRefused };
   },
 });
 
@@ -312,7 +334,10 @@ export const decideProof = mutation({
     decision: v.union(v.literal("validate"), v.literal("escalate")),
     reason: v.optional(v.string()),
   },
-  handler: async (ctx, { proofId, decision, reason }): Promise<{ ok: true }> => {
+  handler: async (
+    ctx,
+    { proofId, decision, reason },
+  ): Promise<{ ok: true; status: "validated" | "escalated"; message: string }> => {
     const { user } = await requireRole(ctx, "moderator");
     const proof = await ctx.db.get(proofId);
     if (!proof) throw appError("NOT_FOUND", fr.errors.generic, "proofId");
@@ -342,7 +367,7 @@ export const decideProof = mutation({
           body: fr.notifications.proofEscalatedBody(title, trimmed),
         });
       }
-      return { ok: true };
+      return { ok: true, status: "escalated", message: fr.moderation.decided.proofEscalated };
     }
 
     // Validate: publish to donors and the public, mark the proof deadline met.
@@ -361,7 +386,8 @@ export const decideProof = mutation({
       targetId: proofId,
     });
 
-    // Notify the structure, then every donor of the cause (in-app; SMS fan-out: Sprint 7 infra).
+    // Notify the structure now; fan out to the donors in a scheduled batch job so a cause with many
+    // donations never loads every donation into (or writes every notification from) this one mutation.
     const responsible = await structureUser(ctx, proof.structureId);
     if (responsible) {
       await notifyUser(ctx, {
@@ -371,26 +397,76 @@ export const decideProof = mutation({
         body: fr.notifications.proofValidatedBody(title),
       });
     }
-    const donations = await ctx.db
+    await ctx.scheduler.runAfter(0, internal.moderation.notifyCauseDonors, {
+      causeId: proof.causeId,
+      title,
+    });
+    return { ok: true, status: "validated", message: fr.moderation.decided.proofValidated };
+  },
+});
+
+/** Donation rows scanned per `notifyCauseDonors` batch before it reschedules itself. */
+const DONOR_NOTIFY_BATCH = 200;
+
+/**
+ * Notifies every donor of a cause that a reception dossier was published (one in-app notification per
+ * donor who has a held/released donation). Pages through the `by_cause_donor` index — ordered by
+ * donorId, so a donor's rows are contiguous — and reschedules itself until the cause is exhausted,
+ * keeping each transaction bounded regardless of how many donations the cause received.
+ */
+export const notifyCauseDonors = internalMutation({
+  args: {
+    causeId: v.id("causes"),
+    title: v.string(),
+    afterDonor: v.optional(v.id("users")),
+  },
+  handler: async (ctx, { causeId, title, afterDonor }): Promise<void> => {
+    const rows = await ctx.db
       .query("donations")
-      .withIndex("by_cause", (q) => q.eq("causeId", proof.causeId))
-      .collect();
-    const donorIds = [
-      ...new Set(
-        donations
-          .filter((d) => d.status === "held" || d.status === "released")
-          .map((d) => d.donorId),
-      ),
-    ];
-    for (const donorId of donorIds) {
-      await notifyUser(ctx, {
+      .withIndex("by_cause_donor", (q) =>
+        afterDonor ? q.eq("causeId", causeId).gt("donorId", afterDonor) : q.eq("causeId", causeId),
+      )
+      .take(DONOR_NOTIFY_BATCH + 1);
+    if (rows.length === 0) return;
+    const hasMore = rows.length > DONOR_NOTIFY_BATCH;
+    const lastDonor = rows[rows.length - 1].donorId;
+    // When more rows remain, defer the trailing donor: their rows may continue into the next page, so
+    // re-process them there (the cursor is strictly-after the last *complete* donor). The one exception
+    // is a single donor filling the whole page, handled below so we always make progress.
+    const complete = hasMore ? rows.filter((r) => r.donorId !== lastDonor) : rows;
+
+    const notify = (donorId: Id<"users">) =>
+      notifyUser(ctx, {
         userId: donorId,
         kind: "proof_published",
         title: fr.notifications.proofPublishedTitle,
         body: fr.notifications.proofPublishedBody(title),
-        link: `/causes/${proof.causeId}`,
+        link: `/causes/${causeId}`,
       });
+
+    let i = 0;
+    let lastComplete: Id<"users"> | null = null;
+    while (i < complete.length) {
+      const donorId = complete[i].donorId;
+      let qualifies = false;
+      while (i < complete.length && complete[i].donorId === donorId) {
+        if (complete[i].status === "held" || complete[i].status === "released") qualifies = true;
+        i++;
+      }
+      if (qualifies) await notify(donorId);
+      lastComplete = donorId;
     }
-    return { ok: true };
+
+    if (!hasMore) return;
+    if (lastComplete === null) {
+      // The whole page is one donor: decide from the rows we have and advance past them.
+      if (rows.some((r) => r.status === "held" || r.status === "released")) await notify(lastDonor);
+      lastComplete = lastDonor;
+    }
+    await ctx.scheduler.runAfter(0, internal.moderation.notifyCauseDonors, {
+      causeId,
+      title,
+      afterDonor: lastComplete,
+    });
   },
 });
