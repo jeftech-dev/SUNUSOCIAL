@@ -15,12 +15,7 @@ export function DonorProofLink({ proofId }: { proofId: Id<"proofs"> }) {
   const dossier = useQuery(api.proofs.get, open ? { proofId } : "skip");
   return (
     <div className="flex flex-col gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="self-start"
-        onClick={() => setOpen((o) => !o)}
-      >
+      <Button variant="outline" size="sm" className="self-start" onClick={() => setOpen((o) => !o)}>
         {open ? fr.moderation.hideProof : fr.proof.viewProof}
       </Button>
       {open &&

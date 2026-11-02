@@ -22,7 +22,10 @@ const MAX_QUEUE = 50;
 const decisionV = v.union(v.literal("approve"), v.literal("refuse"));
 
 /** The responsible account of a structure/hospital, for decision notifications. */
-function structureUser(ctx: MutationCtx, structureId: Id<"structures">): Promise<Doc<"users"> | null> {
+function structureUser(
+  ctx: MutationCtx,
+  structureId: Id<"structures">,
+): Promise<Doc<"users"> | null> {
   return ctx.db
     .query("users")
     .withIndex("by_structure", (q) => q.eq("structureId", structureId))
@@ -374,7 +377,9 @@ export const decideProof = mutation({
       .collect();
     const donorIds = [
       ...new Set(
-        donations.filter((d) => d.status === "held" || d.status === "released").map((d) => d.donorId),
+        donations
+          .filter((d) => d.status === "held" || d.status === "released")
+          .map((d) => d.donorId),
       ),
     ];
     for (const donorId of donorIds) {

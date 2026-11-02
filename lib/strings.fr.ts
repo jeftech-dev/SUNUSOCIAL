@@ -395,7 +395,8 @@ export const fr = {
     lateRefundBody: (amount: string, net: string, title: string) =>
       `La cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement de ${amount} est arrivé. Il ne lui est pas compté\u00a0: ${net} (votre don moins les frais NabooPay) vous seront remboursés automatiquement sur votre numéro. Découvrez des causes similaires sur SUNUSOCIAL.`,
     structureApprovedTitle: "Structure validée",
-    structureApprovedBody: "Votre structure est validée. Vous pouvez maintenant publier des causes.",
+    structureApprovedBody:
+      "Votre structure est validée. Vous pouvez maintenant publier des causes.",
     structureRefusedTitle: "Inscription refusée",
     structureRefusedBody: (reason: string) => `Votre inscription a été refusée : ${reason}`,
     causeApprovedTitle: "Cause approuvée",

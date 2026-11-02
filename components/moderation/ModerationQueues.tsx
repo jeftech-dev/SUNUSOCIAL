@@ -59,7 +59,11 @@ export function ModerationQueues() {
   };
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "structures", label: fr.moderation.tabs.structures, count: queues?.structures.count ?? 0 },
+    {
+      key: "structures",
+      label: fr.moderation.tabs.structures,
+      count: queues?.structures.count ?? 0,
+    },
     { key: "causes", label: fr.moderation.tabs.causes, count: queues?.causes.count ?? 0 },
     { key: "proofs", label: fr.moderation.tabs.proofs, count: queues?.proofs.count ?? 0 },
   ];
@@ -169,9 +173,7 @@ export function ModerationQueues() {
                     variant="cta"
                     size="sm"
                     disabled={busy}
-                    onClick={() =>
-                      run(decideStructure({ structureId: s.id, decision: "approve" }))
-                    }
+                    onClick={() => run(decideStructure({ structureId: s.id, decision: "approve" }))}
                   >
                     {fr.moderation.approve}
                   </Button>
@@ -229,7 +231,9 @@ export function ModerationQueues() {
               item={p}
               busy={busy}
               onValidate={(proofId) => run(decideProof({ proofId, decision: "validate" }))}
-              onEscalate={(proofId) => setReason({ target: { kind: "proof", id: proofId }, text: "" })}
+              onEscalate={(proofId) =>
+                setReason({ target: { kind: "proof", id: proofId }, text: "" })
+              }
             />
           ))}
         </ul>
