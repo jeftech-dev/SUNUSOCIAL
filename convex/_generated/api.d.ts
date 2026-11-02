@@ -26,6 +26,8 @@ import type * as notify from "../notify.js";
 import type * as otp from "../otp.js";
 import type * as passwordReset from "../passwordReset.js";
 import type * as payments from "../payments.js";
+import type * as proofChecks from "../proofChecks.js";
+import type * as proofs from "../proofs.js";
 import type * as seed from "../seed.js";
 import type * as validators from "../validators.js";
 
@@ -54,6 +56,8 @@ declare const fullApi: ApiFromModules<{
   otp: typeof otp;
   passwordReset: typeof passwordReset;
   payments: typeof payments;
+  proofChecks: typeof proofChecks;
+  proofs: typeof proofs;
   seed: typeof seed;
   validators: typeof validators;
 }>;
