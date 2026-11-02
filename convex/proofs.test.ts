@@ -29,6 +29,14 @@ async function storeFile(t: T, type = "image/png", bytes = 512): Promise<Id<"_st
   return t.run((ctx) => ctx.storage.store(new Blob([new Uint8Array(bytes)], { type })));
 }
 
+/** A JPEG-typed blob carrying the SOI marker but no EXIF (so it reads as "date missing"). */
+async function storeJpegNoExif(t: T, bytes = 512): Promise<Id<"_storage">> {
+  const buf = new Uint8Array(bytes);
+  buf[0] = 0xff;
+  buf[1] = 0xd8;
+  return t.run((ctx) => ctx.storage.store(new Blob([buf], { type: "image/jpeg" })));
+}
+
 async function asStructure(t: T) {
   const receiptFileId = await storeFile(t, "application/pdf");
   const structureId = await t.run((ctx) =>
@@ -299,6 +307,67 @@ describe("proofs.submit", () => {
     expect(proof!.dossierFlags.length).toBe(1);
   });
 
+  it("rejects spend amounts that are not non-negative integers", async () => {
+    const t = setup();
+    const owner = await asStructure(t);
+    const cause = await fundedCause(t, owner.structureId);
+    for (const amount of [1.5, -100]) {
+      await expectAppError(
+        owner.client.mutation(api.proofs.submit, {
+          causeId: cause,
+          report: REPORT,
+          items: await photoItems(t, 5),
+          spend: [{ label: "Riz", amount }],
+        }),
+        "VALIDATION",
+      );
+    }
+  });
+
+  it("does not flag a supplier+ref that only appears in a non-validated dossier", async () => {
+    const t = setup();
+    const owner = await asStructure(t);
+    const cause = await fundedCause(t, owner.structureId);
+    const earlierCause = await fundedCause(t, owner.structureId);
+    await t.run(async (ctx) => {
+      // An earlier dossier (another cause) with the same invoice ref, but still only submitted.
+      const otherProof = await ctx.db.insert("proofs", {
+        causeId: earlierCause,
+        structureId: owner.structureId,
+        report: REPORT,
+        spend: [],
+        status: "submitted",
+        dossierFlags: [],
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("proofItems", {
+        proofId: otherProof,
+        kind: "invoice",
+        fileId: await storeFileInline(ctx),
+        supplier: "Librairie Clairafrique",
+        ref: "REF-42",
+        flagged: false,
+      });
+    });
+
+    const items = [
+      ...(await photoItems(t, 4)),
+      {
+        kind: "invoice" as const,
+        fileId: await storeFile(t, "application/pdf"),
+        supplier: "Librairie Clairafrique",
+        ref: "REF-42",
+      },
+    ];
+    const result = await owner.client.mutation(api.proofs.submit, {
+      causeId: cause,
+      report: REPORT,
+      items,
+      spend: [],
+    });
+    expect(result.autoFlagged).toEqual([]);
+  });
+
   it("runs the image checks: missing EXIF and exact-duplicate photos", async () => {
     const t = setup();
     const owner = await asStructure(t);
@@ -325,7 +394,12 @@ describe("proofs.submit", () => {
       });
     });
 
-    const items = [{ kind: "photo" as const, fileId: dupFile }, ...(await photoItems(t, 4))];
+    const jpegFile = await storeJpegNoExif(t);
+    const items = [
+      { kind: "photo" as const, fileId: dupFile },
+      { kind: "photo" as const, fileId: jpegFile },
+      ...(await photoItems(t, 3)),
+    ];
     const { proofId } = await owner.client.mutation(api.proofs.submit, {
       causeId: cause,
       report: REPORT,
@@ -342,7 +416,11 @@ describe("proofs.submit", () => {
     );
     const reasons = flagged.filter((i) => i.flagged).map((i) => i.flagReason);
     expect(reasons).toContain(fr.proofFlags.duplicateImage);
-    expect(reasons).toContain(fr.proofFlags.exifMissing);
+    // Only the JPEG-without-EXIF is flagged for a missing date; the PNG photos are not inspectable,
+    // so they must not be falsely flagged (review finding: PNG/WebP always flagged exifMissing).
+    expect(reasons.filter((r) => r === fr.proofFlags.exifMissing)).toHaveLength(1);
+    const jpegItem = flagged.find((i) => i.fileId === jpegFile);
+    expect(jpegItem!.flagReason).toBe(fr.proofFlags.exifMissing);
   });
 });
 
@@ -406,6 +484,20 @@ describe("proofs reads", () => {
     );
     const mine = await donor.client.query(api.proofs.mine, {});
     expect(mine.map((c) => c.proofId)).toContain(proofId);
+  });
+
+  it("orders the public feed by validation time, newest validated first", async () => {
+    const t = setup();
+    const owner = await asStructure(t);
+    // A is submitted first but validated later; B is submitted later but validated first.
+    const { proofId: a } = await submittedProof(t, owner);
+    const { proofId: b } = await submittedProof(t, owner);
+    await t.run(async (ctx) => {
+      await ctx.db.patch(a, { status: "validated", validatedAt: 2000 });
+      await ctx.db.patch(b, { status: "validated", validatedAt: 1000 });
+    });
+    const ids = (await t.query(api.proofs.publicFeed, {})).map((c) => c.proofId);
+    expect(ids.indexOf(a)).toBeLessThan(ids.indexOf(b));
   });
 });
 

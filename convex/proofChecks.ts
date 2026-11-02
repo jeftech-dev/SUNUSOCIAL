@@ -14,6 +14,18 @@ import { fr } from "../lib/strings.fr";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 
+/**
+ * EXIF `DateTimeOriginal` stores the camera's *local* wall-clock time with no zone. We can only read
+ * it from JPEG, and when comparing it against a server (UTC) timestamp we allow this much skew so a
+ * photo taken legitimately in any real timezone (max UTC offset ≈ 14h) is never falsely flagged "old".
+ */
+const EXIF_TZ_SKEW_MS = 14 * 60 * 60 * 1000;
+
+/** True if the bytes start with the JPEG SOI marker. EXIF parsing here only supports JPEG. */
+function isJpeg(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xd8;
+}
+
 /** Parses EXIF `DateTimeOriginal` from a JPEG, as epoch ms (UTC), or null if absent/unreadable. */
 function jpegExifDate(bytes: Uint8Array): number | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -86,10 +98,14 @@ export const run = internalAction({
       }
       const blob = await ctx.storage.get(photo.fileId);
       if (!blob) continue;
-      const taken = jpegExifDate(new Uint8Array(await blob.arrayBuffer()));
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      // We can only read EXIF from JPEG; PNG/WebP are valid photo formats, so don't flag them as
+      // "date missing" when we simply can't inspect them.
+      if (!isJpeg(bytes)) continue;
+      const taken = jpegExifDate(bytes);
       if (taken === null) {
         flags.push({ itemId: photo.id, reason: fr.proofFlags.exifMissing });
-      } else if (taken < data.causeCreatedAt) {
+      } else if (taken < data.causeCreatedAt - EXIF_TZ_SKEW_MS) {
         flags.push({ itemId: photo.id, reason: fr.proofFlags.exifOld });
       }
     }

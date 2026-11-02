@@ -593,6 +593,7 @@ export const fr = {
       "Cette cause ne peut plus être retirée : elle a déjà reçu des dons ou n'est plus en modération.",
     proofItemsTooFew: (min: number) => `Ajoutez au moins ${min} fichiers.`,
     proofReportTooShort: "Le compte rendu doit comporter au moins 10 caractères.",
+    proofAmountInvalid: "Chaque montant doit être un entier en FCFA, supérieur ou égal à 0.",
     proofNotDue: "Une preuve n'est attendue qu'après le versement des fonds à votre structure.",
     proofAlreadySubmitted: "Une preuve a déjà été envoyée pour cette cause.",
   },

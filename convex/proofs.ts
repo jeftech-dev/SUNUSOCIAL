@@ -111,6 +111,16 @@ export const submit = mutation({
     if (args.report.trim().length < REPORT_MIN) {
       throw appError("VALIDATION", fr.errors.proofReportTooShort, "report");
     }
+    // Amounts are integer FCFA ≥ 0 — never trust the client (CLAUDE.md money non-negotiable). A float
+    // or negative here would otherwise crash formatFCFA below or let a submitter tune the spend total
+    // to match net and slip past the spend-mismatch flag.
+    const allAmounts = [
+      ...args.spend.map((line) => line.amount),
+      ...args.items.flatMap((item) => (item.lines ?? []).map((line) => line.amount)),
+    ];
+    if (allAmounts.some((amount) => !Number.isSafeInteger(amount) || amount < 0)) {
+      throw appError("VALIDATION", fr.errors.proofAmountInvalid, "spend");
+    }
     for (const item of args.items) {
       await validateUpload(ctx, item.fileId, FAMILY_BY_KIND[item.kind], "items");
     }
@@ -158,7 +168,14 @@ export const submit = mutation({
         .query("proofItems")
         .withIndex("by_supplier_ref", (q) => q.eq("supplier", item.supplier!).eq("ref", item.ref!))
         .collect();
-      if (matches.some((m) => m.proofId !== proofId)) {
+      // Only a reference already accepted in another *validated* dossier is a real reuse. Matches in
+      // this same dossier, or in rejected/withdrawn/escalated/pending ones, are not — flagging them
+      // would spam moderators with false positives (DT-13: advisory only).
+      const otherProofIds = [...new Set(matches.map((m) => m.proofId))].filter(
+        (id) => id !== proofId,
+      );
+      const otherProofs = await Promise.all(otherProofIds.map((id) => ctx.db.get(id)));
+      if (otherProofs.some((p) => p?.status === "validated")) {
         await ctx.db.patch(itemIds[i], { flagged: true, flagReason: fr.proofFlags.invoiceReused });
         autoFlagged.push({ index: i, reason: fr.proofFlags.invoiceReused });
       }
@@ -252,25 +269,22 @@ export const get = query({
 });
 
 async function toFeedCard(ctx: QueryCtx, proof: Doc<"proofs">): Promise<ProofFeedCard> {
-  const [cause, structure, firstItem] = await Promise.all([
+  const [cause, structure, items] = await Promise.all([
     ctx.db.get(proof.causeId),
     ctx.db.get(proof.structureId),
     ctx.db
       .query("proofItems")
       .withIndex("by_proof", (q) => q.eq("proofId", proof._id))
-      .first(),
+      .collect(),
   ]);
-  const items = await ctx.db
-    .query("proofItems")
-    .withIndex("by_proof", (q) => q.eq("proofId", proof._id))
-    .collect();
+  const cover = items[0] ?? null;
   return {
     proofId: proof._id,
     causeId: proof.causeId,
     causeTitle: cause?.title ?? "",
     organization: structure?.name ?? "",
     itemCount: items.length,
-    coverUrl: firstItem ? await ctx.storage.getUrl(firstItem.fileId) : null,
+    coverUrl: cover ? await ctx.storage.getUrl(cover.fileId) : null,
     validatedAt: proof.validatedAt ?? null,
   };
 }
@@ -279,9 +293,11 @@ async function toFeedCard(ctx: QueryCtx, proof: Doc<"proofs">): Promise<ProofFee
 export const publicFeed = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }): Promise<ProofFeedCard[]> => {
+    // Order by validatedAt (most recently validated first), consistent with `mine`; the plain
+    // by_status index would order by _creationTime (submission time) instead.
     const proofs = await ctx.db
       .query("proofs")
-      .withIndex("by_status", (q) => q.eq("status", "validated"))
+      .withIndex("by_status_validated", (q) => q.eq("status", "validated"))
       .order("desc")
       .take(Math.min(Math.max(limit ?? 12, 1), 48));
     return Promise.all(proofs.map((p) => toFeedCard(ctx, p)));
