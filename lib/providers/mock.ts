@@ -4,10 +4,44 @@
 // signature check and `payments.recordPayment` run exactly as with NabooPay.
 
 import { hmacSha256Hex, timingSafeEqual } from "../hmac";
-import type { CheckoutInput, CheckoutResult, PaymentProvider, TransactionInfo } from "./types";
+import {
+  PaymentProviderError,
+  type CheckoutInput,
+  type CheckoutResult,
+  type PaymentProvider,
+  type PayoutInfo,
+  type PayoutInput,
+  type PayoutListItem,
+  type PayoutResult,
+  type TransactionInfo,
+} from "./types";
 
 /** Development-only signing key, used when NABOOPAY_WEBHOOK_SECRET is unset. */
 export const MOCK_WEBHOOK_SECRET = "sunusocial-dev-mock-webhook-secret";
+
+/** Default mock `main` balance (FCFA): large, so the balance check passes unless a test lowers it. */
+const MOCK_DEFAULT_BALANCE = 1_000_000_000;
+
+/**
+ * Mock payouts never move real money. Behaviour is driven by `MOCK_PAYOUT_*` env vars so tests can
+ * exercise every DT-4 branch deterministically without a stateful provider. The mock is refused in
+ * production, so reading the environment here is safe.
+ */
+function mockPayoutEnv(env: Record<string, string | undefined> = process.env) {
+  return {
+    /** ok | pending | conflict | timeout | server_error | fail */
+    mode: env.MOCK_PAYOUT_MODE ?? "ok",
+    balance: Number(env.MOCK_PAYOUT_BALANCE ?? MOCK_DEFAULT_BALANCE),
+    /** What getPayout reports (pending-review polling). */
+    getStatus: env.MOCK_PAYOUT_GET_STATUS ?? "completed",
+    /** When set, listPayouts returns one item of this amount (reconciliation). */
+    reconcileAmount: env.MOCK_PAYOUT_RECONCILE_AMOUNT,
+    /** The status of that reconciliation item (default completed). */
+    reconcileStatus: env.MOCK_PAYOUT_RECONCILE_STATUS ?? "completed",
+    /** When set, listPayouts also returns a decoy item of this amount (same recipient). */
+    reconcileDecoyAmount: env.MOCK_PAYOUT_RECONCILE_DECOY_AMOUNT,
+  };
+}
 
 export const SIMULATOR_PATH = "/paiement/simulation";
 
@@ -50,5 +84,65 @@ export function createMockProvider(options: {
     },
 
     async cancelTransaction() {},
+
+    async payout(input: PayoutInput): Promise<PayoutResult> {
+      const { mode } = mockPayoutEnv();
+      switch (mode) {
+        case "pending":
+          return { orderId: mockPayoutOrderId(input), status: "pending" };
+        case "conflict":
+          throw new PaymentProviderError("mock: a payout is already in progress", 409);
+        case "timeout":
+          // No HTTP status: a network timeout. The worker must mark it `unknown`, never resend.
+          throw new PaymentProviderError("mock: payout request timed out");
+        case "server_error":
+          throw new PaymentProviderError("mock: payout failed server-side", 503);
+        case "fail":
+          throw new PaymentProviderError("mock: invalid payout request", 400);
+        default:
+          return { orderId: mockPayoutOrderId(input), status: "completed" };
+      }
+    },
+
+    async getPayout(): Promise<PayoutInfo> {
+      const { getStatus } = mockPayoutEnv();
+      const status =
+        getStatus === "pending" ||
+        getStatus === "completed" ||
+        getStatus === "failed" ||
+        getStatus === "cancelled"
+          ? getStatus
+          : "completed";
+      return { status };
+    },
+
+    async listPayouts({ recipientPhone }): Promise<PayoutListItem[]> {
+      const { reconcileAmount, reconcileStatus, reconcileDecoyAmount } = mockPayoutEnv();
+      if (reconcileAmount === undefined) return [];
+      const items: PayoutListItem[] = [];
+      // A decoy comes first, so a correct matcher must look past amount alone (it is already claimed).
+      if (reconcileDecoyAmount !== undefined) {
+        items.push({
+          orderId: `mock_decoy_${recipientPhone}`,
+          amount: Number(reconcileDecoyAmount),
+          status: "completed",
+        });
+      }
+      items.push({
+        orderId: `mock_recon_${recipientPhone}`,
+        amount: Number(reconcileAmount),
+        status: reconcileStatus,
+      });
+      return items;
+    },
+
+    async getBalance(): Promise<number> {
+      return Math.trunc(mockPayoutEnv().balance);
+    },
   };
+}
+
+/** A deterministic mock payout order id, so repeated calls in a test are stable. */
+function mockPayoutOrderId(input: PayoutInput): string {
+  return `mockpay_${input.method}_${input.phone}_${input.amount}`;
 }

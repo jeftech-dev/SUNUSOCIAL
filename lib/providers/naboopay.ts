@@ -6,9 +6,15 @@ import { METHODS, type Method } from "../types";
 import {
   PaymentProviderError,
   TRANSACTION_STATUSES,
+  splitFullName,
   type CheckoutInput,
   type CheckoutResult,
   type PaymentProvider,
+  type PayoutInfo,
+  type PayoutInput,
+  type PayoutListItem,
+  type PayoutOutcome,
+  type PayoutResult,
   type TransactionInfo,
   type TransactionStatus,
 } from "./types";
@@ -22,11 +28,23 @@ const MAX_PRODUCT_NAME = 100;
 export interface NaboopayOptions {
   /** `NABOOPAY_CHECKOUT_KEY`, scope `checkout` (DT-4). */
   checkoutKey?: string;
+  /**
+   * `NABOOPAY_PAYOUT_KEY`, scope `payout` (DT-4). The worker also reads the `main` balance with it,
+   * so this key must additionally carry account-read scope.
+   */
+  payoutKey?: string;
   /** `NABOOPAY_WEBHOOK_SECRET`, from the webhook's page in the NabooPay dashboard. */
   webhookSecret?: string;
   /** Injected in tests. */
   fetch?: typeof fetch;
   baseUrl?: string;
+}
+
+function asPayoutOutcome(value: unknown): PayoutOutcome {
+  if (value === "completed" || value === "pending" || value === "failed") return value;
+  // `cancelled` and anything unexpected count as not-sent; the worker reconciles.
+  if (value === "cancelled") return "failed";
+  throw new PaymentProviderError(`unexpected payout_status ${String(value)}`);
 }
 
 function asMethod(value: unknown): Method | undefined {
@@ -46,9 +64,18 @@ export function createNaboopayProvider(options: NaboopayOptions): PaymentProvide
   const doFetch = options.fetch ?? fetch;
   const baseUrl = options.baseUrl ?? NABOOPAY_BASE_URL;
 
-  async function request(method: "GET" | "POST" | "DELETE", path: string, body?: unknown) {
-    const key = options.checkoutKey?.trim();
-    if (!key) throw new PaymentProviderError("NABOOPAY_CHECKOUT_KEY is not set");
+  async function request(
+    scope: "checkout" | "payout",
+    method: "GET" | "POST" | "DELETE",
+    path: string,
+    body?: unknown,
+  ) {
+    const key = (scope === "payout" ? options.payoutKey : options.checkoutKey)?.trim();
+    if (!key) {
+      throw new PaymentProviderError(
+        `NABOOPAY_${scope === "payout" ? "PAYOUT" : "CHECKOUT"}_KEY is not set`,
+      );
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     let response: Response;
@@ -94,7 +121,7 @@ export function createNaboopayProvider(options: NaboopayOptions): PaymentProvide
     name: "naboopay",
 
     async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
-      const data = await request("POST", "/transactions", {
+      const data = await request("checkout", "POST", "/transactions", {
         method_of_payment: [input.method],
         products: [
           { name: input.causeTitle.slice(0, MAX_PRODUCT_NAME), price: input.amount, quantity: 1 },
@@ -129,7 +156,7 @@ export function createNaboopayProvider(options: NaboopayOptions): PaymentProvide
     },
 
     async getTransaction(orderId): Promise<TransactionInfo> {
-      const data = await request("GET", `/transactions/${encodeURIComponent(orderId)}`);
+      const data = await request("checkout", "GET", `/transactions/${encodeURIComponent(orderId)}`);
       const amount = data.amount;
       if (typeof amount !== "number" || !Number.isSafeInteger(amount)) {
         throw new PaymentProviderError("NabooPay transaction answer lacks amount");
@@ -145,7 +172,70 @@ export function createNaboopayProvider(options: NaboopayOptions): PaymentProvide
     },
 
     async cancelTransaction(orderId) {
-      await request("DELETE", `/transactions/${encodeURIComponent(orderId)}`);
+      await request("checkout", "DELETE", `/transactions/${encodeURIComponent(orderId)}`);
+    },
+
+    async payout(input: PayoutInput): Promise<PayoutResult> {
+      const { firstName, lastName } = splitFullName(input.name);
+      const data = await request("payout", "POST", "/payouts", {
+        selected_payment_method: input.method,
+        amount: input.amount,
+        recipient: { first_name: firstName, last_name: lastName, phone: input.phone },
+        reason: input.reason,
+      });
+      if (typeof data.order_id !== "string") {
+        throw new PaymentProviderError("NabooPay payout answer lacks order_id");
+      }
+      return { orderId: data.order_id, status: asPayoutOutcome(data.payout_status) };
+    },
+
+    async getPayout(orderId): Promise<PayoutInfo> {
+      const data = await request("payout", "GET", `/payouts/${encodeURIComponent(orderId)}`);
+      const status = data.payout_status;
+      if (
+        status !== "pending" &&
+        status !== "completed" &&
+        status !== "failed" &&
+        status !== "cancelled"
+      ) {
+        throw new PaymentProviderError(`unexpected payout_status ${String(status)}`);
+      }
+      return { status };
+    },
+
+    async listPayouts({ recipientPhone, since }): Promise<PayoutListItem[]> {
+      const query = new URLSearchParams({
+        recipient_phone: recipientPhone,
+        start_date: new Date(since).toISOString(),
+        limit: "100",
+      });
+      const data = await request("payout", "GET", `/payouts?${query.toString()}`);
+      const rows = Array.isArray(data.payouts) ? data.payouts : [];
+      const items: PayoutListItem[] = [];
+      for (const row of rows) {
+        if (row && typeof row === "object") {
+          const r = row as Record<string, unknown>;
+          if (typeof r.order_id === "string" && typeof r.amount === "number") {
+            items.push({ orderId: r.order_id, amount: r.amount, status: String(r.payout_status) });
+          }
+        }
+      }
+      return items;
+    },
+
+    async getBalance(): Promise<number> {
+      const data = await request("payout", "GET", "/accounts");
+      const accounts = Array.isArray(data) ? data : (data as { accounts?: unknown }).accounts;
+      const list = Array.isArray(accounts) ? accounts : [];
+      const main = list.find(
+        (a): a is Record<string, unknown> =>
+          typeof a === "object" && a !== null && (a as Record<string, unknown>).name === "main",
+      );
+      const balance = main?.balance;
+      if (typeof balance !== "number" || !Number.isFinite(balance)) {
+        throw new PaymentProviderError("NabooPay accounts answer lacks the main balance");
+      }
+      return Math.trunc(balance);
     },
   };
 }

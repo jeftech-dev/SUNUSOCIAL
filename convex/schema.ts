@@ -64,7 +64,9 @@ export default defineSchema({
     .index("email", ["email"])
     .index("phone", ["phone"])
     // The responsible account of a structure/hospital, for moderation notifications.
-    .index("by_structure", ["structureId"]),
+    .index("by_structure", ["structureId"])
+    // All moderators, e.g. to alert them when a payout stops on a short balance (DT-4).
+    .index("by_role", ["role"]),
 
   /** Extends Convex Auth sessions with the SMS 2FA step for organisations and moderators (DT-2). */
   authSessions: defineTable({
@@ -165,6 +167,9 @@ export default defineSchema({
   })
     // Feed orders (DT-34): soonest deadline first by default, newest approval first for "Récent".
     .index("by_status_deadline", ["status", "deadline"])
+    // Causes awaiting release: query status + fundsReleasedAt === undefined so the hourly release
+    // cron never scans already-released closed causes (which keep status "closed" forever).
+    .index("by_status_released", ["status", "fundsReleasedAt"])
     .index("by_status_category_deadline", ["status", "category", "deadline"])
     .index("by_status_approved", ["status", "approvedAt"])
     .index("by_status_category_approved", ["status", "category", "approvedAt"])
@@ -225,7 +230,7 @@ export default defineSchema({
   /** Every outgoing transfer, processed one at a time by the payout worker (DT-4). */
   payouts: defineTable({
     kind: payoutKindV,
-    /** Cause id (release) or refund-request id (refund). */
+    /** Cause id (release / deletion payout) or donation id (refund). */
     targetId: v.string(),
     amount: v.number(),
     method: methodV,
@@ -238,7 +243,9 @@ export default defineSchema({
     error: v.optional(v.string()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
-  }).index("by_status_created", ["status", "createdAt"]),
+  })
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_order", ["providerOrderId"]),
 
   // -------------------------------------------------------------------------
   // Proofs

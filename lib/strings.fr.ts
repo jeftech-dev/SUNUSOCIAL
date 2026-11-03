@@ -422,6 +422,14 @@ export const fr = {
     proofEscalatedTitle: "Preuve à compléter",
     proofEscalatedBody: (title: string, reason: string) =>
       `Le dossier de « ${title} » doit être complété : ${reason}`,
+    fundsReleasedTitle: "Fonds versés",
+    fundsReleasedBody: (title: string, amount: string, days: number) =>
+      `Les fonds de « ${title} » (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
+    suspendedTitle: "Structure suspendue",
+    suspendedBody: (title: string) =>
+      `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées : ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
+    payoutAlertTitle: "Versement à vérifier",
+    payoutAlertBody: (detail: string) => `Un versement nécessite une intervention : ${detail}`,
   },
 
   whatsapp: {

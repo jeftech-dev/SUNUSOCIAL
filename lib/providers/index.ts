@@ -31,6 +31,7 @@ export function getPaymentProvider(env: Env = process.env): PaymentProvider {
   }
   return createNaboopayProvider({
     checkoutKey: env.NABOOPAY_CHECKOUT_KEY,
+    payoutKey: env.NABOOPAY_PAYOUT_KEY,
     webhookSecret: env.NABOOPAY_WEBHOOK_SECRET,
   });
 }

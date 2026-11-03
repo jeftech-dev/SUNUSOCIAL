@@ -195,6 +195,86 @@ describe("NabooPay provider", () => {
     expect((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe("DELETE");
   });
 
+  it("sends a payout with the payout key and splits the recipient name", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(200, { order_id: "pay-1", payout_status: "completed" }),
+    );
+    const provider = createNaboopayProvider({ payoutKey: "pk", fetch: fetchMock });
+    await expect(
+      provider.payout({
+        method: "orange_money",
+        amount: 14700,
+        phone: "+221771234567",
+        name: "Awa Diop Ndiaye",
+        reason: "versement",
+      }),
+    ).resolves.toEqual({ orderId: "pay-1", status: "completed" });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${NABOOPAY_BASE_URL}/payouts`);
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer pk");
+    expect(JSON.parse(init.body as string)).toEqual({
+      selected_payment_method: "orange_money",
+      amount: 14700,
+      recipient: { first_name: "Awa", last_name: "Diop Ndiaye", phone: "+221771234567" },
+      reason: "versement",
+    });
+  });
+
+  it("surfaces a 409 payout lock with its status", async () => {
+    const provider = createNaboopayProvider({
+      payoutKey: "pk",
+      fetch: async () =>
+        jsonResponse(409, { error: "A payout is already in progress. Please wait." }),
+    });
+    const error = await provider
+      .payout({ method: "wave", amount: 1000, phone: "+221770000001", name: "A", reason: "r" })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(PaymentProviderError);
+    expect((error as PaymentProviderError).status).toBe(409);
+  });
+
+  it("refuses a payout without the payout key", async () => {
+    const fetchMock = vi.fn();
+    const provider = createNaboopayProvider({ checkoutKey: "ck", fetch: fetchMock });
+    await expect(
+      provider.payout({
+        method: "wave",
+        amount: 1000,
+        phone: "+221770000001",
+        name: "A",
+        reason: "r",
+      }),
+    ).rejects.toThrow("NABOOPAY_PAYOUT_KEY");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reads the main account balance", async () => {
+    const provider = createNaboopayProvider({
+      payoutKey: "pk",
+      fetch: async () =>
+        jsonResponse(200, [
+          { name: "savings", balance: 999 },
+          { name: "main", balance: 125000 },
+        ]),
+    });
+    await expect(provider.getBalance()).resolves.toBe(125000);
+  });
+
+  it("lists payouts for reconciliation", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(200, {
+        payouts: [{ order_id: "p1", amount: 5000, payout_status: "completed" }],
+        pagination: { page: 1 },
+      }),
+    );
+    const provider = createNaboopayProvider({ payoutKey: "pk", fetch: fetchMock });
+    await expect(
+      provider.listPayouts({ recipientPhone: "+221771234567", since: 0 }),
+    ).resolves.toEqual([{ orderId: "p1", amount: 5000, status: "completed" }]);
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    expect(url).toContain("recipient_phone=%2B221771234567");
+  });
+
   it("verifies X-Signature over the raw body", async () => {
     const provider = createNaboopayProvider({ webhookSecret: SECRET });
     const signature = await hmacSha256Hex(SECRET, BODY);
@@ -232,6 +312,19 @@ describe("mock provider", () => {
     expect(await provider.verifyWebhook(BODY, signature)).toBe(true);
     expect(await provider.verifyWebhook(`${BODY} `, signature)).toBe(false);
     expect(await provider.verifyWebhook(BODY, null)).toBe(false);
+  });
+
+  it("pays out successfully and reports a large default balance by default", async () => {
+    await expect(
+      provider.payout({
+        method: "wave",
+        amount: 5000,
+        phone: "+221770000001",
+        name: "A",
+        reason: "r",
+      }),
+    ).resolves.toMatchObject({ status: "completed" });
+    expect(await provider.getBalance()).toBeGreaterThan(5000);
   });
 });
 
