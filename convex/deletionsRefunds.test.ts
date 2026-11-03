@@ -84,7 +84,12 @@ async function structureCtx(t: T, withPayout = true) {
 
 async function moderatorClient(t: T) {
   const userId = await t.run((ctx) =>
-    ctx.db.insert("users", { name: "Mod", role: "moderator", disabled: false, createdAt: Date.now() }),
+    ctx.db.insert("users", {
+      name: "Mod",
+      role: "moderator",
+      disabled: false,
+      createdAt: Date.now(),
+    }),
   );
   const sessionId = await t.run((ctx) =>
     ctx.db.insert("authSessions", {
@@ -191,6 +196,7 @@ describe("causes.requestDeletion", () => {
     const t = setup();
     const s = await structureCtx(t);
     const causeId = await activeCause(t, s.structureId);
+    await heldDonation(t, causeId, (await donorCtx(t)).userId); // a deletable (donated-to) cause
     await expectAppError(
       s.client.mutation(api.causes.requestDeletion, { causeId, reason: "   " }),
       "VALIDATION",
@@ -198,6 +204,16 @@ describe("causes.requestDeletion", () => {
     await t.run((ctx) => ctx.db.patch(causeId, { status: "closed" }));
     await expectAppError(
       s.client.mutation(api.causes.requestDeletion, { causeId, reason: "x" }),
+      "CONFLICT",
+    );
+  });
+
+  it("rejects a cause with no donations (it must be withdrawn, not deleted)", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const causeId = await activeCause(t, s.structureId); // no donations → withdrawable
+    await expectAppError(
+      s.client.mutation(api.causes.requestDeletion, { causeId, reason: "vide" }),
       "CONFLICT",
     );
   });
@@ -209,6 +225,7 @@ describe("moderation.decideDeletion", () => {
     const s = await structureCtx(t);
     const mod = await moderatorClient(t);
     const causeId = await activeCause(t, s.structureId);
+    await heldDonation(t, causeId, (await donorCtx(t)).userId);
     const { requestId } = await s.client.mutation(api.causes.requestDeletion, {
       causeId,
       reason: "doute",
@@ -291,6 +308,85 @@ describe("moderation.decideDeletion", () => {
     expect(deadline?.reason).toBe("deletion_payout");
   });
 
+  it("payout excludes late-flagged donations, leaving them for the donor refund", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    const causeId = await activeCause(t, s.structureId);
+    const donorA = await donorCtx(t, "+221780000010");
+    const donorB = await donorCtx(t, "+221780000011");
+    const normalId = await heldDonation(t, causeId, donorA.userId, 9800);
+    const lateId = await heldDonation(t, causeId, donorB.userId, 4900);
+    await t.run((ctx) => ctx.db.patch(lateId, { lateRefundFlaggedAt: Date.now() }));
+    const { requestId } = await s.client.mutation(api.causes.requestDeletion, {
+      causeId,
+      reason: "x",
+    });
+
+    await mod.mutation(api.moderation.decideDeletion, {
+      requestId,
+      decision: "approve",
+      reason: "Fonds engagés.",
+      fundOutcome: "payout",
+    });
+    await t.finishAllScheduledFunctions(() => {});
+
+    const release = (await payouts(t)).find((p) => p.kind === "release");
+    expect(release?.amount).toBe(9800); // only the non-late donation reaches the structure
+
+    await t.action(internal.payouts.drainNext, {});
+    expect((await getDonation(t, normalId))?.status).toBe("released");
+    // The late-flagged donation is untouched by the payout path; lateRefundDue refunds it.
+    expect((await getDonation(t, lateId))?.status).toBe("held");
+  });
+
+  it("refund records an already-settled request the queue ignores, and skips late-flagged", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    const causeId = await activeCause(t, s.structureId);
+    const donor = await donorCtx(t);
+    const donationId = await heldDonation(t, causeId, donor.userId, 4900);
+    // A late-flagged donation in the same cause must be left to lateRefundDue.
+    const donorLate = await donorCtx(t, "+221780000012");
+    const lateId = await heldDonation(t, causeId, donorLate.userId, 3000);
+    await t.run((ctx) => ctx.db.patch(lateId, { lateRefundFlaggedAt: Date.now() }));
+    const { requestId } = await s.client.mutation(api.causes.requestDeletion, {
+      causeId,
+      reason: "x",
+    });
+
+    await mod.mutation(api.moderation.decideDeletion, {
+      requestId,
+      decision: "approve",
+      reason: "Annulé.",
+      fundOutcome: "refund",
+    });
+    await t.finishAllScheduledFunctions(() => {});
+
+    const byDonation = (id: Id<"donations">) =>
+      t.run((ctx) =>
+        ctx.db
+          .query("refundRequests")
+          .withIndex("by_donation", (q) => q.eq("donationId", id))
+          .unique(),
+      );
+    const request = await byDonation(donationId);
+    // Auto-created as already refunded (payout in flight), never pending.
+    expect(request).toMatchObject({ status: "refunded", reason: "cause_deleted" });
+    expect(request?.payoutId).toBeDefined();
+    // Late-flagged donation gets no cause_deleted request here (lateRefundDue owns it).
+    expect(await byDonation(lateId)).toBeNull();
+
+    // Not actionable: absent from the moderation queue and decideRefund refuses it.
+    const q = await mod.query(api.moderation.queues, {});
+    expect(q.refunds.count).toBe(0);
+    await expectAppError(
+      mod.mutation(api.moderation.decideRefund, { requestId: request!._id, decision: "rejected" }),
+      "CONFLICT",
+    );
+  });
+
   it("refuses a payout decision while a payout-account change is pending", async () => {
     const t = setup();
     const s = await structureCtx(t);
@@ -327,6 +423,7 @@ describe("moderation.decideDeletion", () => {
     const s = await structureCtx(t);
     const mod = await moderatorClient(t);
     const causeId = await activeCause(t, s.structureId);
+    await heldDonation(t, causeId, (await donorCtx(t)).userId);
     const { requestId } = await s.client.mutation(api.causes.requestDeletion, {
       causeId,
       reason: "x",

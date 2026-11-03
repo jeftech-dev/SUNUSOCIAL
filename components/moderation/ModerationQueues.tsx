@@ -271,7 +271,12 @@ export function ModerationQueues() {
       ) : (
         <ul className="flex flex-col gap-3">
           {queues.refunds.items.map((r) => (
-            <RefundRow key={r.id} item={r} busy={busy} onDecide={(args) => run(decideRefund(args))} />
+            <RefundRow
+              key={r.id}
+              item={r}
+              busy={busy}
+              onDecide={(args) => run(decideRefund(args))}
+            />
           ))}
         </ul>
       )}
@@ -329,12 +334,7 @@ function DeletionRow({
         >
           {fr.moderation.fundOutcomeRefund}
         </Button>
-        <Button
-          variant="cta"
-          size="sm"
-          disabled={busy}
-          onClick={() => decide("approve", "payout")}
-        >
+        <Button variant="cta" size="sm" disabled={busy} onClick={() => decide("approve", "payout")}>
           {fr.moderation.fundOutcomePayout}
         </Button>
       </div>
@@ -350,10 +350,7 @@ function RefundRow({
 }: {
   item: RefundQueueItem;
   busy: boolean;
-  onDecide: (args: {
-    requestId: Id<"refundRequests">;
-    decision: "refunded" | "rejected";
-  }) => void;
+  onDecide: (args: { requestId: Id<"refundRequests">; decision: "refunded" | "rejected" }) => void;
 }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4">

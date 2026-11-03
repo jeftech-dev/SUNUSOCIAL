@@ -445,7 +445,11 @@ export const impact = query({
  * (the donor's verified phone by default). A late payment refunds automatically and is not eligible.
  */
 export const requestRefund = mutation({
-  args: { donationId: v.id("donations"), reason: v.string(), receivingPhone: v.optional(v.string()) },
+  args: {
+    donationId: v.id("donations"),
+    reason: v.string(),
+    receivingPhone: v.optional(v.string()),
+  },
   handler: async (
     ctx,
     { donationId, reason, receivingPhone },

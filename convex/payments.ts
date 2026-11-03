@@ -439,21 +439,26 @@ export const lateRefundDue = internalMutation({
         console.error(`late refund for ${donation._id}: donor has no phone`);
         continue;
       }
-      await ctx.db.insert("refundRequests", {
-        donationId: donation._id,
-        donorId: donation.donorId,
-        reason: "late_payment",
-        status: "pending",
-        receivingPhone: donor.phone,
-        createdAt: Date.now(),
-      });
-      await enqueuePayout(ctx, {
+      // An automatic refund (DB-18): no moderator decision. Enqueue the payout and record the
+      // request as refunded (not pending), so it never surfaces in the moderation queue as
+      // actionable; completeRefund confirms it when the payout lands.
+      const payoutId = await enqueuePayout(ctx, {
         kind: "refund",
         targetId: donation._id,
         amount: donation.net,
         method: donation.paidMethod ?? donation.method,
         phone: donor.phone,
         name: donor.name,
+      });
+      await ctx.db.insert("refundRequests", {
+        donationId: donation._id,
+        donorId: donation.donorId,
+        reason: "late_payment",
+        status: "refunded",
+        receivingPhone: donor.phone,
+        refundAmount: donation.net,
+        payoutId,
+        createdAt: Date.now(),
       });
       queued += 1;
     }

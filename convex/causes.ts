@@ -473,6 +473,11 @@ export const requestDeletion = mutation({
     if (cause.status !== "active") {
       throw appError("CONFLICT", fr.errors.causeNotDeletable, "causeId");
     }
+    // Only a cause that has received donations goes through deletion arbitration; one with none is
+    // withdrawn instead (fr.errors.causeNotDeletable). Keyed on donation existence, like withdraw.
+    if (await isWithdrawable(ctx, cause)) {
+      throw appError("CONFLICT", fr.errors.causeNotDeletable, "causeId");
+    }
     const trimmed = reason.trim();
     if (!trimmed) throw appError("VALIDATION", fr.errors.deletionReasonRequired, "reason");
 
