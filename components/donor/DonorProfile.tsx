@@ -120,6 +120,26 @@ function DonationRow({ donation }: { donation: DonationHistoryView }) {
         )
       )}
 
+      {donation.causeDeleted && (
+        <p className="rounded-lg bg-accent p-2.5 text-xs text-brand-orange-strong">
+          {donation.causeDeleted.outcome === "refunded"
+            ? fr.profile.causeDeletedRefunded(formatFCFA(donation.net), donation.causeDeleted.reason)
+            : fr.profile.causeDeletedPaidOut(donation.causeDeleted.reason)}
+        </p>
+      )}
+
+      {donation.refund.request && (
+        <p className="text-xs font-semibold text-brand-blue">
+          {donation.refund.request.status === "refunded"
+            ? fr.profile.refundStatusRefunded(
+                formatFCFA(donation.refund.request.refundAmount ?? donation.net),
+              )
+            : donation.refund.request.status === "rejected"
+              ? fr.profile.refundStatusRejected
+              : fr.profile.refundStatusPending}
+        </p>
+      )}
+
       {donation.refund.eligible && <RefundRequest donation={donation} />}
     </li>
   );
