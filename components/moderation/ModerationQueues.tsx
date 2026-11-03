@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toUiError } from "@/lib/errors";
+import { formatFCFA } from "@/lib/money";
 import { fr } from "@/lib/strings.fr";
+import type { DeletionQueueItem, RefundQueueItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Tab = "structures" | "causes" | "proofs";
+type Tab = "structures" | "causes" | "proofs" | "deletions" | "refunds";
 type Notice = { kind: "success" | "error"; text: string };
 type ReasonTarget =
   | { kind: "structure"; id: Id<"structures"> }
@@ -25,6 +27,8 @@ export function ModerationQueues() {
   const decideStructure = useMutation(api.moderation.decideStructure);
   const decideCause = useMutation(api.moderation.decideCause);
   const decideProof = useMutation(api.moderation.decideProof);
+  const decideDeletion = useMutation(api.moderation.decideDeletion);
+  const decideRefund = useMutation(api.moderation.decideRefund);
 
   const [tab, setTab] = useState<Tab>("structures");
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -66,6 +70,12 @@ export function ModerationQueues() {
     },
     { key: "causes", label: fr.moderation.tabs.causes, count: queues?.causes.count ?? 0 },
     { key: "proofs", label: fr.moderation.tabs.proofs, count: queues?.proofs.count ?? 0 },
+    {
+      key: "deletions",
+      label: fr.moderation.tabs.deletions,
+      count: queues?.deletions.count ?? 0,
+    },
+    { key: "refunds", label: fr.moderation.tabs.refunds, count: queues?.refunds.count ?? 0 },
   ];
 
   return (
@@ -223,23 +233,155 @@ export function ModerationQueues() {
             ))}
           </ul>
         )
-      ) : queues.proofs.items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{fr.moderation.emptyProofs}</p>
+      ) : tab === "proofs" ? (
+        queues.proofs.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{fr.moderation.emptyProofs}</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queues.proofs.items.map((p) => (
+              <ProofReview
+                key={p.id}
+                item={p}
+                busy={busy}
+                onValidate={(proofId) => run(decideProof({ proofId, decision: "validate" }))}
+                onEscalate={(proofId) =>
+                  setReason({ target: { kind: "proof", id: proofId }, text: "" })
+                }
+              />
+            ))}
+          </ul>
+        )
+      ) : tab === "deletions" ? (
+        queues.deletions.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{fr.moderation.emptyDeletions}</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queues.deletions.items.map((d) => (
+              <DeletionRow
+                key={d.id}
+                item={d}
+                busy={busy}
+                onDecide={(args) => run(decideDeletion(args))}
+              />
+            ))}
+          </ul>
+        )
+      ) : queues.refunds.items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{fr.moderation.emptyRefunds}</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {queues.proofs.items.map((p) => (
-            <ProofReview
-              key={p.id}
-              item={p}
-              busy={busy}
-              onValidate={(proofId) => run(decideProof({ proofId, decision: "validate" }))}
-              onEscalate={(proofId) =>
-                setReason({ target: { kind: "proof", id: proofId }, text: "" })
-              }
-            />
+          {queues.refunds.items.map((r) => (
+            <RefundRow key={r.id} item={r} busy={busy} onDecide={(args) => run(decideRefund(args))} />
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+/** One deletion request: a decision reason (always) plus the fund fate on approval (DT-24). */
+function DeletionRow({
+  item,
+  busy,
+  onDecide,
+}: {
+  item: DeletionQueueItem;
+  busy: boolean;
+  onDecide: (args: {
+    requestId: Id<"deletionRequests">;
+    decision: "approve" | "maintain";
+    reason: string;
+    fundOutcome?: "refund" | "payout";
+  }) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const decide = (decision: "approve" | "maintain", fundOutcome?: "refund" | "payout") =>
+    onDecide({ requestId: item.id, decision, reason: reason.trim(), fundOutcome });
+
+  return (
+    <li className="flex flex-col gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4">
+      <div className="flex min-w-0 flex-col">
+        <strong className="font-heading">{item.cause}</strong>
+        <span className="text-sm text-muted-foreground">
+          {item.organization} · {fr.moderation.deletionRaised(formatFCFA(item.raised))}
+        </span>
+        <span className="mt-1 text-sm">{fr.moderation.reasonFromStructure(item.reason)}</span>
+      </div>
+      <label className="text-sm font-semibold" htmlFor={`reason-${item.id}`}>
+        {fr.moderation.decisionReasonLabel}
+      </label>
+      <textarea
+        id={`reason-${item.id}`}
+        value={reason}
+        placeholder={fr.moderation.refuseReasonPlaceholder}
+        onChange={(e) => setReason(e.target.value)}
+        className="min-h-16 w-full rounded-lg border-[1.5px] border-input bg-card p-3 text-[15px]"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => decide("maintain")}>
+          {fr.moderation.confirmDeletionMaintain}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          onClick={() => decide("approve", "refund")}
+        >
+          {fr.moderation.fundOutcomeRefund}
+        </Button>
+        <Button
+          variant="cta"
+          size="sm"
+          disabled={busy}
+          onClick={() => decide("approve", "payout")}
+        >
+          {fr.moderation.fundOutcomePayout}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+/** One refund request: approve (net payout) or reject. The decision is final (DT-7). */
+function RefundRow({
+  item,
+  busy,
+  onDecide,
+}: {
+  item: RefundQueueItem;
+  busy: boolean;
+  onDecide: (args: {
+    requestId: Id<"refundRequests">;
+    decision: "refunded" | "rejected";
+  }) => void;
+}) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4">
+      <div className="flex min-w-0 flex-col">
+        <strong className="font-heading">{item.cause}</strong>
+        <span className="text-sm text-muted-foreground">
+          {fr.moderation.refundMeta(item.donor, formatFCFA(item.amount))}
+        </span>
+        <span className="mt-1 text-sm">{fr.moderation.reasonFromStructure(item.reason)}</span>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busy}
+          onClick={() => onDecide({ requestId: item.id, decision: "rejected" })}
+        >
+          {fr.moderation.confirmRefundReject}
+        </Button>
+        <Button
+          variant="cta"
+          size="sm"
+          disabled={busy}
+          onClick={() => onDecide({ requestId: item.id, decision: "refunded" })}
+        >
+          {fr.moderation.confirmRefundApprove}
+        </Button>
+      </div>
+    </li>
   );
 }

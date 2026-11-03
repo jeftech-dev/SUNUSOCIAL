@@ -4,6 +4,7 @@
 import { v } from "convex/values";
 
 import { percentOf } from "../lib/causes";
+import { formatFCFA } from "../lib/money";
 import { fr } from "../lib/strings.fr";
 import type { Category, ModerationQueues } from "../lib/types";
 import { internal } from "./_generated/api";
@@ -14,6 +15,8 @@ import { isListed, structureLoader } from "./lib/causeViews";
 import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
 import { notifyUser } from "./notify";
+import { enqueuePayout } from "./payouts";
+import { fundOutcomeV } from "./validators";
 
 /** Most causes offered by the picker. Active causes last ≤ 30 days, so this is generous. */
 const MAX_CANDIDATES = 200;
@@ -146,6 +149,14 @@ export const queues = query({
       .query("proofs")
       .withIndex("by_status", (q) => q.eq("status", "submitted"))
       .collect();
+    const allDeletions = await ctx.db
+      .query("deletionRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    const allRefunds = await ctx.db
+      .query("refundRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
     const structures = allStructures.slice(0, MAX_QUEUE);
     const causes = allCauses.slice(0, MAX_QUEUE);
     const submitted = allSubmitted.slice(0, MAX_QUEUE);
@@ -176,6 +187,37 @@ export const queues = query({
       });
     }
 
+    const deletionItems = [];
+    for (const request of allDeletions.slice(0, MAX_QUEUE)) {
+      const cause = await ctx.db.get(request.causeId);
+      const structure = cause && (await structureOf(cause.structureId));
+      deletionItems.push({
+        id: request._id,
+        causeId: request.causeId,
+        cause: cause?.title ?? "",
+        organization: structure?.name ?? "",
+        raised: cause?.raised ?? 0,
+        reason: request.structureReason,
+        createdAt: request.createdAt,
+      });
+    }
+
+    const refundItems = [];
+    for (const request of allRefunds.slice(0, MAX_QUEUE)) {
+      const donation = await ctx.db.get(request.donationId);
+      const cause = donation && (await ctx.db.get(donation.causeId));
+      const donor = await ctx.db.get(request.donorId);
+      refundItems.push({
+        id: request._id,
+        donationId: request.donationId,
+        cause: cause?.title ?? "",
+        donor: donor?.name ?? "",
+        amount: donation?.net ?? 0,
+        reason: request.reason,
+        createdAt: request.createdAt,
+      });
+    }
+
     const featured = await ctx.db
       .query("causes")
       .withIndex("by_featured", (q) => q.gt("featuredAt", 0))
@@ -195,8 +237,8 @@ export const queues = query({
       },
       causes: { count: allCauses.length, items: causeItems },
       proofs: { count: allSubmitted.length, items: proofItems },
-      deletions: { count: 0, items: [] },
-      refunds: { count: 0, items: [] },
+      deletions: { count: allDeletions.length, items: deletionItems },
+      refunds: { count: allRefunds.length, items: refundItems },
       payoutChanges: { count: 0, items: [] },
       featured:
         featured?.featuredAt !== undefined
@@ -468,5 +510,271 @@ export const notifyCauseDonors = internalMutation({
       title,
       afterDonor: lastComplete,
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Deletions (DT-24) and refunds (DT-7)
+// ---------------------------------------------------------------------------
+
+const deletionDecisionV = v.union(v.literal("approve"), v.literal("maintain"));
+
+/**
+ * Arbitrates a structure's deletion request (S14). `maintain` keeps the cause and tells the
+ * structure why. `approve` deletes the cause and settles the funds per `fundOutcome`: `refund`
+ * returns each donor's net, `payout` releases the lump sum to the structure (which then owes a proof,
+ * DT-25). The reason is recorded and shown to the structure and the donors (DoD).
+ */
+export const decideDeletion = mutation({
+  args: {
+    requestId: v.id("deletionRequests"),
+    decision: deletionDecisionV,
+    reason: v.string(),
+    fundOutcome: v.optional(fundOutcomeV),
+  },
+  handler: async (ctx, { requestId, decision, reason, fundOutcome }): Promise<{ ok: true }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const request = await ctx.db.get(requestId);
+    if (!request) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+    if (request.status !== "pending") {
+      throw appError("CONFLICT", fr.errors.deletionAlreadyDecided, "requestId");
+    }
+    const trimmed = reason.trim();
+    if (!trimmed) throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    const cause = await ctx.db.get(request.causeId);
+    if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "requestId");
+    const responsible = await structureUser(ctx, cause.structureId);
+
+    if (decision === "maintain") {
+      await ctx.db.patch(requestId, {
+        status: "maintained",
+        moderatorReason: trimmed,
+        decidedBy: user._id,
+      });
+      await logAudit(ctx, {
+        actorId: user._id,
+        action: "deletion.maintain",
+        targetTable: "deletionRequests",
+        targetId: requestId,
+        details: { reason: trimmed },
+      });
+      if (responsible) {
+        await notifyUser(ctx, {
+          userId: responsible._id,
+          kind: "deletion_decision",
+          title: fr.notifications.deletionMaintainedTitle,
+          body: fr.notifications.deletionMaintainedBody(cause.title, trimmed),
+          link: "/structure",
+        });
+      }
+      return { ok: true };
+    }
+
+    // Approve: the cause is deleted; the funds are refunded or paid out.
+    if (!fundOutcome) throw appError("VALIDATION", fr.errors.fundOutcomeRequired, "fundOutcome");
+    const structure = await ctx.db.get(cause.structureId);
+    if (fundOutcome === "payout") {
+      if (!structure?.payout) throw appError("CONFLICT", fr.errors.payoutRequired, "fundOutcome");
+      if (structure.payoutPending !== undefined) {
+        throw appError("CONFLICT", fr.errors.payoutChangePending, "fundOutcome");
+      }
+    }
+    await ctx.db.patch(requestId, {
+      status: "approved",
+      fundOutcome,
+      moderatorReason: trimmed,
+      decidedBy: user._id,
+    });
+
+    if (fundOutcome === "payout") {
+      const donations = await ctx.db
+        .query("donations")
+        .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
+        .collect();
+      const total = donations
+        .filter((d) => d.status === "held")
+        .reduce((sum, d) => sum + d.net, 0);
+      await ctx.db.patch(cause._id, { status: "deleted", fundsReleasedAt: Date.now() });
+      if (total > 0 && structure?.payout) {
+        const payoutId = await enqueuePayout(ctx, {
+          kind: "release",
+          targetId: cause._id,
+          amount: total,
+          method: structure.payout.method,
+          phone: structure.payout.accountNumber,
+          name: structure.payout.holderName,
+        });
+        await ctx.db.patch(cause._id, { releasePayoutId: payoutId });
+      }
+    } else {
+      await ctx.db.patch(cause._id, { status: "deleted" });
+    }
+
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "deletion.approve",
+      targetTable: "deletionRequests",
+      targetId: requestId,
+      details: { causeId: cause._id, fundOutcome, reason: trimmed },
+    });
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "deletion_decision",
+        title: fr.notifications.deletionApprovedTitle,
+        body: fr.notifications.deletionApprovedBody(cause.title, trimmed),
+        link: "/structure",
+      });
+    }
+    // Refund donors and/or notify them in a bounded, self-rescheduling batch.
+    await ctx.scheduler.runAfter(0, internal.moderation.settleDeletedCause, {
+      causeId: cause._id,
+      outcome: fundOutcome,
+    });
+    return { ok: true };
+  },
+});
+
+/** Donations settled per `settleDeletedCause` batch before it reschedules itself. */
+const DELETION_SETTLE_BATCH = 100;
+
+/**
+ * Settles the donations of a deleted cause: on `refund`, queues a net refund payout per held donation
+ * (idempotent — one refund request per donation); on either outcome, notifies each donor. Pages the
+ * cause's donations so a cause with many gifts never settles in one oversized transaction.
+ */
+export const settleDeletedCause = internalMutation({
+  args: {
+    causeId: v.id("causes"),
+    outcome: fundOutcomeV,
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, { causeId, outcome, cursor }): Promise<void> => {
+    const cause = await ctx.db.get(causeId);
+    if (!cause) return;
+    const result = await ctx.db
+      .query("donations")
+      .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+      .paginate({ cursor: cursor ?? null, numItems: DELETION_SETTLE_BATCH });
+
+    for (const donation of result.page) {
+      if (donation.status !== "held") continue;
+      const donor = await ctx.db.get(donation.donorId);
+      if (outcome === "refund") {
+        const existing = await ctx.db
+          .query("refundRequests")
+          .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
+          .unique();
+        if (!existing && donor?.phone) {
+          await ctx.db.insert("refundRequests", {
+            donationId: donation._id,
+            donorId: donation.donorId,
+            reason: "cause_deleted",
+            status: "pending",
+            receivingPhone: donor.phone,
+            createdAt: Date.now(),
+          });
+          await enqueuePayout(ctx, {
+            kind: "refund",
+            targetId: donation._id,
+            amount: donation.net,
+            method: donation.paidMethod ?? donation.method,
+            phone: donor.phone,
+            name: donor.name,
+          });
+        }
+      }
+      await notifyUser(ctx, {
+        userId: donation.donorId,
+        kind: "deletion_decision",
+        title: fr.notifications.deletionApprovedTitle,
+        body:
+          outcome === "refund"
+            ? fr.notifications.deletionDonorRefundBody(cause.title, formatFCFA(donation.net))
+            : fr.notifications.deletionDonorPayoutBody(cause.title),
+        link: "/profil",
+      });
+    }
+
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.moderation.settleDeletedCause, {
+        causeId,
+        outcome,
+        cursor: result.continueCursor,
+      });
+    }
+  },
+});
+
+/** Approves (net payout) or rejects a donor's refund request (S12, DT-7). The decision is final. */
+export const decideRefund = mutation({
+  args: {
+    requestId: v.id("refundRequests"),
+    decision: v.union(v.literal("refunded"), v.literal("rejected")),
+  },
+  handler: async (
+    ctx,
+    { requestId, decision },
+  ): Promise<{ ok: true; refundAmount?: number }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const request = await ctx.db.get(requestId);
+    if (!request) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+    if (request.status !== "pending") {
+      throw appError("CONFLICT", fr.errors.refundAlreadyDecided, "requestId");
+    }
+    const donation = await ctx.db.get(request.donationId);
+    if (!donation) throw appError("NOT_FOUND", fr.errors.donationNotFound, "requestId");
+    const cause = await ctx.db.get(donation.causeId);
+    const title = cause?.title ?? "";
+
+    if (decision === "rejected") {
+      await ctx.db.patch(requestId, { status: "rejected", decidedBy: user._id });
+      await logAudit(ctx, {
+        actorId: user._id,
+        action: "refund.reject",
+        targetTable: "refundRequests",
+        targetId: requestId,
+      });
+      await notifyUser(ctx, {
+        userId: request.donorId,
+        kind: "refund_decision",
+        title: fr.notifications.refundRejectedTitle,
+        body: fr.notifications.refundRejectedBody(title),
+        link: "/profil",
+      });
+      return { ok: true };
+    }
+
+    // Approve: only while the funds are still held. Pays the donation's net to the chosen number.
+    if (donation.status !== "held") {
+      throw appError("CONFLICT", fr.errors.refundNotEligible, "requestId");
+    }
+    const amount = donation.net;
+    await ctx.db.patch(requestId, { status: "refunded", refundAmount: amount, decidedBy: user._id });
+    const donor = await ctx.db.get(request.donorId);
+    const payoutId = await enqueuePayout(ctx, {
+      kind: "refund",
+      targetId: donation._id,
+      amount,
+      method: donation.paidMethod ?? donation.method,
+      phone: request.receivingPhone,
+      name: donor?.name ?? "Donateur",
+    });
+    await ctx.db.patch(requestId, { payoutId });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "refund.approve",
+      targetTable: "refundRequests",
+      targetId: requestId,
+      details: { amount },
+    });
+    await notifyUser(ctx, {
+      userId: request.donorId,
+      kind: "refund_decision",
+      title: fr.notifications.refundApprovedTitle,
+      body: fr.notifications.refundApprovedBody(title, formatFCFA(amount)),
+      link: "/profil",
+    });
+    return { ok: true, refundAmount: amount };
   },
 });
