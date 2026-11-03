@@ -29,7 +29,12 @@ crons.hourly("release due causes", { minuteUTC: 5 }, internal.payments.releaseDu
 crons.interval("late-payment refunds", { minutes: 15 }, internal.payments.lateRefundDue, {});
 
 // Suspend structures that missed a proof deadline (DB-12, DT-25).
-crons.hourly("enforce proof deadlines", { minuteUTC: 20 }, internal.payments.enforceProofDeadlines, {});
+crons.hourly(
+  "enforce proof deadlines",
+  { minuteUTC: 20 },
+  internal.payments.enforceProofDeadlines,
+  {},
+);
 
 // Poll payouts in NabooPay manual review (> 2M XOF) until they resolve (DT-4).
 crons.interval("poll payout reviews", { minutes: 10 }, internal.payouts.pollPendingReview, {});

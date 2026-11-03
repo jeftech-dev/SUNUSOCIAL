@@ -167,6 +167,9 @@ export default defineSchema({
   })
     // Feed orders (DT-34): soonest deadline first by default, newest approval first for "Récent".
     .index("by_status_deadline", ["status", "deadline"])
+    // Causes awaiting release: query status + fundsReleasedAt === undefined so the hourly release
+    // cron never scans already-released closed causes (which keep status "closed" forever).
+    .index("by_status_released", ["status", "fundsReleasedAt"])
     .index("by_status_category_deadline", ["status", "category", "deadline"])
     .index("by_status_approved", ["status", "approvedAt"])
     .index("by_status_category_approved", ["status", "category", "approvedAt"])
@@ -240,7 +243,9 @@ export default defineSchema({
     error: v.optional(v.string()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
-  }).index("by_status_created", ["status", "createdAt"]),
+  })
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_order", ["providerOrderId"]),
 
   // -------------------------------------------------------------------------
   // Proofs

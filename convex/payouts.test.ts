@@ -18,6 +18,8 @@ const MOCK_ENV_KEYS = [
   "MOCK_PAYOUT_BALANCE",
   "MOCK_PAYOUT_GET_STATUS",
   "MOCK_PAYOUT_RECONCILE_AMOUNT",
+  "MOCK_PAYOUT_RECONCILE_STATUS",
+  "MOCK_PAYOUT_RECONCILE_DECOY_AMOUNT",
 ];
 afterEach(() => {
   for (const key of MOCK_ENV_KEYS) delete process.env[key];
@@ -69,7 +71,12 @@ async function fundedStructure(t: T) {
 
 async function moderator(t: T) {
   return t.run((ctx) =>
-    ctx.db.insert("users", { name: "Mod", role: "moderator", disabled: false, createdAt: Date.now() }),
+    ctx.db.insert("users", {
+      name: "Mod",
+      role: "moderator",
+      disabled: false,
+      createdAt: Date.now(),
+    }),
   );
 }
 
@@ -327,6 +334,44 @@ describe("drainNext", () => {
     expect(alerts.some((n) => n.userId === modId)).toBe(true);
   });
 
+  it("skips an under-funded payout, pays a smaller one behind it, and alerts once", async () => {
+    const t = setup();
+    const modId = await moderator(t);
+    const { structureId } = await fundedStructure(t);
+    const big = await causeWithDonations(t, structureId, [10000]);
+    await t.mutation(internal.payments.releaseCause, { causeId: big.causeId });
+    const small = await causeWithDonations(t, structureId, [100]);
+    await t.mutation(internal.payments.releaseCause, { causeId: small.causeId });
+
+    process.env.MOCK_PAYOUT_BALANCE = "5000"; // covers the small payout, not the big one
+    const res = await t.action(internal.payouts.drainNext, {});
+    expect(res.processed).toBe(1);
+
+    const payouts = await t.run((ctx) => ctx.db.query("payouts").collect());
+    expect(payouts.find((p) => p.amount === 10000)?.status).toBe("queued"); // left for later
+    expect(payouts.find((p) => p.amount === 100)?.status).toBe("completed"); // not blocked by the head
+
+    const alerts = await notificationsOfKind(t, "payout_alert");
+    expect(alerts.filter((n) => n.userId === modId).length).toBe(1); // one alert, not per tick-item
+  });
+
+  it("never releases a late-flagged donation to the structure", async () => {
+    const t = setup();
+    const { structureId } = await fundedStructure(t);
+    const { causeId, donationIds } = await causeWithDonations(t, structureId, [5000, 7000]);
+    // The second donation arrived late (flagged for a donor refund) but is still held.
+    await t.run((ctx) => ctx.db.patch(donationIds[1], { lateRefundFlaggedAt: Date.now() }));
+
+    await t.mutation(internal.payments.releaseCause, { causeId });
+    const payout = await onlyPayout(t);
+    expect(payout.amount).toBe(5000); // the late donation is excluded from the release sum
+
+    await t.action(internal.payouts.drainNext, {});
+    expect((await getDonation(t, donationIds[0]))?.status).toBe("released");
+    // The late one stays held for lateRefundDue; it is not released to the structure.
+    expect((await getDonation(t, donationIds[1]))?.status).toBe("held");
+  });
+
   it("holds a large payout for manual review", async () => {
     const t = setup();
     const { structureId } = await fundedStructure(t);
@@ -375,6 +420,55 @@ describe("reconcile", () => {
     const res = await t.action(internal.payouts.reconcile, { payoutId: payout._id });
     expect(res.status).toBe("queued");
     expect((await onlyPayout(t)).attempts).toBe(1);
+  });
+
+  it("moves a still-processing unknown payout to pending_review instead of leaving it stuck", async () => {
+    const t = setup();
+    const { structureId } = await fundedStructure(t);
+    const { causeId } = await causeWithDonations(t, structureId, [5000]);
+    await t.mutation(internal.payments.releaseCause, { causeId });
+    const payout = await onlyPayout(t);
+    await t.run((ctx) => ctx.db.patch(payout._id, { status: "unknown", error: "timeout" }));
+
+    process.env.MOCK_PAYOUT_RECONCILE_AMOUNT = "5000";
+    process.env.MOCK_PAYOUT_RECONCILE_STATUS = "pending";
+    const res = await t.action(internal.payouts.reconcile, { payoutId: payout._id });
+    expect(res.status).toBe("pending_review");
+    const row = await onlyPayout(t);
+    expect(row.status).toBe("pending_review"); // pollPendingReview now owns it
+    expect(row.providerOrderId).toBeDefined();
+  });
+
+  it("does not mistake a same-amount payout already recorded on another row", async () => {
+    const t = setup();
+    const { structureId } = await fundedStructure(t);
+    const { causeId } = await causeWithDonations(t, structureId, [5000]);
+    await t.mutation(internal.payments.releaseCause, { causeId });
+    const payout = await onlyPayout(t);
+    await t.run((ctx) => ctx.db.patch(payout._id, { status: "unknown", error: "timeout" }));
+    // A different, already-completed payout of the identical amount to the same wallet.
+    await t.run((ctx) =>
+      ctx.db.insert("payouts", {
+        kind: "release",
+        targetId: "other",
+        amount: 5000,
+        method: "wave",
+        phone: "+221770000001",
+        name: "Awa Diop",
+        status: "completed",
+        providerOrderId: "mock_decoy_+221770000001",
+        attempts: 0,
+        createdAt: Date.now(),
+      }),
+    );
+
+    process.env.MOCK_PAYOUT_RECONCILE_AMOUNT = "5000";
+    process.env.MOCK_PAYOUT_RECONCILE_DECOY_AMOUNT = "5000"; // listed first, but already claimed
+    const res = await t.action(internal.payouts.reconcile, { payoutId: payout._id });
+    expect(res.status).toBe("completed");
+    const resolved = await t.run((ctx) => ctx.db.get(payout._id));
+    // It matched the genuinely-unaccounted item, not the already-recorded decoy.
+    expect(resolved?.providerOrderId).toBe("mock_recon_+221770000001");
   });
 });
 

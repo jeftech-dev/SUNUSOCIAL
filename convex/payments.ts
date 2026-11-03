@@ -344,8 +344,10 @@ export const releaseCause = internalMutation({
       .query("donations")
       .withIndex("by_cause", (q) => q.eq("causeId", causeId))
       .collect();
+    // Late-flagged donations are refunded to the donor (lateRefundDue), never released to the
+    // structure, so they must not be summed into the release payout even while still `held`.
     const total = donations
-      .filter((d) => d.status === "held")
+      .filter((d) => d.status === "held" && d.lateRefundFlaggedAt === undefined)
       .reduce((sum, d) => sum + d.net, 0);
 
     const now = Date.now();
@@ -387,11 +389,15 @@ export const releaseDue = internalMutation({
     const pastDeadline = await ctx.db
       .query("causes")
       .withIndex("by_status_deadline", (q) => q.eq("status", "active").lte("deadline", now))
-      .collect();
+      .take(RECHECK_BATCH);
+    // Only closed causes still awaiting release — not every closed cause ever, which keeps status
+    // "closed" after release and would make this scan grow without bound.
     const closed = await ctx.db
       .query("causes")
-      .withIndex("by_status_deadline", (q) => q.eq("status", "closed"))
-      .collect();
+      .withIndex("by_status_released", (q) =>
+        q.eq("status", "closed").eq("fundsReleasedAt", undefined),
+      )
+      .take(RECHECK_BATCH);
     let scheduled = 0;
     for (const cause of [...pastDeadline, ...closed]) {
       if (cause.fundsReleasedAt === undefined) {

@@ -15,7 +15,7 @@ import { v } from "convex/values";
 import { DAY_MS, loadConfig } from "../lib/config";
 import { formatFCFA } from "../lib/money";
 import { getPaymentProvider } from "../lib/providers";
-import { PaymentProviderError } from "../lib/providers/types";
+import { PaymentProviderError, type PayoutListItem } from "../lib/providers/types";
 import { fr } from "../lib/strings.fr";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -35,6 +35,8 @@ const DRAIN_BATCH = 10;
 const MAX_PAYOUT_ATTEMPTS = 5;
 /** How far back `listPayouts` looks when reconciling, to catch a payout created just before a timeout. */
 const RECONCILE_WINDOW_MS = 10 * 60 * 1000;
+/** Throttle on the short-balance moderator alert, so a persistently low balance does not spam it. */
+const BALANCE_ALERT_THROTTLE_MS = 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Enqueue (called directly, in the caller's transaction, by releaseCause / decide* mutations)
@@ -114,7 +116,11 @@ async function completeRelease(ctx: MutationCtx, payout: Doc<"payouts">): Promis
     .withIndex("by_cause", (q) => q.eq("causeId", causeId))
     .collect();
   for (const d of donations) {
-    if (d.status === "held") await ctx.db.patch(d._id, { status: "released" });
+    // Late-flagged donations are refunded to the donor, not released to the structure, so leave
+    // them `held` for lateRefundDue to pick up (they were also excluded from the payout amount).
+    if (d.status === "held" && d.lateRefundFlaggedAt === undefined) {
+      await ctx.db.patch(d._id, { status: "released" });
+    }
   }
 
   // Proof deadline (DT-25): one per cause, due PROOF_DUE_DAYS after funds reach the structure.
@@ -136,7 +142,11 @@ async function completeRelease(ctx: MutationCtx, payout: Doc<"payouts">): Promis
     action: "funds.release",
     targetTable: "causes",
     targetId: causeId,
-    details: { payoutId: payout._id, amount: payout.amount, orderId: payout.providerOrderId ?? null },
+    details: {
+      payoutId: payout._id,
+      amount: payout.amount,
+      orderId: payout.providerOrderId ?? null,
+    },
   });
   const responsible = await structureUser(ctx, cause.structureId);
   if (responsible) {
@@ -144,7 +154,11 @@ async function completeRelease(ctx: MutationCtx, payout: Doc<"payouts">): Promis
       userId: responsible._id,
       kind: "funds_released",
       title: fr.notifications.fundsReleasedTitle,
-      body: fr.notifications.fundsReleasedBody(cause.title, formatFCFA(payout.amount), proofDueDays),
+      body: fr.notifications.fundsReleasedBody(
+        cause.title,
+        formatFCFA(payout.amount),
+        proofDueDays,
+      ),
       link: "/structure",
     });
   }
@@ -175,7 +189,11 @@ async function completeRefund(ctx: MutationCtx, payout: Doc<"payouts">): Promise
     action: "funds.refund",
     targetTable: "donations",
     targetId: donationId,
-    details: { payoutId: payout._id, amount: payout.amount, orderId: payout.providerOrderId ?? null },
+    details: {
+      payoutId: payout._id,
+      amount: payout.amount,
+      orderId: payout.providerOrderId ?? null,
+    },
   });
 }
 
@@ -217,19 +235,25 @@ export type ClaimedPayout = {
   name: string;
 };
 
-/** Single-flight claim: nothing while a payout is `sending`, else the oldest `queued` → `sending`. */
+/**
+ * Single-flight claim: nothing while a payout is `sending`, else the oldest `queued` → `sending`.
+ * `exclude` holds payouts already skipped this tick (e.g. under-funded), so the worker can reach
+ * smaller payouts behind them instead of re-claiming the same head row every time.
+ */
 export const claimNext = internalMutation({
-  args: {},
-  handler: async (ctx): Promise<ClaimedPayout | null> => {
+  args: { exclude: v.optional(v.array(v.id("payouts"))) },
+  handler: async (ctx, { exclude }): Promise<ClaimedPayout | null> => {
     const sending = await ctx.db
       .query("payouts")
       .withIndex("by_status_created", (q) => q.eq("status", "sending"))
       .first();
     if (sending) return null;
-    const next = await ctx.db
+    const skip = new Set(exclude ?? []);
+    const queued = await ctx.db
       .query("payouts")
       .withIndex("by_status_created", (q) => q.eq("status", "queued"))
-      .first();
+      .take(DRAIN_BATCH + skip.size);
+    const next = queued.find((p) => !skip.has(p._id));
     if (!next) return null;
     await ctx.db.patch(next._id, { status: "sending" });
     return {
@@ -295,7 +319,11 @@ export const payoutConflict = internalMutation({
   },
 });
 
-/** Balance too low: stop and alert. Leave the row `queued` (no attempt counted) to retry later. */
+/**
+ * Balance too low for this payout: leave the row `queued` (no attempt counted) and record it. The
+ * worker skips it and tries smaller payouts behind it; the moderator alert is raised once per tick
+ * by `alertShortBalance`, not here, so a persistently short balance does not spam every moderator.
+ */
 export const payoutInsufficientBalance = internalMutation({
   args: { payoutId: v.id("payouts"), balance: v.number() },
   handler: async (ctx, { payoutId, balance }) => {
@@ -308,9 +336,28 @@ export const payoutInsufficientBalance = internalMutation({
       targetId: payoutId,
       details: { amount: payout.amount, balance },
     });
+  },
+});
+
+/** Alert moderators that the balance is short, at most once per `BALANCE_ALERT_THROTTLE_MS`. */
+export const alertShortBalance = internalMutation({
+  args: { count: v.number(), balance: v.number() },
+  handler: async (ctx, { count, balance }) => {
+    const last = await ctx.db
+      .query("auditLog")
+      .withIndex("by_action_created", (q) => q.eq("action", "payout.short_balance_alert"))
+      .order("desc")
+      .first();
+    if (last && Date.now() - last.createdAt < BALANCE_ALERT_THROTTLE_MS) return;
+    await logAudit(ctx, {
+      action: "payout.short_balance_alert",
+      targetTable: "payouts",
+      targetId: "worker",
+      details: { count, balance },
+    });
     await alertModerators(
       ctx,
-      `solde insuffisant (${formatFCFA(balance)}) pour le versement de ${formatFCFA(payout.amount)}`,
+      `solde insuffisant (${formatFCFA(balance)}) pour ${count} versement(s) en attente`,
     );
   },
 });
@@ -364,6 +411,18 @@ export const payoutById = internalQuery({
   handler: async (ctx, { payoutId }) => ctx.db.get(payoutId),
 });
 
+/** Whether some payout row already carries this NabooPay order id (so it is accounted for). */
+export const isOrderClaimed = internalQuery({
+  args: { orderId: v.string() },
+  handler: async (ctx, { orderId }): Promise<boolean> => {
+    const row = await ctx.db
+      .query("payouts")
+      .withIndex("by_order", (q) => q.eq("providerOrderId", orderId))
+      .first();
+    return row !== null;
+  },
+});
+
 /** After `unknown`, requeue because `listPayouts` confirmed NabooPay created nothing — safe to retry. */
 export const requeueFromUnknown = internalMutation({
   args: { payoutId: v.id("payouts") },
@@ -372,7 +431,11 @@ export const requeueFromUnknown = internalMutation({
     if (!payout || payout.status !== "unknown") return;
     const attempts = payout.attempts + 1;
     if (attempts > MAX_PAYOUT_ATTEMPTS) {
-      await ctx.db.patch(payoutId, { status: "failed", attempts, error: "unresolved after reconcile" });
+      await ctx.db.patch(payoutId, {
+        status: "failed",
+        attempts,
+        error: "unresolved after reconcile",
+      });
       await alertModerators(ctx, `versement ${payoutId} non résolu après réconciliation`);
       return;
     }
@@ -396,9 +459,22 @@ export const reconcile = internalAction({
       console.error(`reconcile ${payoutId} could not list payouts: ${String(error)}`);
       return { status: "unknown" };
     }
-    const match = items.find((i) => i.amount === payout.amount);
+    // Match on amount, but skip any item already recorded on another payout row: a same-amount
+    // payout to the same wallet inside the window belongs to a different (already-accounted) row,
+    // and must not be mistaken for this one.
+    let match: PayoutListItem | undefined;
+    for (const item of items) {
+      if (item.amount !== payout.amount) continue;
+      const claimed = await ctx.runQuery(internal.payouts.isOrderClaimed, {
+        orderId: item.orderId,
+      });
+      if (!claimed) {
+        match = item;
+        break;
+      }
+    }
     if (!match) {
-      // NabooPay created nothing: the request never landed. Safe to retry.
+      // NabooPay created nothing we can claim: the request never landed. Safe to retry.
       await ctx.runMutation(internal.payouts.requeueFromUnknown, { payoutId });
       return { status: "queued" };
     }
@@ -410,7 +486,16 @@ export const reconcile = internalAction({
       });
       return { status: "completed" };
     }
-    if (match.status === "pending") return { status: "pending_review" };
+    if (match.status === "pending") {
+      // NabooPay has it but it is not final: move it to `pending_review` (recording the order id)
+      // so pollPendingReview owns it from here, instead of leaving the row stuck in `unknown`.
+      await ctx.runMutation(internal.payouts.payoutCompleted, {
+        payoutId,
+        providerOrderId: match.orderId,
+        reviewPending: true,
+      });
+      return { status: "pending_review" };
+    }
     await ctx.runMutation(internal.payouts.payoutFailed, {
       payoutId,
       error: `reconciled as ${match.status}`,
@@ -432,9 +517,13 @@ export const drainNext = internalAction({
   handler: async (ctx): Promise<{ processed: number }> => {
     const provider = getPaymentProvider();
     let processed = 0;
+    // Payouts skipped this tick for lack of balance; excluded from the next claim so the worker
+    // reaches smaller payouts behind them instead of re-claiming the same under-funded head row.
+    const short: Id<"payouts">[] = [];
+    let lastShortBalance = 0;
     for (let i = 0; i < DRAIN_BATCH; i++) {
-      const claimed = await ctx.runMutation(internal.payouts.claimNext, {});
-      if (!claimed) break; // nothing queued, or one already sending
+      const claimed = await ctx.runMutation(internal.payouts.claimNext, { exclude: short });
+      if (!claimed) break; // nothing claimable (queue empty, all skipped, or one already sending)
 
       let balance: number;
       try {
@@ -449,7 +538,9 @@ export const drainNext = internalAction({
           payoutId: claimed.payoutId,
           balance,
         });
-        break;
+        short.push(claimed.payoutId);
+        lastShortBalance = balance;
+        continue; // try a smaller payout behind it rather than blocking the whole queue
       }
 
       try {
@@ -494,6 +585,12 @@ export const drainNext = internalAction({
           error: String(error),
         });
       }
+    }
+    if (short.length > 0) {
+      await ctx.runMutation(internal.payouts.alertShortBalance, {
+        count: short.length,
+        balance: lastShortBalance,
+      });
     }
     return { processed };
   },

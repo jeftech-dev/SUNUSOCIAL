@@ -223,7 +223,8 @@ describe("NabooPay provider", () => {
   it("surfaces a 409 payout lock with its status", async () => {
     const provider = createNaboopayProvider({
       payoutKey: "pk",
-      fetch: async () => jsonResponse(409, { error: "A payout is already in progress. Please wait." }),
+      fetch: async () =>
+        jsonResponse(409, { error: "A payout is already in progress. Please wait." }),
     });
     const error = await provider
       .payout({ method: "wave", amount: 1000, phone: "+221770000001", name: "A", reason: "r" })
@@ -236,7 +237,13 @@ describe("NabooPay provider", () => {
     const fetchMock = vi.fn();
     const provider = createNaboopayProvider({ checkoutKey: "ck", fetch: fetchMock });
     await expect(
-      provider.payout({ method: "wave", amount: 1000, phone: "+221770000001", name: "A", reason: "r" }),
+      provider.payout({
+        method: "wave",
+        amount: 1000,
+        phone: "+221770000001",
+        name: "A",
+        reason: "r",
+      }),
     ).rejects.toThrow("NABOOPAY_PAYOUT_KEY");
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -309,7 +316,13 @@ describe("mock provider", () => {
 
   it("pays out successfully and reports a large default balance by default", async () => {
     await expect(
-      provider.payout({ method: "wave", amount: 5000, phone: "+221770000001", name: "A", reason: "r" }),
+      provider.payout({
+        method: "wave",
+        amount: 5000,
+        phone: "+221770000001",
+        name: "A",
+        reason: "r",
+      }),
     ).resolves.toMatchObject({ status: "completed" });
     expect(await provider.getBalance()).toBeGreaterThan(5000);
   });

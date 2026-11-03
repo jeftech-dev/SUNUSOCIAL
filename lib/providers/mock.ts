@@ -34,8 +34,12 @@ function mockPayoutEnv(env: Record<string, string | undefined> = process.env) {
     balance: Number(env.MOCK_PAYOUT_BALANCE ?? MOCK_DEFAULT_BALANCE),
     /** What getPayout reports (pending-review polling). */
     getStatus: env.MOCK_PAYOUT_GET_STATUS ?? "completed",
-    /** When set, listPayouts returns one completed item of this amount (reconciliation). */
+    /** When set, listPayouts returns one item of this amount (reconciliation). */
     reconcileAmount: env.MOCK_PAYOUT_RECONCILE_AMOUNT,
+    /** The status of that reconciliation item (default completed). */
+    reconcileStatus: env.MOCK_PAYOUT_RECONCILE_STATUS ?? "completed",
+    /** When set, listPayouts also returns a decoy item of this amount (same recipient). */
+    reconcileDecoyAmount: env.MOCK_PAYOUT_RECONCILE_DECOY_AMOUNT,
   };
 }
 
@@ -113,11 +117,23 @@ export function createMockProvider(options: {
     },
 
     async listPayouts({ recipientPhone }): Promise<PayoutListItem[]> {
-      const { reconcileAmount } = mockPayoutEnv();
+      const { reconcileAmount, reconcileStatus, reconcileDecoyAmount } = mockPayoutEnv();
       if (reconcileAmount === undefined) return [];
-      return [
-        { orderId: `mock_recon_${recipientPhone}`, amount: Number(reconcileAmount), status: "completed" },
-      ];
+      const items: PayoutListItem[] = [];
+      // A decoy comes first, so a correct matcher must look past amount alone (it is already claimed).
+      if (reconcileDecoyAmount !== undefined) {
+        items.push({
+          orderId: `mock_decoy_${recipientPhone}`,
+          amount: Number(reconcileDecoyAmount),
+          status: "completed",
+        });
+      }
+      items.push({
+        orderId: `mock_recon_${recipientPhone}`,
+        amount: Number(reconcileAmount),
+        status: reconcileStatus,
+      });
+      return items;
     },
 
     async getBalance(): Promise<number> {
