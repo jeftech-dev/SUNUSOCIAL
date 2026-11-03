@@ -23,7 +23,9 @@ export function StructureCauses() {
   const causes = useQuery(api.causes.mine);
   const withdraw = useMutation(api.causes.withdraw);
   const requestDeletion = useMutation(api.causes.requestDeletion);
+  const requestExtension = useMutation(api.extensions.request);
   const [pending, setPending] = useState<Id<"causes"> | null>(null);
+  const [extendId, setExtendId] = useState<Id<"causes"> | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const approved = me?.structure?.status === "approved";
@@ -156,6 +158,15 @@ export function StructureCauses() {
                         {fr.structureCauses.requestDeletion}
                       </Button>
                     )}
+                    {cause.status === "active" && !cause.fundsReleased && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExtendId((id) => (id === cause.id ? null : cause.id))}
+                      >
+                        {fr.structureCauses.requestExtension}
+                      </Button>
+                    )}
                     {cause.fundsReleased && (
                       <Button variant="cta" size="sm" asChild>
                         <Link href={`/structure/preuve/${cause.id}`}>
@@ -164,6 +175,29 @@ export function StructureCauses() {
                       </Button>
                     )}
                   </div>
+                  {extendId === cause.id && (
+                    <ExtensionForm
+                      busy={pending === cause.id}
+                      onSubmit={async (requestedUntil, reason) => {
+                        setPending(cause.id);
+                        setNotice(null);
+                        try {
+                          await requestExtension({
+                            kind: "cause_deadline",
+                            targetId: cause.id,
+                            requestedUntil,
+                            reason,
+                          });
+                          setNotice({ kind: "success", text: fr.structureCauses.extensionRequested });
+                          setExtendId(null);
+                        } catch (error) {
+                          setNotice({ kind: "error", text: toUiError(error).message });
+                        } finally {
+                          setPending(null);
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               </li>
             );
@@ -171,5 +205,54 @@ export function StructureCauses() {
         </ul>
       )}
     </section>
+  );
+}
+
+/** Inline form to request a new cause deadline (DT-30). The server enforces the max extension. */
+function ExtensionForm({
+  busy,
+  onSubmit,
+}: {
+  busy: boolean;
+  onSubmit: (requestedUntil: number, reason: string) => void;
+}) {
+  const [date, setDate] = useState("");
+  const [reason, setReason] = useState("");
+  const submit = () => {
+    const ts = new Date(date).getTime();
+    if (Number.isNaN(ts)) return;
+    onSubmit(ts, reason.trim());
+  };
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-input bg-background p-3">
+      <label className="text-xs font-semibold" htmlFor="ext-date">
+        {fr.structureCauses.extensionDateLabel}
+      </label>
+      <input
+        id="ext-date"
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        className="w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
+      />
+      <label className="text-xs font-semibold" htmlFor="ext-reason">
+        {fr.structureCauses.extensionReasonLabel}
+      </label>
+      <textarea
+        id="ext-reason"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        className="min-h-16 w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
+      />
+      <Button
+        variant="cta"
+        size="sm"
+        className="self-start"
+        disabled={busy || !date || !reason.trim()}
+        onClick={submit}
+      >
+        {fr.structureCauses.extensionSubmit}
+      </Button>
+    </div>
   );
 }

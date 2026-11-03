@@ -242,6 +242,8 @@ export const fr = {
       proofs: "Preuves",
       deletions: "Suppressions",
       refunds: "Remboursements",
+      extensions: "Prolongations",
+      payoutChanges: "Comptes de réception",
     },
     tabCount: (label: string, count: number) => `${label} (${count})`,
     loading: "Chargement des files…",
@@ -250,6 +252,17 @@ export const fr = {
     emptyProofs: "Aucune preuve à valider.",
     emptyDeletions: "Aucune demande de suppression.",
     emptyRefunds: "Aucune demande de remboursement.",
+    emptyExtensions: "Aucune demande de prolongation.",
+    emptyPayoutChanges: "Aucun changement de compte à valider.",
+    extensionKindCause: "Date limite de la cause",
+    extensionKindProof: "Délai de preuve",
+    extensionDates: (current: string, requested: string) => `${current} → ${requested}`,
+    extensionNoCurrent: "Aucune échéance",
+    payoutChangeMeta: (method: string, holder: string) => `${method} · ${holder}`,
+    confirmExtensionApprove: "Accorder",
+    confirmExtensionRefuse: "Refuser",
+    confirmPayoutApprove: "Valider le compte",
+    confirmPayoutRefuse: "Refuser le compte",
     deletionRaised: (amount: string) => `${amount} collectés`,
     refundMeta: (donor: string, amount: string) => `${donor} · ${amount}`,
     reasonFromStructure: (reason: string) => `Motif : ${reason}`,
@@ -282,6 +295,10 @@ export const fr = {
       deletionMaintained: "Cause maintenue — la structure a été notifiée.",
       refundApproved: "Remboursement approuvé — le donateur a été notifié.",
       refundRejected: "Remboursement refusé — le donateur a été notifié.",
+      extensionApproved: "Prolongation accordée — la structure a été notifiée.",
+      extensionRefused: "Prolongation refusée — la structure a été notifiée.",
+      payoutApproved: "Compte de réception validé — la structure a été notifiée.",
+      payoutRefused: "Compte de réception refusé — la structure a été notifiée.",
     },
     fundOutcomeLabel: "Sort des fonds",
     fundOutcomeRefund: "Rembourser les donateurs",
@@ -473,6 +490,18 @@ export const fr = {
     refundRejectedTitle: "Remboursement refusé",
     refundRejectedBody: (title: string) =>
       `Votre demande de remboursement pour « ${title} » n'a pas été retenue. Les fonds restent affectés à la cause.`,
+    extensionApprovedTitle: "Prolongation accordée",
+    extensionApprovedBody: (until: string) => `Votre échéance est repoussée au ${until}.`,
+    extensionRefusedTitle: "Prolongation refusée",
+    extensionRefusedBody: (reason: string) => `Votre demande de prolongation a été refusée : ${reason}`,
+    extensionDonorBody: (title: string, until: string) =>
+      `La date limite de « ${title} » a été prolongée jusqu'au ${until}.`,
+    payoutApprovedTitle: "Compte de réception validé",
+    payoutApprovedBody:
+      "Votre nouveau compte de réception des fonds est validé. Les versements reprennent.",
+    payoutRefusedTitle: "Compte de réception refusé",
+    payoutRefusedBody: (reason: string) =>
+      `Votre nouveau compte de réception a été refusé : ${reason}. L'ancien compte reste utilisé.`,
   },
 
   whatsapp: {
@@ -551,6 +580,27 @@ export const fr = {
     deletionPrompt:
       "Pourquoi supprimer cette cause ? Un modérateur décidera du sort des fonds déjà collectés.",
     deletionRequested: "Demande de suppression envoyée. Un modérateur va l'examiner.",
+    requestExtension: "Demander une prolongation",
+    extensionDateLabel: "Nouvelle date limite",
+    extensionReasonLabel: "Raison de la prolongation",
+    extensionSubmit: "Envoyer la demande",
+    extensionRequested: "Demande de prolongation envoyée. Un modérateur va l'examiner.",
+  },
+
+  /** Payout-account change (S10, DT-5). */
+  payoutChange: {
+    heading: "Compte de réception des fonds",
+    intro:
+      "Pour changer votre numéro Orange Money ou Wave, confirmez le nouveau numéro par SMS. Un modérateur validera le changement ; les versements sont suspendus en attendant.",
+    methodLabel: "Opérateur",
+    numberLabel: "Nouveau numéro",
+    holderLabel: "Nom du titulaire",
+    sendCode: "Envoyer le code",
+    codeSent: (masked: string) => `Code envoyé au ${masked}.`,
+    codeLabel: "Code reçu par SMS",
+    submit: "Enregistrer le changement",
+    submitted: "Changement envoyé. Un modérateur doit le valider avant qu'il prenne effet.",
+    pending: "Un changement de compte est en attente de validation par la modération.",
   },
 
   /** Create-cause wizard (PARCOURS S11). */
@@ -718,6 +768,13 @@ export const fr = {
       "Ce don ne peut plus être remboursé : les fonds ont été versés ou la cause est close.",
     refundPhoneRequired: "Indiquez le numéro sur lequel recevoir le remboursement.",
     refundAlreadyDecided: "Cette demande de remboursement a déjà été traitée.",
+    extensionReasonRequired: "Expliquez la raison de votre demande de prolongation.",
+    extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",
+    extensionDateInvalid: (maxDays: number) =>
+      `La nouvelle date doit être dans le futur, après l'échéance actuelle et au plus ${maxDays} jours après.`,
+    extensionAlreadyDecided: "Cette demande de prolongation a déjà été traitée.",
+    payoutChangeAlreadyDecided: "Ce changement de compte a déjà été traité.",
+    noPayoutChangePending: "Aucun changement de compte n'est en attente pour cette structure.",
   },
 } as const;
 

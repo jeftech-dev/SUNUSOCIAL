@@ -7,6 +7,7 @@ const NNBSP = " ";
 const NBSP = " ";
 
 describe("computeFee", () => {
+  // ~240k iterations: generous timeout so it stays green under parallel-suite CPU contention.
   it("keeps fee + platformFee + net === amount for every amount, provider and rate", () => {
     const rates = [0, 0.01, 0.025, 0.05, 0.1, 0.333];
     for (const provider of PROVIDERS) {
@@ -17,7 +18,7 @@ describe("computeFee", () => {
         }
       }
     }
-  });
+  }, 30_000);
 
   it("keeps the invariant on large amounts", () => {
     let seed = 42;

@@ -9,12 +9,18 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toUiError } from "@/lib/errors";
+import { formatDate } from "@/lib/dates";
 import { formatFCFA } from "@/lib/money";
 import { fr } from "@/lib/strings.fr";
-import type { DeletionQueueItem, RefundQueueItem } from "@/lib/types";
+import type {
+  DeletionQueueItem,
+  ExtensionQueueItem,
+  PayoutChangeQueueItem,
+  RefundQueueItem,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Tab = "structures" | "causes" | "proofs" | "deletions" | "refunds";
+type Tab = "structures" | "causes" | "proofs" | "deletions" | "refunds" | "extensions" | "payoutChanges";
 type Notice = { kind: "success" | "error"; text: string };
 type ReasonTarget =
   | { kind: "structure"; id: Id<"structures"> }
@@ -29,6 +35,8 @@ export function ModerationQueues() {
   const decideProof = useMutation(api.moderation.decideProof);
   const decideDeletion = useMutation(api.moderation.decideDeletion);
   const decideRefund = useMutation(api.moderation.decideRefund);
+  const decideExtension = useMutation(api.moderation.decideExtension);
+  const decidePayoutAccount = useMutation(api.moderation.decidePayoutAccount);
 
   const [tab, setTab] = useState<Tab>("structures");
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -76,6 +84,16 @@ export function ModerationQueues() {
       count: queues?.deletions.count ?? 0,
     },
     { key: "refunds", label: fr.moderation.tabs.refunds, count: queues?.refunds.count ?? 0 },
+    {
+      key: "extensions",
+      label: fr.moderation.tabs.extensions,
+      count: queues?.extensions.count ?? 0,
+    },
+    {
+      key: "payoutChanges",
+      label: fr.moderation.tabs.payoutChanges,
+      count: queues?.payoutChanges.count ?? 0,
+    },
   ];
 
   return (
@@ -266,12 +284,47 @@ export function ModerationQueues() {
             ))}
           </ul>
         )
-      ) : queues.refunds.items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{fr.moderation.emptyRefunds}</p>
+      ) : tab === "refunds" ? (
+        queues.refunds.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{fr.moderation.emptyRefunds}</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queues.refunds.items.map((r) => (
+              <RefundRow
+                key={r.id}
+                item={r}
+                busy={busy}
+                onDecide={(args) => run(decideRefund(args))}
+              />
+            ))}
+          </ul>
+        )
+      ) : tab === "extensions" ? (
+        queues.extensions.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{fr.moderation.emptyExtensions}</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queues.extensions.items.map((e) => (
+              <ExtensionRow
+                key={e.id}
+                item={e}
+                busy={busy}
+                onDecide={(args) => run(decideExtension(args))}
+              />
+            ))}
+          </ul>
+        )
+      ) : queues.payoutChanges.items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{fr.moderation.emptyPayoutChanges}</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {queues.refunds.items.map((r) => (
-            <RefundRow key={r.id} item={r} busy={busy} onDecide={(args) => run(decideRefund(args))} />
+          {queues.payoutChanges.items.map((p) => (
+            <PayoutChangeRow
+              key={p.id}
+              item={p}
+              busy={busy}
+              onDecide={(args) => run(decidePayoutAccount(args))}
+            />
           ))}
         </ul>
       )}
@@ -380,6 +433,121 @@ function RefundRow({
           onClick={() => onDecide({ requestId: item.id, decision: "refunded" })}
         >
           {fr.moderation.confirmRefundApprove}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+/** One extension request: approve moves the deadline; refuse needs a reason (DT-30). */
+function ExtensionRow({
+  item,
+  busy,
+  onDecide,
+}: {
+  item: ExtensionQueueItem;
+  busy: boolean;
+  onDecide: (args: {
+    requestId: Id<"extensionRequests">;
+    decision: "approve" | "refuse";
+    reason?: string;
+  }) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const kindLabel =
+    item.kind === "cause_deadline"
+      ? fr.moderation.extensionKindCause
+      : fr.moderation.extensionKindProof;
+  const current = item.currentUntil === null ? fr.moderation.extensionNoCurrent : formatDate(item.currentUntil);
+
+  return (
+    <li className="flex flex-col gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4">
+      <div className="flex min-w-0 flex-col">
+        <strong className="font-heading">{item.target}</strong>
+        <span className="text-sm text-muted-foreground">
+          {item.organization} · {kindLabel}
+        </span>
+        <span className="mt-1 text-sm">
+          {fr.moderation.extensionDates(current, formatDate(item.requestedUntil))}
+        </span>
+        <span className="mt-1 text-sm">{fr.moderation.reasonFromStructure(item.reason)}</span>
+      </div>
+      <textarea
+        aria-label={fr.moderation.refuseReasonLabel}
+        value={reason}
+        placeholder={fr.moderation.refuseReasonPlaceholder}
+        onChange={(e) => setReason(e.target.value)}
+        className="min-h-14 w-full rounded-lg border-[1.5px] border-input bg-card p-3 text-[15px]"
+      />
+      <div className="flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busy || !reason.trim()}
+          onClick={() => onDecide({ requestId: item.id, decision: "refuse", reason: reason.trim() })}
+        >
+          {fr.moderation.confirmExtensionRefuse}
+        </Button>
+        <Button
+          variant="cta"
+          size="sm"
+          disabled={busy}
+          onClick={() => onDecide({ requestId: item.id, decision: "approve" })}
+        >
+          {fr.moderation.confirmExtensionApprove}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+/** One payout-account change: approve switches the live account; refuse needs a reason (DT-5). */
+function PayoutChangeRow({
+  item,
+  busy,
+  onDecide,
+}: {
+  item: PayoutChangeQueueItem;
+  busy: boolean;
+  onDecide: (args: {
+    structureId: Id<"structures">;
+    decision: "approve" | "refuse";
+    reason?: string;
+  }) => void;
+}) {
+  const [reason, setReason] = useState("");
+  return (
+    <li className="flex flex-col gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4">
+      <div className="flex min-w-0 flex-col">
+        <strong className="font-heading">{item.organization}</strong>
+        <span className="text-sm text-muted-foreground">
+          {fr.moderation.payoutChangeMeta(fr.methods[item.method], item.holderName)}
+        </span>
+        <span className="mt-1 font-mono text-sm">{item.accountNumber}</span>
+      </div>
+      <textarea
+        aria-label={fr.moderation.refuseReasonLabel}
+        value={reason}
+        placeholder={fr.moderation.refuseReasonPlaceholder}
+        onChange={(e) => setReason(e.target.value)}
+        className="min-h-14 w-full rounded-lg border-[1.5px] border-input bg-card p-3 text-[15px]"
+      />
+      <div className="flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busy || !reason.trim()}
+          onClick={() => onDecide({ structureId: item.id, decision: "refuse", reason: reason.trim() })}
+        >
+          {fr.moderation.confirmPayoutRefuse}
+        </Button>
+        <Button
+          variant="cta"
+          size="sm"
+          disabled={busy}
+          onClick={() => onDecide({ structureId: item.id, decision: "approve" })}
+        >
+          {fr.moderation.confirmPayoutApprove}
         </Button>
       </div>
     </li>
