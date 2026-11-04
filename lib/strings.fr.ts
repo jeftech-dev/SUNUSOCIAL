@@ -438,6 +438,13 @@ export const fr = {
     refundSubmit: "Envoyer la demande",
     refundHint: (net: string) =>
       `Tant que les fonds sont bloqués, vous pouvez être remboursé de ${net} (votre don moins les frais NabooPay).`,
+    causeDeletedRefunded: (net: string, reason: string) =>
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Votre don vous est remboursé : ${net}.`,
+    causeDeletedPaidOut: (reason: string) =>
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Les fonds ont été versés à la structure, qui doit en justifier l'emploi.`,
+    refundStatusPending: "Remboursement demandé — en cours d'examen.",
+    refundStatusRefunded: (net: string) => `Remboursé : ${net} reversés sur votre numéro.`,
+    refundStatusRejected: "Demande de remboursement refusée.",
   },
 
   notifications: {

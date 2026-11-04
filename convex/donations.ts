@@ -356,20 +356,29 @@ async function historyView(
     .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
     .first();
 
+  const lateRefund = donation.lateRefundFlaggedAt !== undefined;
+
+  // A deleted cause's fund outcome only applies to a gift that actually captured funds. A
+  // late-auto-refunded gift tells its own story (`lateRefund` below), so it is excluded here to
+  // avoid stacking a second, conflicting notice.
   let causeDeleted: DonationHistoryView["causeDeleted"] = null;
-  if (cause?.status === "deleted") {
+  if (cause?.status === "deleted" && !lateRefund) {
     const deletion = await ctx.db
       .query("deletionRequests")
       .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
       .filter((q) => q.eq(q.field("status"), "approved"))
       .first();
-    causeDeleted = {
-      reason: deletion?.moderatorReason ?? "",
-      outcome: deletion?.fundOutcome === "payout" ? "paidOut" : "refunded",
-    };
+    const paidOut = deletion?.fundOutcome === "payout";
+    // Payout keeps funds that were held or already released; refund only reverses still-held gifts
+    // (`settleDeletedCause`). A never-captured gift (failed/pending) is neither, so claim nothing.
+    const settled = donation.status === "held" || (paidOut && donation.status === "released");
+    if (settled) {
+      causeDeleted = {
+        reason: deletion?.moderatorReason?.trim() ?? "",
+        outcome: paidOut ? "paidOut" : "refunded",
+      };
+    }
   }
-
-  const lateRefund = donation.lateRefundFlaggedAt !== undefined;
   return {
     id: donation._id,
     causeId: donation.causeId,

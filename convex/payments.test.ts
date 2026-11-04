@@ -452,4 +452,91 @@ describe("donor views", () => {
     const impact = await client.query(api.donations.impact, {});
     expect(impact).toEqual({ total: 7000, causeCount: 1, donationCount: 2 });
   });
+
+  async function markCauseDeleted(
+    t: T,
+    causeId: Id<"causes">,
+    fundOutcome: "refund" | "payout",
+    moderatorReason: string,
+  ) {
+    await t.run(async (ctx) => {
+      await ctx.db.patch(causeId, { status: "deleted" });
+      await ctx.db.insert("deletionRequests", {
+        causeId,
+        structureReason: "test",
+        status: "approved",
+        fundOutcome,
+        moderatorReason,
+        createdAt: Date.now(),
+      });
+    });
+  }
+
+  const firstMine = async (client: ReturnType<T["withIdentity"]>) =>
+    (
+      await client.query(api.donations.mine, {
+        paginationOpts: { numItems: 10, cursor: null },
+      })
+    ).page[0];
+
+  it("reports a deleted cause's payout outcome on a held gift", async () => {
+    const t = await seeded();
+    const { client } = await donor(t);
+    const cause = await activeCause(t);
+    await paidDonation(t, client, 5000);
+    await markCauseDeleted(t, cause._id, "payout", "Fonds déjà engagés");
+    expect((await firstMine(client)).causeDeleted).toEqual({
+      outcome: "paidOut",
+      reason: "Fonds déjà engagés",
+    });
+  });
+
+  it("reports a deleted cause's refund outcome on a held gift", async () => {
+    const t = await seeded();
+    const { client } = await donor(t);
+    const cause = await activeCause(t);
+    await paidDonation(t, client, 5000);
+    await markCauseDeleted(t, cause._id, "refund", "Doublon");
+    expect((await firstMine(client)).causeDeleted).toEqual({
+      outcome: "refunded",
+      reason: "Doublon",
+    });
+  });
+
+  it("claims no outcome for a never-captured gift under a deleted cause", async () => {
+    const t = await seeded();
+    const { client } = await donor(t);
+    const cause = await activeCause(t);
+    // createCheckout only: the donation stays `pending`, so no funds were ever held.
+    await client.action(api.donations.createCheckout, {
+      causeId: cause._id,
+      amount: 5000,
+      method: "wave",
+    });
+    await markCauseDeleted(t, cause._id, "refund", "Doublon");
+    const view = await firstMine(client);
+    expect(view.status).toBe("pending");
+    expect(view.causeDeleted).toBeNull();
+  });
+
+  it("omits an empty moderator reason", async () => {
+    const t = await seeded();
+    const { client } = await donor(t);
+    const cause = await activeCause(t);
+    await paidDonation(t, client, 5000);
+    await markCauseDeleted(t, cause._id, "refund", "   ");
+    expect((await firstMine(client)).causeDeleted).toEqual({ outcome: "refunded", reason: "" });
+  });
+
+  it("defers to the late-refund notice instead of a deleted-cause outcome", async () => {
+    const t = await seeded();
+    const { client } = await donor(t);
+    const cause = await activeCause(t);
+    const id = await paidDonation(t, client, 5000);
+    await t.run((ctx) => ctx.db.patch(id, { lateRefundFlaggedAt: Date.now() }));
+    await markCauseDeleted(t, cause._id, "refund", "Doublon");
+    const view = await firstMine(client);
+    expect(view.lateRefund).toBe(true);
+    expect(view.causeDeleted).toBeNull();
+  });
 });
