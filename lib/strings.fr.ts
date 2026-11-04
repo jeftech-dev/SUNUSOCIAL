@@ -439,9 +439,9 @@ export const fr = {
     refundHint: (net: string) =>
       `Tant que les fonds sont bloqués, vous pouvez être remboursé de ${net} (votre don moins les frais NabooPay).`,
     causeDeletedRefunded: (net: string, reason: string) =>
-      `Cause supprimée (${reason}). Votre don vous est remboursé : ${net}.`,
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Votre don vous est remboursé : ${net}.`,
     causeDeletedPaidOut: (reason: string) =>
-      `Cause supprimée (${reason}). Les fonds ont été versés à la structure, qui doit en justifier l'emploi.`,
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Les fonds ont été versés à la structure, qui doit en justifier l'emploi.`,
     refundStatusPending: "Remboursement demandé — en cours d'examen.",
     refundStatusRefunded: (net: string) => `Remboursé : ${net} reversés sur votre numéro.`,
     refundStatusRejected: "Demande de remboursement refusée.",
@@ -500,7 +500,8 @@ export const fr = {
     extensionApprovedTitle: "Prolongation accordée",
     extensionApprovedBody: (until: string) => `Votre échéance est repoussée au ${until}.`,
     extensionRefusedTitle: "Prolongation refusée",
-    extensionRefusedBody: (reason: string) => `Votre demande de prolongation a été refusée : ${reason}`,
+    extensionRefusedBody: (reason: string) =>
+      `Votre demande de prolongation a été refusée : ${reason}`,
     extensionDonorBody: (title: string, until: string) =>
       `La date limite de « ${title} » a été prolongée jusqu'au ${until}.`,
     payoutApprovedTitle: "Compte de réception validé",
@@ -764,7 +765,8 @@ export const fr = {
     proofNotDue: "Une preuve n'est attendue qu'après le versement des fonds à votre structure.",
     proofAlreadySubmitted: "Une preuve a déjà été envoyée pour cette cause.",
     deletionReasonRequired: "Expliquez pourquoi cette cause doit être supprimée.",
-    causeNotDeletable: "Seule une cause active ayant reçu des dons passe par une demande de suppression.",
+    causeNotDeletable:
+      "Seule une cause active ayant reçu des dons passe par une demande de suppression.",
     deletionAlreadyRequested: "Une demande de suppression est déjà en cours pour cette cause.",
     deletionAlreadyDecided: "Cette demande de suppression a déjà été traitée.",
     fundOutcomeRequired: "Choisissez le sort des fonds (remboursement ou versement).",
