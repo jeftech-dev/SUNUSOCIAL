@@ -94,15 +94,18 @@ Everything else requires a session. **Donors must be logged in to view and donat
 ### Blood module
 | Kind | Function | Description | Auth |
 |------|----------|-------------|------|
-| query | `bloodAlerts.forDonor` | Alerts matching the donor's blood type + commune | Donor (opted-in) |
-| mutation | `bloodAlerts.respond` | Confirm a visit slot | Donor (opted-in) |
-| query | `bloodAlerts.forHospital` | A hospital's alerts + responders | Hospital |
-| mutation | `bloodAlerts.create` | Create and send an alert (types, units, urgency, communes) | Hospital |
-| mutation | `moderation.closeAlert` | Close or disable any alert | Moderator |
-| mutation | `bloodAlerts.confirmDonation` | Mark a donor as donated; stock +1 | Hospital |
-| mutation | `bloodAlerts.close` | Close an alert | Hospital |
-| mutation | `bloodAlerts.sendThanks` | Send thank-you to confirmed donors | Hospital |
-| query | `bloodStock.get` / mutation `bloodStock.update` | Read / set per-group reserves | Hospital |
+| query | `blood.alertsForDonor` | Open alerts (`scope`: `mine` = matching group + commune, `all`) and the unanswered count | Donor |
+| mutation | `blood.respond` | Confirm a visit slot (`slotStart`) | Donor (opted-in, compatible) |
+| mutation | `blood.cancelResponse` | Cancel a visit before the slot ends (interim G14) | Donor |
+| query | `blood.previewRecipients` | Reach per commune before sending | Hospital |
+| mutation | `blood.createAlert` | Create and send an alert (groups or "Tous groupes", units, urgency, communes, channels); 20 per hour | Hospital (approved) |
+| query | `blood.hospitalOverview` | Stock + alerts + responders (first name, group, commune, slot) | Hospital |
+| mutation | `blood.confirmDonation` | Mark a donor as donated; stock +1 | Hospital |
+| mutation | `blood.closeAlert` | Close an alert | Hospital |
+| mutation | `blood.sendThanks` | Send thank-you to confirmed donors (once) | Hospital |
+| query | `blood.getStock` / mutation `blood.updateStock` | Read / set per-group reserves | Hospital |
+| query | `moderation.alerts` / mutation `moderation.closeAlert` | List every alert / close one with a required reason (interim G13) | Moderator |
+| query | `notifications.listMine` / mutation `notifications.markRead` | In-app notifications | Any session |
 
 ### Moderation
 | Kind | Function | Description | Auth |

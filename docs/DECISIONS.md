@@ -330,4 +330,17 @@ Flags are advisory; the moderator decides.
 | `SESSION_TOTAL_DAYS` | `7` | Decided (DB-8) |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | *(unset)* | SUNUSOCIAL's official WhatsApp number, waiting on the board (`BOARD_QUESTIONS.md` part E). The WhatsApp buttons are hidden while it is unset |
 
+### Interim blood-module rules (Sprint 7, board pending)
+
+Placeholders until the board answers `PARCOURS.md` G13, G14 and G16; each is tagged `// Interim (Gxx)` or `BLOOD-x` in the code so it can be found and changed.
+
+| ID | Interim rule |
+|---|---|
+| G13 | A moderator who closes an alert must give a reason; the hospital receives it. The moderation page shows each hospital's count of moderator-closed alerts. No automatic review. |
+| G14 | A donor can cancel a visit until its slot ends (unless the donation is confirmed); the hospital is notified and the reminder is cancelled. The donor may answer again later. |
+| G16 | Donors whose group is `unknown` receive only alerts marked "Tous groupes" (`anyType`), which reach every opted-in donor in the targeted communes. When confirming such a donor, the hospital enters the group found on site. |
+| BLOOD-A | An alert expires from its level: vitale 24 h, urgente 72 h, normale 14 days; an hourly cron closes expired alerts. |
+| BLOOD-B | When an alert closes, donors who answered but did not give are told they need not come (in-app, plus SMS if `smsOptIn`). |
+| BLOOD-C | Fan-out in pages of 200 profiles; SMS only to `smsOptIn` donors; no daily cap on alert SMS (`SMS_DAILY_CAP` covers sign-in codes only). Visit slots are fixed 2-hour windows (08–18 h) today and tomorrow; the SMS reminder goes 2 h before. |
+
 *Removed since rev. 1:* `OTP_CHANNEL` (codes always go by SMS), `SMS_ENABLED`, `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` (decided: hospitals), `ENFORCE_PROOF_DEADLINE_ON_RELEASE` (decided: always), `REFUND_FEE_POLICY` (decided: net).
