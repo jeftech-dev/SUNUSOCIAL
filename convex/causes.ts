@@ -456,3 +456,51 @@ export const withdraw = mutation({
     return { ok: true };
   },
 });
+
+/**
+ * Asks a moderator to delete an active cause that has received donations (S14). A cause without
+ * donations is `withdraw`n instead. The moderator decides the fund fate (refund donors or pay out
+ * to the structure) in `moderation.decideDeletion` (Sprint 6, DT-24).
+ */
+export const requestDeletion = mutation({
+  args: { causeId: v.id("causes"), reason: v.string() },
+  handler: async (ctx, { causeId, reason }): Promise<{ requestId: Id<"deletionRequests"> }> => {
+    const { user } = await requireRole(ctx, "structure", "hospital");
+    const cause = await ctx.db.get(causeId);
+    if (!cause || cause.structureId !== user.structureId) {
+      throw appError("FORBIDDEN", fr.errors.forbidden, "causeId");
+    }
+    if (cause.status !== "active") {
+      throw appError("CONFLICT", fr.errors.causeNotDeletable, "causeId");
+    }
+    // Only a cause that has received donations goes through deletion arbitration; one with none is
+    // withdrawn instead (fr.errors.causeNotDeletable). Keyed on donation existence, like withdraw.
+    if (await isWithdrawable(ctx, cause)) {
+      throw appError("CONFLICT", fr.errors.causeNotDeletable, "causeId");
+    }
+    const trimmed = reason.trim();
+    if (!trimmed) throw appError("VALIDATION", fr.errors.deletionReasonRequired, "reason");
+
+    const pending = await ctx.db
+      .query("deletionRequests")
+      .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .first();
+    if (pending) throw appError("CONFLICT", fr.errors.deletionAlreadyRequested, "causeId");
+
+    const requestId = await ctx.db.insert("deletionRequests", {
+      causeId,
+      structureReason: trimmed,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "deletion.request",
+      targetTable: "causes",
+      targetId: causeId,
+      details: { requestId, reason: trimmed },
+    });
+    return { requestId };
+  },
+});

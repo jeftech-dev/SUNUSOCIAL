@@ -240,12 +240,20 @@ export const fr = {
       structures: "Inscriptions",
       causes: "Causes",
       proofs: "Preuves",
+      deletions: "Suppressions",
+      refunds: "Remboursements",
     },
     tabCount: (label: string, count: number) => `${label} (${count})`,
     loading: "Chargement des files…",
     emptyStructures: "Aucune inscription à valider.",
     emptyCauses: "Aucune cause à valider.",
     emptyProofs: "Aucune preuve à valider.",
+    emptyDeletions: "Aucune demande de suppression.",
+    emptyRefunds: "Aucune demande de remboursement.",
+    deletionRaised: (amount: string) => `${amount} collectés`,
+    refundMeta: (donor: string, amount: string) => `${donor} · ${amount}`,
+    reasonFromStructure: (reason: string) => `Motif : ${reason}`,
+    decisionReasonLabel: "Motif de la décision (visible par la structure et les donateurs)",
     structureMeta: (type: string, region: string) => `${type} · ${region}`,
     hasPayout: "Compte de réception fourni",
     approve: "Approuver",
@@ -270,7 +278,18 @@ export const fr = {
       causeRefused: "Cause refusée — la structure a été notifiée.",
       proofValidated: "Preuve validée et publiée.",
       proofEscalated: "Compléments demandés — la structure a été notifiée.",
+      deletionApproved: "Suppression approuvée — la structure et les donateurs ont été notifiés.",
+      deletionMaintained: "Cause maintenue — la structure a été notifiée.",
+      refundApproved: "Remboursement approuvé — le donateur a été notifié.",
+      refundRejected: "Remboursement refusé — le donateur a été notifié.",
     },
+    fundOutcomeLabel: "Sort des fonds",
+    fundOutcomeRefund: "Rembourser les donateurs",
+    fundOutcomePayout: "Verser à la structure",
+    confirmDeletionApprove: "Approuver la suppression",
+    confirmDeletionMaintain: "Maintenir la cause",
+    confirmRefundApprove: "Approuver le remboursement",
+    confirmRefundReject: "Refuser le remboursement",
   },
 
   /** 03 Accueil donateur. */
@@ -394,6 +413,14 @@ export const fr = {
     proofPending: "En attente de preuve",
     lateRefund: (net: string) =>
       `Cause déjà clôturée à l'arrivée du paiement\u00a0: ${net} vous seront remboursés automatiquement.`,
+    requestRefund: "Demander un remboursement",
+    refundReasonLabel: "Motif de votre demande",
+    refundReasonPlaceholder: "Ex. : je me suis trompé de cause.",
+    refundPhoneLabel: "Numéro où recevoir le remboursement",
+    refundPhoneHint: "Par défaut, votre numéro vérifié.",
+    refundSubmit: "Envoyer la demande",
+    refundHint: (net: string) =>
+      `Tant que les fonds sont bloqués, vous pouvez être remboursé de ${net} (votre don moins les frais NabooPay).`,
   },
 
   notifications: {
@@ -430,6 +457,22 @@ export const fr = {
       `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées : ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
     payoutAlertTitle: "Versement à vérifier",
     payoutAlertBody: (detail: string) => `Un versement nécessite une intervention : ${detail}`,
+    deletionApprovedTitle: "Cause supprimée",
+    deletionApprovedBody: (title: string, reason: string) =>
+      `La cause « ${title} » a été supprimée : ${reason}`,
+    deletionMaintainedTitle: "Cause maintenue",
+    deletionMaintainedBody: (title: string, reason: string) =>
+      `Votre demande de suppression de « ${title} » a été refusée : ${reason}. La cause reste active.`,
+    deletionDonorRefundBody: (title: string, net: string) =>
+      `La cause « ${title} » a été supprimée. Votre don vous est remboursé : ${net} (votre don moins les frais NabooPay) sur votre numéro.`,
+    deletionDonorPayoutBody: (title: string) =>
+      `La cause « ${title} » a été supprimée. Les fonds déjà collectés ont été versés à la structure, qui doit en justifier l'emploi.`,
+    refundApprovedTitle: "Remboursement approuvé",
+    refundApprovedBody: (title: string, net: string) =>
+      `Votre demande de remboursement pour « ${title} » est acceptée : ${net} vous sont reversés sur votre numéro.`,
+    refundRejectedTitle: "Remboursement refusé",
+    refundRejectedBody: (title: string) =>
+      `Votre demande de remboursement pour « ${title} » n'a pas été retenue. Les fonds restent affectés à la cause.`,
   },
 
   whatsapp: {
@@ -504,6 +547,10 @@ export const fr = {
     submitProof: "Publier la preuve",
     actionFailed: "L'action n'a pas abouti. Réessayez.",
     withdrawn: "Cause retirée.",
+    requestDeletion: "Demander la suppression",
+    deletionPrompt:
+      "Pourquoi supprimer cette cause ? Un modérateur décidera du sort des fonds déjà collectés.",
+    deletionRequested: "Demande de suppression envoyée. Un modérateur va l'examiner.",
   },
 
   /** Create-cause wizard (PARCOURS S11). */
@@ -659,6 +706,19 @@ export const fr = {
     proofAmountInvalid: "Chaque montant doit être un entier en FCFA, supérieur ou égal à 0.",
     proofNotDue: "Une preuve n'est attendue qu'après le versement des fonds à votre structure.",
     proofAlreadySubmitted: "Une preuve a déjà été envoyée pour cette cause.",
+    deletionReasonRequired: "Expliquez pourquoi cette cause doit être supprimée.",
+    causeNotDeletable:
+      "Seule une cause active ayant reçu des dons passe par une demande de suppression.",
+    deletionAlreadyRequested: "Une demande de suppression est déjà en cours pour cette cause.",
+    deletionAlreadyDecided: "Cette demande de suppression a déjà été traitée.",
+    fundOutcomeRequired: "Choisissez le sort des fonds (remboursement ou versement).",
+    payoutChangePending:
+      "Un changement de compte de réception est en cours : le versement est bloqué en attendant.",
+    refundReasonRequired: "Indiquez le motif de votre demande de remboursement.",
+    refundNotEligible:
+      "Ce don ne peut plus être remboursé : les fonds ont été versés ou la cause est close.",
+    refundPhoneRequired: "Indiquez le numéro sur lequel recevoir le remboursement.",
+    refundAlreadyDecided: "Cette demande de remboursement a déjà été traitée.",
   },
 } as const;
 

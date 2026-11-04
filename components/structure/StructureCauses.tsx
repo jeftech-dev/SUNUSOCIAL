@@ -22,6 +22,7 @@ export function StructureCauses() {
   const me = useMe();
   const causes = useQuery(api.causes.mine);
   const withdraw = useMutation(api.causes.withdraw);
+  const requestDeletion = useMutation(api.causes.requestDeletion);
   const [pending, setPending] = useState<Id<"causes"> | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -34,6 +35,21 @@ export function StructureCauses() {
     try {
       await withdraw({ causeId });
       setNotice({ kind: "success", text: fr.structureCauses.withdrawn });
+    } catch (error) {
+      setNotice({ kind: "error", text: toUiError(error).message });
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const onRequestDeletion = async (causeId: Id<"causes">) => {
+    const reason = window.prompt(fr.structureCauses.deletionPrompt);
+    if (reason === null) return;
+    setPending(causeId);
+    setNotice(null);
+    try {
+      await requestDeletion({ causeId, reason });
+      setNotice({ kind: "success", text: fr.structureCauses.deletionRequested });
     } catch (error) {
       setNotice({ kind: "error", text: toUiError(error).message });
     } finally {
@@ -128,6 +144,16 @@ export function StructureCauses() {
                         onClick={() => onWithdraw(cause.id)}
                       >
                         {fr.structureCauses.withdraw}
+                      </Button>
+                    )}
+                    {cause.status === "active" && !withdrawable && !cause.fundsReleased && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={pending === cause.id}
+                        onClick={() => onRequestDeletion(cause.id)}
+                      >
+                        {fr.structureCauses.requestDeletion}
                       </Button>
                     )}
                     {cause.fundsReleased && (

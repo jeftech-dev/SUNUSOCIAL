@@ -384,6 +384,28 @@ export interface ProofQueueItem {
   flagged: boolean;
 }
 
+export interface DeletionQueueItem {
+  id: Id<"deletionRequests">;
+  causeId: Id<"causes">;
+  cause: string;
+  organization: string;
+  /** Gross raised so far, so the moderator sees what is at stake before choosing the fund fate. */
+  raised: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface RefundQueueItem {
+  id: Id<"refundRequests">;
+  donationId: Id<"donations">;
+  cause: string;
+  donor: string;
+  /** The net amount that would be refunded (DT-7). */
+  amount: number;
+  reason: string;
+  createdAt: number;
+}
+
 export interface ModerationQueue<T> {
   count: number;
   items: T[];
@@ -393,9 +415,9 @@ export interface ModerationQueues {
   structures: ModerationQueue<StructureQueueItem>;
   causes: ModerationQueue<CauseQueueItem>;
   proofs: ModerationQueue<ProofQueueItem>;
-  /** Filled in Sprint 6. */
-  deletions: ModerationQueue<never>;
-  refunds: ModerationQueue<never>;
+  deletions: ModerationQueue<DeletionQueueItem>;
+  refunds: ModerationQueue<RefundQueueItem>;
+  /** Filled in a later Sprint 6 PR. */
   payoutChanges: ModerationQueue<never>;
   featured: { causeId: Id<"causes">; since: number } | null;
 }
