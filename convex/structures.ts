@@ -32,6 +32,11 @@ export const requestPayoutChange = mutation({
     if (!user.structureId) throw appError("FORBIDDEN", fr.errors.forbidden);
     const structure = await ctx.db.get(user.structureId);
     if (!structure) throw appError("NOT_FOUND", fr.errors.generic);
+    // One pending change at a time (DT-5): a second request would silently drop the first (and its
+    // SMS-verified account) and leave the moderation queue showing a change the structure replaced.
+    if (structure.payoutPending) {
+      throw appError("CONFLICT", fr.errors.payoutChangeAlreadyPending);
+    }
 
     const accountNumber = normalizePhone(payout.accountNumber);
     if (!accountNumber) throw appError("VALIDATION", fr.errors.invalidPhone, "payout.accountNumber");
@@ -53,6 +58,7 @@ export const requestPayoutChange = mutation({
         holderName,
         phoneVerifiedAt: Date.now(),
       },
+      payoutPendingAt: Date.now(),
     });
     await logAudit(ctx, {
       actorId: user._id,

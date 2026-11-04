@@ -4,6 +4,7 @@
 import { v } from "convex/values";
 
 import { percentOf } from "../lib/causes";
+import { DAY_MS, loadConfig } from "../lib/config";
 import { formatDate } from "../lib/dates";
 import { formatFCFA } from "../lib/money";
 import { fr } from "../lib/strings.fr";
@@ -168,12 +169,13 @@ export const queues = query({
       .query("extensionRequests")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
-    const allPayoutChanges = (
-      await ctx.db
-        .query("structures")
-        .withIndex("by_status", (q) => q.eq("status", "approved"))
-        .collect()
-    ).filter((s) => s.payoutPending !== undefined);
+    // Any structure with a pending change, in any status — payouts are blocked whenever `payoutPending`
+    // is set, so a non-approved structure's change must still reach a moderator. `by_payout_pending`
+    // indexes only the structures that have one (payoutPendingAt set), so this is not a full scan.
+    const allPayoutChanges = await ctx.db
+      .query("structures")
+      .withIndex("by_payout_pending", (q) => q.gt("payoutPendingAt", 0))
+      .collect();
     const structures = allStructures.slice(0, MAX_QUEUE);
     const causes = allCauses.slice(0, MAX_QUEUE);
     const submitted = allSubmitted.slice(0, MAX_QUEUE);
@@ -897,12 +899,23 @@ export const decideExtension = mutation({
       return { ok: true };
     }
 
-    // Approve: move the target deadline to the requested date.
+    // Approve: move the target deadline to the requested date. The request was validated when it was
+    // made, but the target may have changed since (closed, deleted, or already extended past this
+    // date). Re-check against the *current* state so approval can never move a deadline backwards or
+    // reopen/extend a target that is no longer eligible (TOCTOU, DT-30).
+    const maxDays = loadConfig(process.env).maxExtensionDays;
     const newDate = request.requestedUntil;
     if (request.kind === "cause_deadline") {
       const causeId = ctx.db.normalizeId("causes", request.targetId);
       const cause = causeId && (await ctx.db.get(causeId));
       if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "requestId");
+      if (
+        cause.status !== "active" ||
+        newDate <= cause.deadline ||
+        newDate > cause.deadline + maxDays * DAY_MS
+      ) {
+        throw appError("CONFLICT", fr.errors.extensionStale, "requestId");
+      }
       await ctx.db.patch(cause._id, {
         deadline: newDate,
         extensionCount: cause.extensionCount + 1,
@@ -916,6 +929,13 @@ export const decideExtension = mutation({
       const deadlineId = ctx.db.normalizeId("proofDeadlines", request.targetId);
       const deadline = deadlineId && (await ctx.db.get(deadlineId));
       if (!deadline) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+      if (
+        deadline.metAt !== undefined ||
+        newDate <= deadline.dueAt ||
+        newDate > deadline.dueAt + maxDays * DAY_MS
+      ) {
+        throw appError("CONFLICT", fr.errors.extensionStale, "requestId");
+      }
       await ctx.db.patch(deadline._id, { dueAt: newDate });
     }
     await ctx.db.patch(requestId, {
@@ -966,9 +986,10 @@ export const decidePayoutAccount = mutation({
       await ctx.db.patch(structureId, {
         payout: { ...structure.payoutPending, verifiedAt: Date.now(), verifiedBy: user._id },
         payoutPending: undefined,
+        payoutPendingAt: undefined,
       });
     } else {
-      await ctx.db.patch(structureId, { payoutPending: undefined });
+      await ctx.db.patch(structureId, { payoutPending: undefined, payoutPendingAt: undefined });
     }
     await logAudit(ctx, {
       actorId: user._id,

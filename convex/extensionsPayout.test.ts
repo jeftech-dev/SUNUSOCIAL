@@ -215,6 +215,70 @@ describe("extensions.request + decideExtension", () => {
     expect((await getCause(t, causeId))?.deadline).toBe(deadline); // unchanged
   });
 
+  it("rejects a second pending request for the same target", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const deadline = Date.now() + 5 * DAY_MS;
+    const causeId = await activeCause(t, s.structureId, deadline);
+    await s.client.mutation(api.extensions.request, {
+      kind: "cause_deadline",
+      targetId: causeId,
+      requestedUntil: deadline + 5 * DAY_MS,
+      reason: "première",
+    });
+    await expectAppError(
+      s.client.mutation(api.extensions.request, {
+        kind: "cause_deadline",
+        targetId: causeId,
+        requestedUntil: deadline + 8 * DAY_MS,
+        reason: "deuxième",
+      }),
+      "CONFLICT",
+    );
+  });
+
+  it("refuses to approve a stale request that would move the deadline backwards", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    const deadline = Date.now() + 5 * DAY_MS;
+    const causeId = await activeCause(t, s.structureId, deadline);
+    // A request for +5 days, left pending.
+    const { requestId } = await s.client.mutation(api.extensions.request, {
+      kind: "cause_deadline",
+      targetId: causeId,
+      requestedUntil: deadline + 5 * DAY_MS,
+      reason: "x",
+    });
+    // Meanwhile the deadline is pushed further out (e.g. by another extension).
+    await t.run((ctx) => ctx.db.patch(causeId, { deadline: deadline + 20 * DAY_MS }));
+    // Approving the stale request must not pull the deadline back to deadline+5.
+    await expectAppError(
+      mod.mutation(api.moderation.decideExtension, { requestId, decision: "approve" }),
+      "CONFLICT",
+    );
+    expect((await getCause(t, causeId))?.deadline).toBe(deadline + 20 * DAY_MS);
+  });
+
+  it("refuses to approve an extension for a cause that is no longer active", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    const deadline = Date.now() + 5 * DAY_MS;
+    const causeId = await activeCause(t, s.structureId, deadline);
+    const { requestId } = await s.client.mutation(api.extensions.request, {
+      kind: "cause_deadline",
+      targetId: causeId,
+      requestedUntil: deadline + 5 * DAY_MS,
+      reason: "x",
+    });
+    await t.run((ctx) => ctx.db.patch(causeId, { status: "closed" }));
+    await expectAppError(
+      mod.mutation(api.moderation.decideExtension, { requestId, decision: "approve" }),
+      "CONFLICT",
+    );
+  });
+
   it("extends a proof deadline", async () => {
     const t = setup();
     const s = await structureCtx(t);
@@ -299,6 +363,35 @@ describe("structures.requestPayoutChange + decidePayoutAccount", () => {
     expect(structure?.payout?.verifiedAt).toBeDefined();
   });
 
+  it("rejects a second change while one is still pending", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    await t.action(api.otp.send, { purpose: "payout_number", phone: NEW_NUMBER });
+    await s.client.mutation(api.structures.requestPayoutChange, {
+      payout: {
+        method: "orange_money",
+        accountNumber: NEW_NUMBER,
+        holderName: "Awa Diop",
+        otpCode: lastSmsCode(NEW_NUMBER),
+      },
+    });
+    const SECOND = "+221760000004";
+    await t.action(api.otp.send, { purpose: "payout_number", phone: SECOND });
+    await expectAppError(
+      s.client.mutation(api.structures.requestPayoutChange, {
+        payout: {
+          method: "wave",
+          accountNumber: SECOND,
+          holderName: "Awa Diop",
+          otpCode: lastSmsCode(SECOND),
+        },
+      }),
+      "CONFLICT",
+    );
+    // The first pending account is untouched.
+    expect((await getStructure(t, s.structureId))?.payoutPending?.accountNumber).toBe(NEW_NUMBER);
+  });
+
   it("rejects a wrong SMS code", async () => {
     const t = setup();
     const s = await structureCtx(t);
@@ -372,5 +465,25 @@ describe("moderation.queues (extensions + payout changes)", () => {
     expect(queues.extensions.items[0]).toMatchObject({ kind: "cause_deadline", target: "Cantine scolaire" });
     expect(queues.payoutChanges.count).toBe(1);
     expect(queues.payoutChanges.items[0].accountNumber).toContain("0003");
+  });
+
+  it("lists a pending payout change even when the structure is not approved", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    // Payouts are blocked whenever a change is pending, so a non-approved structure's change must
+    // still reach a moderator or it would strand that structure's payouts forever.
+    await t.run((ctx) => ctx.db.patch(s.structureId, { status: "pending" }));
+    await t.action(api.otp.send, { purpose: "payout_number", phone: NEW_NUMBER });
+    await s.client.mutation(api.structures.requestPayoutChange, {
+      payout: {
+        method: "orange_money",
+        accountNumber: NEW_NUMBER,
+        holderName: "Awa Diop",
+        otpCode: lastSmsCode(NEW_NUMBER),
+      },
+    });
+    const queues = await mod.query(api.moderation.queues, {});
+    expect(queues.payoutChanges.count).toBe(1);
   });
 });

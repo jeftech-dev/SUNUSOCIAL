@@ -770,10 +770,13 @@ export const fr = {
     refundAlreadyDecided: "Cette demande de remboursement a déjà été traitée.",
     extensionReasonRequired: "Expliquez la raison de votre demande de prolongation.",
     extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",
+    extensionAlreadyPending: "Une demande de prolongation est déjà en cours pour cette échéance.",
+    extensionStale:
+      "Cette demande n'est plus applicable : l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
     extensionDateInvalid: (maxDays: number) =>
       `La nouvelle date doit être dans le futur, après l'échéance actuelle et au plus ${maxDays} jours après.`,
     extensionAlreadyDecided: "Cette demande de prolongation a déjà été traitée.",
-    payoutChangeAlreadyDecided: "Ce changement de compte a déjà été traité.",
+    payoutChangeAlreadyPending: "Un changement de compte est déjà en attente de validation.",
     noPayoutChangePending: "Aucun changement de compte n'est en attente pour cette structure.",
   },
 } as const;

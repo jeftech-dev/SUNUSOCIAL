@@ -65,6 +65,16 @@ export const request = mutation({
       throw appError("VALIDATION", fr.errors.extensionDateInvalid(maxDays), "requestedUntil");
     }
 
+    // One pending request per target (DT-30): overlapping requests let a moderator approve a stale one
+    // after a fresher one, which could move the deadline backwards (decideExtension re-checks too).
+    const alreadyPending = await ctx.db
+      .query("extensionRequests")
+      .withIndex("by_target_status", (q) => q.eq("targetId", targetId).eq("status", "pending"))
+      .first();
+    if (alreadyPending) {
+      throw appError("CONFLICT", fr.errors.extensionAlreadyPending, "targetId");
+    }
+
     const requestId = await ctx.db.insert("extensionRequests", {
       kind,
       targetId,
