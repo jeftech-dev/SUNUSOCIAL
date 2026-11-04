@@ -405,9 +405,21 @@ export default defineSchema({
     createdBy: v.id("users"),
     closedBy: v.optional(v.id("users")),
     createdAt: v.number(),
+    /** Interim (G16): reaches every opted-in donor, including unknown groups. */
+    anyType: v.optional(v.boolean()),
+    /** When the alert expires on its own; derived from the level when absent. */
+    deadlineAt: v.optional(v.number()),
+    closedAt: v.optional(v.number()),
+    /** Interim (G13): required when a moderator closes an alert. */
+    closeReason: v.optional(v.string()),
+    closedByModerator: v.optional(v.boolean()),
+    thanksSentAt: v.optional(v.number()),
+    /** Donors reached by the fan-out so far. */
+    notifiedCount: v.optional(v.number()),
   })
     .index("by_hospital_closed", ["hospitalId", "closed"])
-    .index("by_closed", ["closed"]),
+    .index("by_closed", ["closed"])
+    .index("by_closed_deadline", ["closed", "deadlineAt"]),
 
   bloodResponses: defineTable({
     alertId: v.id("bloodAlerts"),
@@ -419,9 +431,19 @@ export default defineSchema({
     slot: v.string(),
     donated: v.boolean(),
     createdAt: v.number(),
+    slotStart: v.optional(v.number()),
+    slotEnd: v.optional(v.number()),
+    /** Interim (G14): a donor may cancel before the slot ends. */
+    cancelledAt: v.optional(v.number()),
+    confirmedAt: v.optional(v.number()),
+    confirmedBy: v.optional(v.id("users")),
+    /** The group found on site, when the donor's snapshot is "unknown". */
+    donatedType: v.optional(bloodTypeV),
+    reminderJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_alert", ["alertId"])
-    .index("by_alert_donor", ["alertId", "donorId"]),
+    .index("by_alert_donor", ["alertId", "donorId"])
+    .index("by_donor", ["donorId", "createdAt"]),
 
   bloodStock: defineTable({
     hospitalId: v.id("structures"),

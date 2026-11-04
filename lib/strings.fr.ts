@@ -52,6 +52,9 @@ export const fr = {
     main: "Navigation principale",
     causes: "Causes",
     profile: "Mon profil",
+    blood: "Don de sang",
+    hospitalDashboard: "Tableau de bord",
+    hospitalAlert: "Émettre une alerte",
     login: "Se connecter",
     signup: "Créer un compte",
     logout: "Se déconnecter",
@@ -129,8 +132,14 @@ export const fr = {
 
   bloodAlertLevels: {
     vitale: "Urgence vitale",
-    urgente: "Urgente",
-    normale: "Normale",
+    urgente: "Urgent",
+    normale: "Préventif",
+  } satisfies Record<BloodAlertLevel, string>,
+
+  bloodAlertLevelHints: {
+    vitale: "Moins de 24 h",
+    urgente: "Sous 72 h",
+    normale: "Sous 2 semaines",
   } satisfies Record<BloodAlertLevel, string>,
 
   auth: {
@@ -448,6 +457,25 @@ export const fr = {
   },
 
   notifications: {
+    bloodAlertTitle: (groups: string) => `Alerte don de sang : ${groups}`,
+    bloodAlertBody: (hospital: string, level: string) =>
+      `${hospital} recherche du sang (${level}). Choisissez un créneau pour confirmer votre venue.`,
+    bloodResponseTitle: "Nouveau donneur attendu",
+    bloodResponseBody: (name: string, group: string, slot: string) =>
+      `${name} (${group}) viendra ${slot}.`,
+    bloodCancelTitle: "Venue annulée",
+    bloodCancelBody: (name: string, group: string, slot: string) =>
+      `${name} (${group}) ne viendra plus ${slot}.`,
+    bloodReminderTitle: "Rappel : votre don de sang",
+    bloodReminderBody: (hospital: string, slot: string) =>
+      `Vous êtes attendu ${slot} à ${hospital}.`,
+    bloodClosedTitle: "Alerte terminée",
+    bloodClosedBody: (hospital: string) =>
+      `L'alerte de ${hospital} est terminée. Vous n'avez plus besoin de venir.`,
+    bloodThanksTitle: (hospital: string) => `Merci de la part de ${hospital}`,
+    bloodModeratorClosedTitle: "Alerte clôturée par la modération",
+    bloodModeratorClosedBody: (reason: string) =>
+      `Votre alerte a été clôturée par un modérateur : ${reason}`,
     donationConfirmedTitle: "Don confirmé",
     donationConfirmedBody: (amount: string, title: string) =>
       `Votre don de ${amount} pour «\u00a0${title}\u00a0» est confirmé. Les fonds restent bloqués jusqu'à la fin de la cause.`,
@@ -690,6 +718,12 @@ export const fr = {
   },
 
   sms: {
+    bloodAlert: (hospital: string, groups: string, level: string, communes: string) =>
+      `SUNUSOCIAL : ${hospital} recherche du sang ${groups} (${level}). Alerte envoyée aux donneurs de ${communes}. Confirmez votre venue sur sunusocial.sn/sang`,
+    bloodReminder: (hospital: string, slot: string) =>
+      `SUNUSOCIAL : rappel, vous êtes attendu ${slot} à ${hospital} pour donner votre sang. Merci !`,
+    bloodClosed: (hospital: string) =>
+      `SUNUSOCIAL : l'alerte de ${hospital} est terminée, vous n'avez plus besoin de venir. Merci pour votre élan !`,
     code: (code: string) =>
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
     accountExists:
@@ -749,6 +783,31 @@ export const fr = {
     uploadInvalid: "Fichier refusé : vérifiez le format et la taille autorisés.",
     structureNotApproved:
       "Votre structure doit être validée par notre équipe avant de publier une cause.",
+    hospitalNotApproved:
+      "Votre hôpital doit être validé par notre équipe avant d'émettre une alerte.",
+    alertNotFound: "Alerte introuvable.",
+    alertClosed: "Cette alerte est terminée.",
+    alertRateLimited: "Trop d'alertes en une heure. Réessayez plus tard.",
+    alertGroupsRequired: "Choisissez au moins un groupe sanguin, ou « Tous groupes ».",
+    alertUnitsInvalid: "Indiquez un nombre de poches entre 1 et 500.",
+    alertCommunesRequired: "Choisissez au moins une commune de votre région.",
+    alertChannelRequired: "Choisissez au moins un canal d'envoi.",
+    communeOutsideRegion: "Cette commune n'est pas dans la région de votre hôpital.",
+    bloodNotOptedIn: "Activez les alertes don de sang dans votre profil pour répondre.",
+    notCompatible: "Cette alerte ne recherche pas votre groupe sanguin.",
+    alreadyResponded: "Vous avez déjà confirmé votre venue pour cette alerte.",
+    slotInvalid: "Ce créneau n'est plus disponible. Choisissez-en un autre.",
+    responseNotFound: "Réponse introuvable.",
+    responseNotActive: "Ce donneur n'est plus attendu pour cette alerte.",
+    donationAlreadyConfirmed: "Ce don est déjà confirmé.",
+    donatedTypeRequired: "Indiquez le groupe sanguin constaté sur place.",
+    cancelTooLate: "Il est trop tard pour annuler cette venue.",
+    thanksNotAllowed:
+      "Le remerciement n'est possible qu'après la clôture (ou l'objectif atteint), une seule fois, et s'il y a au moins un don confirmé.",
+    thanksLength: (min: number, max: number) =>
+      `Le message doit comporter entre ${min} et ${max} caractères.`,
+    stockInvalid: "Indiquez un nombre entier de poches entre 0 et 9999.",
+    closeReasonRequired: "Indiquez le motif de la clôture.",
     structureAlreadyDecided: "Cette structure a déjà été traitée.",
     causeTitleInvalid: "Le titre doit comporter entre 4 et 120 caractères.",
     causeDescriptionInvalid: "La description doit comporter au moins 20 caractères.",

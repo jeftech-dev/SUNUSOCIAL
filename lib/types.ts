@@ -46,6 +46,12 @@ export type DonationStatus = (typeof DONATION_STATUSES)[number];
 export const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "unknown"] as const;
 export type BloodType = (typeof BLOOD_TYPES)[number];
 
+/** The eight real groups, for pickers (the "unknown" option is profile-only). */
+export const KNOWN_BLOOD_TYPES = BLOOD_TYPES.filter((t) => t !== "unknown") as Exclude<
+  BloodType,
+  "unknown"
+>[];
+
 export const BLOOD_ALERT_LEVELS = ["vitale", "urgente", "normale"] as const;
 export type BloodAlertLevel = (typeof BLOOD_ALERT_LEVELS)[number];
 
@@ -145,6 +151,9 @@ export const NOTIFICATION_KINDS = [
   "payout_alert",
   "blood_alert",
   "blood_thanks",
+  "blood_response",
+  "blood_reminder",
+  "blood_alert_closed",
   "account_suspended",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -207,8 +216,9 @@ export interface SubmitProofInput {
 }
 
 export interface CreateAlertInput {
-  hospitalId: Id<"structures">;
   bloodTypes: BloodType[];
+  /** Interim (G16): "Tous groupes". */
+  anyType: boolean;
   level: BloodAlertLevel;
   unitsNeeded: number;
   targetCommunes: string[];
