@@ -103,12 +103,20 @@ export function ModerationQueues() {
         <h1 className="font-heading text-3xl font-extrabold text-brand-blue">
           {fr.moderation.queuesTitle}
         </h1>
-        <Link
-          href="/coup-de-coeur"
-          className="text-sm font-semibold text-brand-blue underline-offset-4 hover:underline"
-        >
-          {fr.moderation.featuredLink}
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link
+            href="/alertes"
+            className="text-sm font-semibold text-brand-blue underline-offset-4 hover:underline"
+          >
+            {fr.blood.moderation.link}
+          </Link>
+          <Link
+            href="/coup-de-coeur"
+            className="text-sm font-semibold text-brand-blue underline-offset-4 hover:underline"
+          >
+            {fr.moderation.featuredLink}
+          </Link>
+        </div>
       </div>
 
       <div role="tablist" className="flex flex-wrap gap-2">

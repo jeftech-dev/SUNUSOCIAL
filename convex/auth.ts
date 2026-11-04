@@ -569,6 +569,7 @@ export interface MeView {
     status: Doc<"structures">["status"];
     refusalReason?: string;
     suspendedAt?: number;
+    region: string;
   } | null;
   /** Structures, hospitals and moderators need the SMS code on every login. */
   mfaRequired: boolean;
@@ -610,6 +611,7 @@ export const me = query({
         status: structureDoc.status,
         refusalReason: structureDoc.refusalReason,
         suspendedAt: structureDoc.suspendedAt,
+        region: structureDoc.region,
       },
       mfaRequired,
       mfaVerified: !mfaRequired || session.mfaVerifiedAt !== undefined,

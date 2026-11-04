@@ -262,7 +262,7 @@ export const fr = {
       channels: "Canal d'envoi",
       channelSms: "SMS (recommandé)",
       channelApp: "Notification sur l'application",
-      reach: (n: number) => `${n} donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""}`,
+      reach: (n: number) => `donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""}`,
       reachSuffix: (communes: string) => `inscrits à ${communes} recevront l'alerte.`,
       reachNoCommune: "Choisissez au moins une commune.",
       send: "Envoyer l'alerte",
