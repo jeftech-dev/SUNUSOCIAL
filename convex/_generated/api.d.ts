@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as audit from "../audit.js";
+import type * as blood from "../blood.js";
 import type * as auth from "../auth.js";
 import type * as causes from "../causes.js";
 import type * as crons from "../crons.js";
@@ -23,6 +24,7 @@ import type * as lib_errors from "../lib/errors.js";
 import type * as lib_guards from "../lib/guards.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as moderation from "../moderation.js";
+import type * as notifications from "../notifications.js";
 import type * as notify from "../notify.js";
 import type * as otp from "../otp.js";
 import type * as passwordReset from "../passwordReset.js";
@@ -43,6 +45,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   audit: typeof audit;
+  blood: typeof blood;
   auth: typeof auth;
   causes: typeof causes;
   crons: typeof crons;
@@ -56,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   "lib/guards": typeof lib_guards;
   "lib/rateLimit": typeof lib_rateLimit;
   moderation: typeof moderation;
+  notifications: typeof notifications;
   notify: typeof notify;
   otp: typeof otp;
   passwordReset: typeof passwordReset;

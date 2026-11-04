@@ -136,6 +136,10 @@ export const fr = {
     normale: "Préventif",
   } satisfies Record<BloodAlertLevel, string>,
 
+  blood: {
+    allGroups: "tous groupes",
+  },
+
   bloodAlertLevelHints: {
     vitale: "Moins de 24 h",
     urgente: "Sous 72 h",

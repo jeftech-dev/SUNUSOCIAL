@@ -45,4 +45,7 @@ crons.interval("reconcile unknown payouts", { minutes: 10 }, internal.payouts.re
 // Daily ledger drift check against the NabooPay balance (DT-4).
 crons.daily("ledger check", { hourUTC: 4, minuteUTC: 0 }, internal.payouts.dailyLedgerCheck, {});
 
+// Close blood alerts past their deadline (BLOOD-A).
+crons.hourly("close expired blood alerts", { minuteUTC: 40 }, internal.blood.closeExpired, {});
+
 export default crons;

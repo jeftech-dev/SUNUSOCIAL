@@ -4,6 +4,7 @@
 import { v } from "convex/values";
 
 import { percentOf } from "../lib/causes";
+import { alertDeadline } from "../lib/bloodSlots";
 import { DAY_MS, loadConfig } from "../lib/config";
 import { formatDate } from "../lib/dates";
 import { formatFCFA } from "../lib/money";
@@ -13,6 +14,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, type MutationCtx, query } from "./_generated/server";
 import { logAudit } from "./audit";
+import { closeAlertInternal } from "./blood";
 import { isListed, structureLoader } from "./lib/causeViews";
 import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
@@ -1026,6 +1028,94 @@ export const decidePayoutAccount = mutation({
             ? fr.notifications.payoutApprovedBody
             : fr.notifications.payoutRefusedBody(trimmed!),
         link: "/structure",
+      });
+    }
+    return { ok: true };
+  },
+});
+
+/** Most alerts listed on the moderation page per tab. */
+const MAX_ALERTS = 100;
+
+/** Every blood alert (DT-26): open ones first, with the hospital's moderator-closed count. */
+export const alerts = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, "moderator");
+    const now = Date.now();
+    const open = await ctx.db
+      .query("bloodAlerts")
+      .withIndex("by_closed", (q) => q.eq("closed", false))
+      .order("desc")
+      .take(MAX_ALERTS);
+    const closed = await ctx.db
+      .query("bloodAlerts")
+      .withIndex("by_closed", (q) => q.eq("closed", true))
+      .order("desc")
+      .take(MAX_ALERTS);
+    const moderatorClosed = new Map<Id<"structures">, number>();
+    for (const alert of closed) {
+      if (alert.closedByModerator) {
+        moderatorClosed.set(alert.hospitalId, (moderatorClosed.get(alert.hospitalId) ?? 0) + 1);
+      }
+    }
+    const rows = [];
+    for (const alert of [...open, ...closed]) {
+      const hospital = await ctx.db.get(alert.hospitalId);
+      const responses = await ctx.db
+        .query("bloodResponses")
+        .withIndex("by_alert", (q) => q.eq("alertId", alert._id))
+        .take(500);
+      rows.push({
+        _id: alert._id,
+        hospitalName: hospital?.name ?? "",
+        level: alert.level,
+        bloodTypes: alert.bloodTypes,
+        anyType: alert.anyType ?? false,
+        targetCommunes: alert.targetCommunes,
+        unitsNeeded: alert.unitsNeeded,
+        unitsCollected: alert.unitsCollected,
+        respondersCount: responses.filter((r) => r.cancelledAt === undefined).length,
+        closed: alert.closed || now >= alertDeadline(alert),
+        closeReason: alert.closeReason ?? null,
+        closedByModerator: alert.closedByModerator ?? false,
+        // Interim (G13): shown to the moderator; no automatic review.
+        hospitalModeratorClosedCount: moderatorClosed.get(alert.hospitalId) ?? 0,
+        createdAt: alert.createdAt,
+      });
+    }
+    return rows;
+  },
+});
+
+/** Closes an abusive or mistaken alert. Interim (G13): the reason is required and sent to the hospital. */
+export const closeAlert = mutation({
+  args: { alertId: v.id("bloodAlerts"), reason: v.string() },
+  handler: async (ctx, { alertId, reason }) => {
+    const { user } = await requireRole(ctx, "moderator");
+    const trimmed = reason.trim();
+    if (trimmed.length === 0) {
+      throw appError("VALIDATION", fr.errors.closeReasonRequired, "reason");
+    }
+    const alert = await ctx.db.get(alertId);
+    if (!alert) throw appError("NOT_FOUND", fr.errors.alertNotFound);
+    if (alert.closed) throw appError("CONFLICT", fr.errors.alertClosed);
+    await closeAlertInternal(ctx, alert, { by: user._id, reason: trimmed, moderator: true });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.alert.close",
+      targetTable: "bloodAlerts",
+      targetId: alertId,
+      details: { reason: trimmed },
+    });
+    const responsible = await structureUser(ctx, alert.hospitalId);
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "blood_alert_closed",
+        title: fr.notifications.bloodModeratorClosedTitle,
+        body: fr.notifications.bloodModeratorClosedBody(trimmed),
+        link: "/hopital",
       });
     }
     return { ok: true };
