@@ -659,8 +659,10 @@ export const decideDeletion = mutation({
         .query("donations")
         .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
         .collect();
+      // Late-flagged donations are refunded to the donor (lateRefundDue), never released to the
+      // structure — exclude them from the payout, exactly as releaseCause does.
       const total = donations
-        .filter((d) => d.status === "held")
+        .filter((d) => d.status === "held" && d.lateRefundFlaggedAt === undefined)
         .reduce((sum, d) => sum + d.net, 0);
       await ctx.db.patch(cause._id, { status: "deleted", fundsReleasedAt: Date.now() });
       if (total > 0 && structure?.payout) {
@@ -726,7 +728,9 @@ export const settleDeletedCause = internalMutation({
       .paginate({ cursor: cursor ?? null, numItems: DELETION_SETTLE_BATCH });
 
     for (const donation of result.page) {
-      if (donation.status !== "held") continue;
+      // Late-flagged donations are always refunded to the donor by lateRefundDue, whatever the
+      // deletion outcome — skip them here so they are neither paid out nor double-refunded.
+      if (donation.status !== "held" || donation.lateRefundFlaggedAt !== undefined) continue;
       const donor = await ctx.db.get(donation.donorId);
       if (outcome === "refund") {
         const existing = await ctx.db
@@ -734,21 +738,26 @@ export const settleDeletedCause = internalMutation({
           .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
           .unique();
         if (!existing && donor?.phone) {
-          await ctx.db.insert("refundRequests", {
-            donationId: donation._id,
-            donorId: donation.donorId,
-            reason: "cause_deleted",
-            status: "pending",
-            receivingPhone: donor.phone,
-            createdAt: Date.now(),
-          });
-          await enqueuePayout(ctx, {
+          // The deletion decision already settled this refund: enqueue the payout and record the
+          // request as refunded (not pending), so it never appears in the moderation queue and
+          // cannot be decided a second time. completeRefund confirms it when the payout lands.
+          const payoutId = await enqueuePayout(ctx, {
             kind: "refund",
             targetId: donation._id,
             amount: donation.net,
             method: donation.paidMethod ?? donation.method,
             phone: donor.phone,
             name: donor.name,
+          });
+          await ctx.db.insert("refundRequests", {
+            donationId: donation._id,
+            donorId: donation.donorId,
+            reason: "cause_deleted",
+            status: "refunded",
+            receivingPhone: donor.phone,
+            refundAmount: donation.net,
+            payoutId,
+            createdAt: Date.now(),
           });
         }
       }
@@ -780,10 +789,7 @@ export const decideRefund = mutation({
     requestId: v.id("refundRequests"),
     decision: v.union(v.literal("refunded"), v.literal("rejected")),
   },
-  handler: async (
-    ctx,
-    { requestId, decision },
-  ): Promise<{ ok: true; refundAmount?: number }> => {
+  handler: async (ctx, { requestId, decision }): Promise<{ ok: true; refundAmount?: number }> => {
     const { user } = await requireRole(ctx, "moderator");
     const request = await ctx.db.get(requestId);
     if (!request) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
@@ -818,7 +824,11 @@ export const decideRefund = mutation({
       throw appError("CONFLICT", fr.errors.refundNotEligible, "requestId");
     }
     const amount = donation.net;
-    await ctx.db.patch(requestId, { status: "refunded", refundAmount: amount, decidedBy: user._id });
+    await ctx.db.patch(requestId, {
+      status: "refunded",
+      refundAmount: amount,
+      decidedBy: user._id,
+    });
     const donor = await ctx.db.get(request.donorId);
     const payoutId = await enqueuePayout(ctx, {
       kind: "refund",

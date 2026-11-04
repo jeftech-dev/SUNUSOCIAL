@@ -757,7 +757,8 @@ export const fr = {
     proofNotDue: "Une preuve n'est attendue qu'après le versement des fonds à votre structure.",
     proofAlreadySubmitted: "Une preuve a déjà été envoyée pour cette cause.",
     deletionReasonRequired: "Expliquez pourquoi cette cause doit être supprimée.",
-    causeNotDeletable: "Seule une cause active ayant reçu des dons passe par une demande de suppression.",
+    causeNotDeletable:
+      "Seule une cause active ayant reçu des dons passe par une demande de suppression.",
     deletionAlreadyRequested: "Une demande de suppression est déjà en cours pour cette cause.",
     deletionAlreadyDecided: "Cette demande de suppression a déjà été traitée.",
     fundOutcomeRequired: "Choisissez le sort des fonds (remboursement ou versement).",
