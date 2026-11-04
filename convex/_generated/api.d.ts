@@ -10,10 +10,12 @@
 
 import type * as admin from "../admin.js";
 import type * as audit from "../audit.js";
+import type * as blood from "../blood.js";
 import type * as auth from "../auth.js";
 import type * as causes from "../causes.js";
 import type * as crons from "../crons.js";
 import type * as donations from "../donations.js";
+import type * as extensions from "../extensions.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_causeViews from "../lib/causeViews.js";
@@ -22,6 +24,7 @@ import type * as lib_errors from "../lib/errors.js";
 import type * as lib_guards from "../lib/guards.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as moderation from "../moderation.js";
+import type * as notifications from "../notifications.js";
 import type * as notify from "../notify.js";
 import type * as otp from "../otp.js";
 import type * as passwordReset from "../passwordReset.js";
@@ -30,6 +33,7 @@ import type * as payouts from "../payouts.js";
 import type * as proofChecks from "../proofChecks.js";
 import type * as proofs from "../proofs.js";
 import type * as seed from "../seed.js";
+import type * as structures from "../structures.js";
 import type * as validators from "../validators.js";
 
 import type {
@@ -41,10 +45,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   audit: typeof audit;
+  blood: typeof blood;
   auth: typeof auth;
   causes: typeof causes;
   crons: typeof crons;
   donations: typeof donations;
+  extensions: typeof extensions;
   files: typeof files;
   http: typeof http;
   "lib/causeViews": typeof lib_causeViews;
@@ -53,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   "lib/guards": typeof lib_guards;
   "lib/rateLimit": typeof lib_rateLimit;
   moderation: typeof moderation;
+  notifications: typeof notifications;
   notify: typeof notify;
   otp: typeof otp;
   passwordReset: typeof passwordReset;
@@ -61,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   proofChecks: typeof proofChecks;
   proofs: typeof proofs;
   seed: typeof seed;
+  structures: typeof structures;
   validators: typeof validators;
 }>;
 

@@ -292,6 +292,13 @@ Append-only record of sensitive actions **and donor activity** (DB-9, DT-18). Ro
 | `createdBy` | Id<"users"> | required | The hospital user (DB-10) |
 | `closedBy` | Id<"users"> | optional | Hospital, or a moderator who closed or disabled it |
 | `createdAt` | number | required | |
+| `anyType` | boolean | optional | Interim (G16): "Tous groupes", reaches every opted-in donor including unknown groups; `bloodTypes` is then empty |
+| `deadlineAt` | number | optional | Expiry from the level (vitale 24 h, urgente 72 h, normale 14 days); an hourly cron closes expired alerts |
+| `closedAt` | number | optional | |
+| `closeReason` | string | optional | Interim (G13): required when a moderator closes the alert; shown to the hospital |
+| `closedByModerator` | boolean | optional | |
+| `thanksSentAt` | number | optional | The thank-you goes out once |
+| `notifiedCount` | number | optional | Donors reached by the fan-out so far |
 
 ### bloodResponses
 | Column | Type | Constraints | Description |
@@ -303,6 +310,11 @@ Append-only record of sensitive actions **and donor activity** (DB-9, DT-18). Ro
 | `slot` | string | required | Confirmed visit window |
 | `donated` | boolean | default false | Confirmed on site by the hospital (stock +1) |
 | `createdAt` | number | required | |
+| `slotStart` / `slotEnd` | number | optional | The 2-hour window the donor picked (UTC = Dakar); drives the reminder 2 h before |
+| `cancelledAt` | number | optional | Interim (G14): the donor cancelled; they may answer again later |
+| `confirmedAt` / `confirmedBy` | number / Id<"users"> | optional | Set when the hospital confirms the donation |
+| `donatedType` | string | optional | The group found on site, required when the snapshot is `unknown` |
+| `reminderJobId` | Id<"_scheduled_functions"> | optional | The scheduled SMS reminder, cancelled on cancel/close/confirm |
 
 ### bloodStock
 Each hospital's reserves by blood group.
@@ -366,8 +378,10 @@ CREATE INDEX by_target                 ON auditLog (targetTable, targetId);
 CREATE INDEX by_action_created         ON auditLog (action, createdAt);    -- 12-month purge of donor logins
 CREATE INDEX by_hospital_closed        ON bloodAlerts (hospitalId, closed);
 CREATE INDEX by_closed                 ON bloodAlerts (closed);
+CREATE INDEX by_closed_deadline        ON bloodAlerts (closed, deadlineAt);  -- hourly expiry cron
 CREATE INDEX by_alert                  ON bloodResponses (alertId);
 CREATE INDEX by_alert_donor            ON bloodResponses (alertId, donorId); -- one response per donor and alert
+CREATE INDEX by_donor                  ON bloodResponses (donorId, createdAt);
 CREATE INDEX by_hospital_type          ON bloodStock (hospitalId, bloodType);
 CREATE INDEX by_storage                ON signupUploads (storageId);
 CREATE INDEX by_created                ON signupUploads (createdAt);

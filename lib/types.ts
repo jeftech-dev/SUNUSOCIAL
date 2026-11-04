@@ -46,6 +46,12 @@ export type DonationStatus = (typeof DONATION_STATUSES)[number];
 export const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "unknown"] as const;
 export type BloodType = (typeof BLOOD_TYPES)[number];
 
+/** The eight real groups, for pickers (the "unknown" option is profile-only). */
+export const KNOWN_BLOOD_TYPES = BLOOD_TYPES.filter((t) => t !== "unknown") as Exclude<
+  BloodType,
+  "unknown"
+>[];
+
 export const BLOOD_ALERT_LEVELS = ["vitale", "urgente", "normale"] as const;
 export type BloodAlertLevel = (typeof BLOOD_ALERT_LEVELS)[number];
 
@@ -145,6 +151,9 @@ export const NOTIFICATION_KINDS = [
   "payout_alert",
   "blood_alert",
   "blood_thanks",
+  "blood_response",
+  "blood_reminder",
+  "blood_alert_closed",
   "account_suspended",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -207,8 +216,9 @@ export interface SubmitProofInput {
 }
 
 export interface CreateAlertInput {
-  hospitalId: Id<"structures">;
   bloodTypes: BloodType[];
+  /** Interim (G16): "Tous groupes". */
+  anyType: boolean;
   level: BloodAlertLevel;
   unitsNeeded: number;
   targetCommunes: string[];
@@ -384,6 +394,50 @@ export interface ProofQueueItem {
   flagged: boolean;
 }
 
+export interface DeletionQueueItem {
+  id: Id<"deletionRequests">;
+  causeId: Id<"causes">;
+  cause: string;
+  organization: string;
+  /** Gross raised so far, so the moderator sees what is at stake before choosing the fund fate. */
+  raised: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface RefundQueueItem {
+  id: Id<"refundRequests">;
+  donationId: Id<"donations">;
+  cause: string;
+  donor: string;
+  /** The net amount that would be refunded (DT-7). */
+  amount: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface ExtensionQueueItem {
+  id: Id<"extensionRequests">;
+  kind: ExtensionKind;
+  organization: string;
+  /** The cause title (both kinds resolve to the cause the deadline belongs to). */
+  target: string;
+  /** The deadline today and the one requested, so the moderator sees the added hold (DT-30). */
+  currentUntil: number | null;
+  requestedUntil: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface PayoutChangeQueueItem {
+  id: Id<"structures">;
+  organization: string;
+  method: Method;
+  /** The new wallet number, masked (last digits only). */
+  accountNumber: string;
+  holderName: string;
+}
+
 export interface ModerationQueue<T> {
   count: number;
   items: T[];
@@ -393,10 +447,10 @@ export interface ModerationQueues {
   structures: ModerationQueue<StructureQueueItem>;
   causes: ModerationQueue<CauseQueueItem>;
   proofs: ModerationQueue<ProofQueueItem>;
-  /** Filled in Sprint 6. */
-  deletions: ModerationQueue<never>;
-  refunds: ModerationQueue<never>;
-  payoutChanges: ModerationQueue<never>;
+  deletions: ModerationQueue<DeletionQueueItem>;
+  refunds: ModerationQueue<RefundQueueItem>;
+  extensions: ModerationQueue<ExtensionQueueItem>;
+  payoutChanges: ModerationQueue<PayoutChangeQueueItem>;
   featured: { causeId: Id<"causes">; since: number } | null;
 }
 

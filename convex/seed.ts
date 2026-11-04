@@ -6,6 +6,7 @@
 // Every seeded donation keeps `fee + platformFee + net === amount`, and each cause's `raised`
 // and `donorCount` match its donations exactly.
 
+import { BLOOD_ALERT_DURATION_MS } from "../lib/bloodSlots";
 import { v } from "convex/values";
 
 import { DAY_MS, loadConfig } from "../lib/config";
@@ -582,6 +583,8 @@ export const insert = internalMutation({
       closed: false,
       createdBy: hospitalUser,
       createdAt: now - DAY_MS / 4,
+      anyType: false,
+      deadlineAt: now - DAY_MS / 4 + BLOOD_ALERT_DURATION_MS.vitale,
     });
 
     await ctx.db.insert("auditLog", {

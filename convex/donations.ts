@@ -22,6 +22,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import {
   action,
   internalMutation,
+  mutation,
   query,
   type MutationCtx,
   type QueryCtx,
@@ -309,6 +310,26 @@ export const claimRefresh = internalMutation({
 // History and impact (donor dashboard, PARCOURS S19)
 // ---------------------------------------------------------------------------
 
+/**
+ * Whether a donation may still be refunded on request (DB-2, DT-7): the funds are held, it is not a
+ * late payment (those refund automatically), there is no existing request, and the cause is neither
+ * deleted nor already released. The single source of truth for the history view and `requestRefund`.
+ */
+function isRefundEligible(
+  donation: Doc<"donations">,
+  cause: Doc<"causes"> | null,
+  request: Doc<"refundRequests"> | null,
+): boolean {
+  return (
+    donation.status === "held" &&
+    donation.lateRefundFlaggedAt === undefined &&
+    request === null &&
+    cause !== null &&
+    cause.status !== "deleted" &&
+    cause.fundsReleasedAt === undefined
+  );
+}
+
 async function historyView(
   ctx: QueryCtx,
   donation: Doc<"donations">,
@@ -335,20 +356,29 @@ async function historyView(
     .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
     .first();
 
+  const lateRefund = donation.lateRefundFlaggedAt !== undefined;
+
+  // A deleted cause's fund outcome only applies to a gift that actually captured funds. A
+  // late-auto-refunded gift tells its own story (`lateRefund` below), so it is excluded here to
+  // avoid stacking a second, conflicting notice.
   let causeDeleted: DonationHistoryView["causeDeleted"] = null;
-  if (cause?.status === "deleted") {
+  if (cause?.status === "deleted" && !lateRefund) {
     const deletion = await ctx.db
       .query("deletionRequests")
       .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
       .filter((q) => q.eq(q.field("status"), "approved"))
       .first();
-    causeDeleted = {
-      reason: deletion?.moderatorReason ?? "",
-      outcome: deletion?.fundOutcome === "payout" ? "paidOut" : "refunded",
-    };
+    const paidOut = deletion?.fundOutcome === "payout";
+    // Payout keeps funds that were held or already released; refund only reverses still-held gifts
+    // (`settleDeletedCause`). A never-captured gift (failed/pending) is neither, so claim nothing.
+    const settled = donation.status === "held" || (paidOut && donation.status === "released");
+    if (settled) {
+      causeDeleted = {
+        reason: deletion?.moderatorReason?.trim() ?? "",
+        outcome: paidOut ? "paidOut" : "refunded",
+      };
+    }
   }
-
-  const lateRefund = donation.lateRefundFlaggedAt !== undefined;
   return {
     id: donation._id,
     causeId: donation.causeId,
@@ -367,13 +397,7 @@ async function historyView(
     },
     refund: {
       // Possible while the funds are held, before the cause is released or deleted (DB-2).
-      eligible:
-        donation.status === "held" &&
-        !lateRefund &&
-        request === null &&
-        cause !== null &&
-        cause.status !== "deleted" &&
-        cause.fundsReleasedAt === undefined,
+      eligible: isRefundEligible(donation, cause ?? null, request ?? null),
       estimatedAmount: donation.net,
       request: request && { status: request.status, refundAmount: request.refundAmount ?? null },
     },
@@ -421,6 +445,59 @@ export const impact = query({
       .withIndex("by_donor", (q) => q.eq("donorId", user._id))
       .take(IMPACT_SCAN);
     return impactOf(donations);
+  },
+});
+
+/**
+ * Requests a refund of a held donation (S12, DT-7). Only while eligible; the moderator decides
+ * (`moderation.decideRefund`), and an approved refund pays the donation's net to `receivingPhone`
+ * (the donor's verified phone by default). A late payment refunds automatically and is not eligible.
+ */
+export const requestRefund = mutation({
+  args: {
+    donationId: v.id("donations"),
+    reason: v.string(),
+    receivingPhone: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    { donationId, reason, receivingPhone },
+  ): Promise<{ requestId: Id<"refundRequests"> }> => {
+    const { user } = await requireRole(ctx, "donor");
+    const donation = await ctx.db.get(donationId);
+    if (!donation || donation.donorId !== user._id) {
+      throw appError("FORBIDDEN", fr.errors.forbidden, "donationId");
+    }
+    const trimmed = reason.trim();
+    if (!trimmed) throw appError("VALIDATION", fr.errors.refundReasonRequired, "reason");
+
+    const cause = await ctx.db.get(donation.causeId);
+    const existing = await ctx.db
+      .query("refundRequests")
+      .withIndex("by_donation", (q) => q.eq("donationId", donationId))
+      .first();
+    if (!isRefundEligible(donation, cause, existing ?? null)) {
+      throw appError("CONFLICT", fr.errors.refundNotEligible, "donationId");
+    }
+    const phone = receivingPhone?.trim() || user.phone;
+    if (!phone) throw appError("VALIDATION", fr.errors.refundPhoneRequired, "receivingPhone");
+
+    const requestId = await ctx.db.insert("refundRequests", {
+      donationId,
+      donorId: user._id,
+      reason: trimmed,
+      status: "pending",
+      receivingPhone: phone,
+      createdAt: Date.now(),
+    });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "refund.request",
+      targetTable: "donations",
+      targetId: donationId,
+      details: { requestId },
+    });
+    return { requestId };
   },
 });
 

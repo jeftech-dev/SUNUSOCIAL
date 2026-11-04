@@ -4,16 +4,23 @@
 import { v } from "convex/values";
 
 import { percentOf } from "../lib/causes";
+import { alertDeadline } from "../lib/bloodSlots";
+import { DAY_MS, loadConfig } from "../lib/config";
+import { formatDate } from "../lib/dates";
+import { formatFCFA } from "../lib/money";
 import { fr } from "../lib/strings.fr";
 import type { Category, ModerationQueues } from "../lib/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, type MutationCtx, query } from "./_generated/server";
 import { logAudit } from "./audit";
+import { closeAlertInternal } from "./blood";
 import { isListed, structureLoader } from "./lib/causeViews";
 import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
 import { notifyUser } from "./notify";
+import { enqueuePayout } from "./payouts";
+import { fundOutcomeV } from "./validators";
 
 /** Most causes offered by the picker. Active causes last ≤ 30 days, so this is generous. */
 const MAX_CANDIDATES = 200;
@@ -31,6 +38,12 @@ function structureUser(
     .query("users")
     .withIndex("by_structure", (q) => q.eq("structureId", structureId))
     .first();
+}
+
+/** Masks a wallet number for the moderator view: only the last 4 digits are shown. */
+function maskNumber(value: string): string {
+  const tail = value.slice(-4);
+  return `•••• ${tail}`;
 }
 
 export interface FeaturedCandidate {
@@ -146,6 +159,25 @@ export const queues = query({
       .query("proofs")
       .withIndex("by_status", (q) => q.eq("status", "submitted"))
       .collect();
+    const allDeletions = await ctx.db
+      .query("deletionRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    const allRefunds = await ctx.db
+      .query("refundRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    const allExtensions = await ctx.db
+      .query("extensionRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    // Any structure with a pending change, in any status — payouts are blocked whenever `payoutPending`
+    // is set, so a non-approved structure's change must still reach a moderator. `by_payout_pending`
+    // indexes only the structures that have one (payoutPendingAt set), so this is not a full scan.
+    const allPayoutChanges = await ctx.db
+      .query("structures")
+      .withIndex("by_payout_pending", (q) => q.gt("payoutPendingAt", 0))
+      .collect();
     const structures = allStructures.slice(0, MAX_QUEUE);
     const causes = allCauses.slice(0, MAX_QUEUE);
     const submitted = allSubmitted.slice(0, MAX_QUEUE);
@@ -176,6 +208,74 @@ export const queues = query({
       });
     }
 
+    const deletionItems = [];
+    for (const request of allDeletions.slice(0, MAX_QUEUE)) {
+      const cause = await ctx.db.get(request.causeId);
+      const structure = cause && (await structureOf(cause.structureId));
+      deletionItems.push({
+        id: request._id,
+        causeId: request.causeId,
+        cause: cause?.title ?? "",
+        organization: structure?.name ?? "",
+        raised: cause?.raised ?? 0,
+        reason: request.structureReason,
+        createdAt: request.createdAt,
+      });
+    }
+
+    const refundItems = [];
+    for (const request of allRefunds.slice(0, MAX_QUEUE)) {
+      const donation = await ctx.db.get(request.donationId);
+      const cause = donation && (await ctx.db.get(donation.causeId));
+      const donor = await ctx.db.get(request.donorId);
+      refundItems.push({
+        id: request._id,
+        donationId: request.donationId,
+        cause: cause?.title ?? "",
+        donor: donor?.name ?? "",
+        amount: donation?.net ?? 0,
+        reason: request.reason,
+        createdAt: request.createdAt,
+      });
+    }
+
+    const extensionItems = [];
+    for (const request of allExtensions.slice(0, MAX_QUEUE)) {
+      const structure = await structureOf(request.structureId);
+      let target = "";
+      let currentUntil: number | null = null;
+      if (request.kind === "cause_deadline") {
+        const causeId = ctx.db.normalizeId("causes", request.targetId);
+        const cause = causeId && (await ctx.db.get(causeId));
+        target = cause?.title ?? "";
+        currentUntil = cause?.deadline ?? null;
+      } else {
+        const deadlineId = ctx.db.normalizeId("proofDeadlines", request.targetId);
+        const deadline = deadlineId && (await ctx.db.get(deadlineId));
+        const cause = deadline && (await ctx.db.get(deadline.causeId));
+        target = cause?.title ?? "";
+        currentUntil = deadline?.dueAt ?? null;
+      }
+      extensionItems.push({
+        id: request._id,
+        kind: request.kind,
+        organization: structure?.name ?? "",
+        target,
+        currentUntil,
+        requestedUntil: request.requestedUntil,
+        reason: request.reason,
+        createdAt: request.createdAt,
+      });
+    }
+
+    const payoutChangeItems = allPayoutChanges.slice(0, MAX_QUEUE).map((s) => ({
+      id: s._id,
+      organization: s.name,
+      method: s.payoutPending!.method,
+      accountNumber: maskNumber(s.payoutPending!.accountNumber),
+      holderName: s.payoutPending!.holderName,
+    }));
+
     const featured = await ctx.db
       .query("causes")
       .withIndex("by_featured", (q) => q.gt("featuredAt", 0))
@@ -195,9 +295,10 @@ export const queues = query({
       },
       causes: { count: allCauses.length, items: causeItems },
       proofs: { count: allSubmitted.length, items: proofItems },
-      deletions: { count: 0, items: [] },
-      refunds: { count: 0, items: [] },
-      payoutChanges: { count: 0, items: [] },
+      deletions: { count: allDeletions.length, items: deletionItems },
+      refunds: { count: allRefunds.length, items: refundItems },
+      extensions: { count: allExtensions.length, items: extensionItems },
+      payoutChanges: { count: allPayoutChanges.length, items: payoutChangeItems },
       featured:
         featured?.featuredAt !== undefined
           ? { causeId: featured._id, since: featured.featuredAt }
@@ -419,8 +520,10 @@ export const notifyCauseDonors = internalMutation({
     causeId: v.id("causes"),
     title: v.string(),
     afterDonor: v.optional(v.id("users")),
+    /** When set, a cause-deadline extension to this date is announced instead of a published proof. */
+    extendedUntil: v.optional(v.number()),
   },
-  handler: async (ctx, { causeId, title, afterDonor }): Promise<void> => {
+  handler: async (ctx, { causeId, title, afterDonor, extendedUntil }): Promise<void> => {
     const rows = await ctx.db
       .query("donations")
       .withIndex("by_cause_donor", (q) =>
@@ -436,13 +539,21 @@ export const notifyCauseDonors = internalMutation({
     const complete = hasMore ? rows.filter((r) => r.donorId !== lastDonor) : rows;
 
     const notify = (donorId: Id<"users">) =>
-      notifyUser(ctx, {
-        userId: donorId,
-        kind: "proof_published",
-        title: fr.notifications.proofPublishedTitle,
-        body: fr.notifications.proofPublishedBody(title),
-        link: `/causes/${causeId}`,
-      });
+      extendedUntil !== undefined
+        ? notifyUser(ctx, {
+            userId: donorId,
+            kind: "extension_decision",
+            title: fr.notifications.extensionApprovedTitle,
+            body: fr.notifications.extensionDonorBody(title, formatDate(extendedUntil)),
+            link: `/causes/${causeId}`,
+          })
+        : notifyUser(ctx, {
+            userId: donorId,
+            kind: "proof_published",
+            title: fr.notifications.proofPublishedTitle,
+            body: fr.notifications.proofPublishedBody(title),
+            link: `/causes/${causeId}`,
+          });
 
     let i = 0;
     let lastComplete: Id<"users"> | null = null;
@@ -467,6 +578,546 @@ export const notifyCauseDonors = internalMutation({
       causeId,
       title,
       afterDonor: lastComplete,
+      extendedUntil,
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Deletions (DT-24) and refunds (DT-7)
+// ---------------------------------------------------------------------------
+
+const deletionDecisionV = v.union(v.literal("approve"), v.literal("maintain"));
+
+/**
+ * Arbitrates a structure's deletion request (S14). `maintain` keeps the cause and tells the
+ * structure why. `approve` deletes the cause and settles the funds per `fundOutcome`: `refund`
+ * returns each donor's net, `payout` releases the lump sum to the structure (which then owes a proof,
+ * DT-25). The reason is recorded and shown to the structure and the donors (DoD).
+ */
+export const decideDeletion = mutation({
+  args: {
+    requestId: v.id("deletionRequests"),
+    decision: deletionDecisionV,
+    reason: v.string(),
+    fundOutcome: v.optional(fundOutcomeV),
+  },
+  handler: async (ctx, { requestId, decision, reason, fundOutcome }): Promise<{ ok: true }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const request = await ctx.db.get(requestId);
+    if (!request) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+    if (request.status !== "pending") {
+      throw appError("CONFLICT", fr.errors.deletionAlreadyDecided, "requestId");
+    }
+    const trimmed = reason.trim();
+    if (!trimmed) throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    const cause = await ctx.db.get(request.causeId);
+    if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "requestId");
+    const responsible = await structureUser(ctx, cause.structureId);
+
+    if (decision === "maintain") {
+      await ctx.db.patch(requestId, {
+        status: "maintained",
+        moderatorReason: trimmed,
+        decidedBy: user._id,
+      });
+      await logAudit(ctx, {
+        actorId: user._id,
+        action: "deletion.maintain",
+        targetTable: "deletionRequests",
+        targetId: requestId,
+        details: { reason: trimmed },
+      });
+      if (responsible) {
+        await notifyUser(ctx, {
+          userId: responsible._id,
+          kind: "deletion_decision",
+          title: fr.notifications.deletionMaintainedTitle,
+          body: fr.notifications.deletionMaintainedBody(cause.title, trimmed),
+          link: "/structure",
+        });
+      }
+      return { ok: true };
+    }
+
+    // Approve: the cause is deleted; the funds are refunded or paid out.
+    if (!fundOutcome) throw appError("VALIDATION", fr.errors.fundOutcomeRequired, "fundOutcome");
+    const structure = await ctx.db.get(cause.structureId);
+    if (fundOutcome === "payout") {
+      if (!structure?.payout) throw appError("CONFLICT", fr.errors.payoutRequired, "fundOutcome");
+      if (structure.payoutPending !== undefined) {
+        throw appError("CONFLICT", fr.errors.payoutChangePending, "fundOutcome");
+      }
+    }
+    await ctx.db.patch(requestId, {
+      status: "approved",
+      fundOutcome,
+      moderatorReason: trimmed,
+      decidedBy: user._id,
+    });
+
+    if (fundOutcome === "payout") {
+      const donations = await ctx.db
+        .query("donations")
+        .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
+        .collect();
+      // Late-flagged donations are refunded to the donor (lateRefundDue), never released to the
+      // structure — exclude them from the payout, exactly as releaseCause does.
+      const total = donations
+        .filter((d) => d.status === "held" && d.lateRefundFlaggedAt === undefined)
+        .reduce((sum, d) => sum + d.net, 0);
+      await ctx.db.patch(cause._id, { status: "deleted", fundsReleasedAt: Date.now() });
+      if (total > 0 && structure?.payout) {
+        const payoutId = await enqueuePayout(ctx, {
+          kind: "release",
+          targetId: cause._id,
+          amount: total,
+          method: structure.payout.method,
+          phone: structure.payout.accountNumber,
+          name: structure.payout.holderName,
+        });
+        await ctx.db.patch(cause._id, { releasePayoutId: payoutId });
+      }
+    } else {
+      await ctx.db.patch(cause._id, { status: "deleted" });
+    }
+
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "deletion.approve",
+      targetTable: "deletionRequests",
+      targetId: requestId,
+      details: { causeId: cause._id, fundOutcome, reason: trimmed },
+    });
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "deletion_decision",
+        title: fr.notifications.deletionApprovedTitle,
+        body: fr.notifications.deletionApprovedBody(cause.title, trimmed),
+        link: "/structure",
+      });
+    }
+    // Refund donors and/or notify them in a bounded, self-rescheduling batch.
+    await ctx.scheduler.runAfter(0, internal.moderation.settleDeletedCause, {
+      causeId: cause._id,
+      outcome: fundOutcome,
+    });
+    return { ok: true };
+  },
+});
+
+/** Donations settled per `settleDeletedCause` batch before it reschedules itself. */
+const DELETION_SETTLE_BATCH = 100;
+
+/**
+ * Settles the donations of a deleted cause: on `refund`, queues a net refund payout per held donation
+ * (idempotent — one refund request per donation); on either outcome, notifies each donor. Pages the
+ * cause's donations so a cause with many gifts never settles in one oversized transaction.
+ */
+export const settleDeletedCause = internalMutation({
+  args: {
+    causeId: v.id("causes"),
+    outcome: fundOutcomeV,
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, { causeId, outcome, cursor }): Promise<void> => {
+    const cause = await ctx.db.get(causeId);
+    if (!cause) return;
+    const result = await ctx.db
+      .query("donations")
+      .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+      .paginate({ cursor: cursor ?? null, numItems: DELETION_SETTLE_BATCH });
+
+    for (const donation of result.page) {
+      // Late-flagged donations are always refunded to the donor by lateRefundDue, whatever the
+      // deletion outcome — skip them here so they are neither paid out nor double-refunded.
+      if (donation.status !== "held" || donation.lateRefundFlaggedAt !== undefined) continue;
+      const donor = await ctx.db.get(donation.donorId);
+      if (outcome === "refund") {
+        const existing = await ctx.db
+          .query("refundRequests")
+          .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
+          .unique();
+        if (!existing && donor?.phone) {
+          // The deletion decision already settled this refund: enqueue the payout and record the
+          // request as refunded (not pending), so it never appears in the moderation queue and
+          // cannot be decided a second time. completeRefund confirms it when the payout lands.
+          const payoutId = await enqueuePayout(ctx, {
+            kind: "refund",
+            targetId: donation._id,
+            amount: donation.net,
+            method: donation.paidMethod ?? donation.method,
+            phone: donor.phone,
+            name: donor.name,
+          });
+          await ctx.db.insert("refundRequests", {
+            donationId: donation._id,
+            donorId: donation.donorId,
+            reason: "cause_deleted",
+            status: "refunded",
+            receivingPhone: donor.phone,
+            refundAmount: donation.net,
+            payoutId,
+            createdAt: Date.now(),
+          });
+        }
+      }
+      await notifyUser(ctx, {
+        userId: donation.donorId,
+        kind: "deletion_decision",
+        title: fr.notifications.deletionApprovedTitle,
+        body:
+          outcome === "refund"
+            ? fr.notifications.deletionDonorRefundBody(cause.title, formatFCFA(donation.net))
+            : fr.notifications.deletionDonorPayoutBody(cause.title),
+        link: "/profil",
+      });
+    }
+
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.moderation.settleDeletedCause, {
+        causeId,
+        outcome,
+        cursor: result.continueCursor,
+      });
+    }
+  },
+});
+
+/** Approves (net payout) or rejects a donor's refund request (S12, DT-7). The decision is final. */
+export const decideRefund = mutation({
+  args: {
+    requestId: v.id("refundRequests"),
+    decision: v.union(v.literal("refunded"), v.literal("rejected")),
+  },
+  handler: async (ctx, { requestId, decision }): Promise<{ ok: true; refundAmount?: number }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const request = await ctx.db.get(requestId);
+    if (!request) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+    if (request.status !== "pending") {
+      throw appError("CONFLICT", fr.errors.refundAlreadyDecided, "requestId");
+    }
+    const donation = await ctx.db.get(request.donationId);
+    if (!donation) throw appError("NOT_FOUND", fr.errors.donationNotFound, "requestId");
+    const cause = await ctx.db.get(donation.causeId);
+    const title = cause?.title ?? "";
+
+    if (decision === "rejected") {
+      await ctx.db.patch(requestId, { status: "rejected", decidedBy: user._id });
+      await logAudit(ctx, {
+        actorId: user._id,
+        action: "refund.reject",
+        targetTable: "refundRequests",
+        targetId: requestId,
+      });
+      await notifyUser(ctx, {
+        userId: request.donorId,
+        kind: "refund_decision",
+        title: fr.notifications.refundRejectedTitle,
+        body: fr.notifications.refundRejectedBody(title),
+        link: "/profil",
+      });
+      return { ok: true };
+    }
+
+    // Approve: only while the funds are still held. Pays the donation's net to the chosen number.
+    if (donation.status !== "held") {
+      throw appError("CONFLICT", fr.errors.refundNotEligible, "requestId");
+    }
+    const amount = donation.net;
+    await ctx.db.patch(requestId, {
+      status: "refunded",
+      refundAmount: amount,
+      decidedBy: user._id,
+    });
+    const donor = await ctx.db.get(request.donorId);
+    const payoutId = await enqueuePayout(ctx, {
+      kind: "refund",
+      targetId: donation._id,
+      amount,
+      method: donation.paidMethod ?? donation.method,
+      phone: request.receivingPhone,
+      name: donor?.name ?? "Donateur",
+    });
+    await ctx.db.patch(requestId, { payoutId });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "refund.approve",
+      targetTable: "refundRequests",
+      targetId: requestId,
+      details: { amount },
+    });
+    await notifyUser(ctx, {
+      userId: request.donorId,
+      kind: "refund_decision",
+      title: fr.notifications.refundApprovedTitle,
+      body: fr.notifications.refundApprovedBody(title, formatFCFA(amount)),
+      link: "/profil",
+    });
+    return { ok: true, refundAmount: amount };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Extensions (DT-30) and payout-account changes (DT-5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Approves or refuses an extension request (DT-30). Approval moves the cause deadline (and bumps
+ * `extensionCount`) or the proof deadline to the requested date; the cause's donors are notified of a
+ * longer hold. The requested date was validated against MAX_EXTENSION_DAYS when the request was made.
+ */
+export const decideExtension = mutation({
+  args: {
+    requestId: v.id("extensionRequests"),
+    decision: decisionV,
+    reason: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    { requestId, decision, reason },
+  ): Promise<{ ok: true; newDate?: number }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const request = await ctx.db.get(requestId);
+    if (!request) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+    if (request.status !== "pending") {
+      throw appError("CONFLICT", fr.errors.extensionAlreadyDecided, "requestId");
+    }
+    const trimmed = reason?.trim();
+    if (decision === "refuse" && !trimmed) {
+      throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    }
+    const responsible = await structureUser(ctx, request.structureId);
+
+    if (decision === "refuse") {
+      await ctx.db.patch(requestId, {
+        status: "refused",
+        moderatorReason: trimmed,
+        decidedBy: user._id,
+      });
+      await logAudit(ctx, {
+        actorId: user._id,
+        action: "extension.refuse",
+        targetTable: "extensionRequests",
+        targetId: requestId,
+        details: { reason: trimmed },
+      });
+      if (responsible) {
+        await notifyUser(ctx, {
+          userId: responsible._id,
+          kind: "extension_decision",
+          title: fr.notifications.extensionRefusedTitle,
+          body: fr.notifications.extensionRefusedBody(trimmed!),
+          link: "/structure",
+        });
+      }
+      return { ok: true };
+    }
+
+    // Approve: move the target deadline to the requested date. The request was validated when it was
+    // made, but the target may have changed since (closed, deleted, or already extended past this
+    // date). Re-check against the *current* state so approval can never move a deadline backwards or
+    // reopen/extend a target that is no longer eligible (TOCTOU, DT-30).
+    const maxDays = loadConfig(process.env).maxExtensionDays;
+    const newDate = request.requestedUntil;
+    if (request.kind === "cause_deadline") {
+      const causeId = ctx.db.normalizeId("causes", request.targetId);
+      const cause = causeId && (await ctx.db.get(causeId));
+      if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "requestId");
+      if (
+        cause.status !== "active" ||
+        newDate <= cause.deadline ||
+        newDate > cause.deadline + maxDays * DAY_MS
+      ) {
+        throw appError("CONFLICT", fr.errors.extensionStale, "requestId");
+      }
+      await ctx.db.patch(cause._id, {
+        deadline: newDate,
+        extensionCount: cause.extensionCount + 1,
+      });
+      await ctx.scheduler.runAfter(0, internal.moderation.notifyCauseDonors, {
+        causeId: cause._id,
+        title: cause.title,
+        extendedUntil: newDate,
+      });
+    } else {
+      const deadlineId = ctx.db.normalizeId("proofDeadlines", request.targetId);
+      const deadline = deadlineId && (await ctx.db.get(deadlineId));
+      if (!deadline) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+      if (
+        deadline.metAt !== undefined ||
+        newDate <= deadline.dueAt ||
+        newDate > deadline.dueAt + maxDays * DAY_MS
+      ) {
+        throw appError("CONFLICT", fr.errors.extensionStale, "requestId");
+      }
+      await ctx.db.patch(deadline._id, { dueAt: newDate });
+    }
+    await ctx.db.patch(requestId, {
+      status: "approved",
+      moderatorReason: trimmed,
+      decidedBy: user._id,
+    });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "extension.approve",
+      targetTable: "extensionRequests",
+      targetId: requestId,
+      details: { kind: request.kind, newDate },
+    });
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "extension_decision",
+        title: fr.notifications.extensionApprovedTitle,
+        body: fr.notifications.extensionApprovedBody(formatDate(newDate)),
+        link: "/structure",
+      });
+    }
+    return { ok: true, newDate };
+  },
+});
+
+/**
+ * Approves or refuses a requested payout-account change (DT-5). Approval moves `payoutPending` into
+ * the live `payout` (stamped verified) and unblocks payouts; refusal clears the pending change and
+ * keeps the old account. Either way the structure is notified and the decision is audit-logged.
+ */
+export const decidePayoutAccount = mutation({
+  args: { structureId: v.id("structures"), decision: decisionV, reason: v.optional(v.string()) },
+  handler: async (ctx, { structureId, decision, reason }): Promise<{ ok: true }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const structure = await ctx.db.get(structureId);
+    if (!structure) throw appError("NOT_FOUND", fr.errors.generic, "structureId");
+    if (!structure.payoutPending) {
+      throw appError("CONFLICT", fr.errors.noPayoutChangePending, "structureId");
+    }
+    const trimmed = reason?.trim();
+    if (decision === "refuse" && !trimmed) {
+      throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    }
+
+    if (decision === "approve") {
+      await ctx.db.patch(structureId, {
+        payout: { ...structure.payoutPending, verifiedAt: Date.now(), verifiedBy: user._id },
+        payoutPending: undefined,
+        payoutPendingAt: undefined,
+      });
+    } else {
+      await ctx.db.patch(structureId, { payoutPending: undefined, payoutPendingAt: undefined });
+    }
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: decision === "approve" ? "payout.change_approve" : "payout.change_refuse",
+      targetTable: "structures",
+      targetId: structureId,
+      details: trimmed ? { reason: trimmed } : undefined,
+    });
+    const responsible = await structureUser(ctx, structureId);
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "payout_account_decision",
+        title:
+          decision === "approve"
+            ? fr.notifications.payoutApprovedTitle
+            : fr.notifications.payoutRefusedTitle,
+        body:
+          decision === "approve"
+            ? fr.notifications.payoutApprovedBody
+            : fr.notifications.payoutRefusedBody(trimmed!),
+        link: "/structure",
+      });
+    }
+    return { ok: true };
+  },
+});
+
+/** Most alerts listed on the moderation page per tab. */
+const MAX_ALERTS = 100;
+
+/** Every blood alert (DT-26): open ones first, with the hospital's moderator-closed count. */
+export const alerts = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, "moderator");
+    const now = Date.now();
+    const open = await ctx.db
+      .query("bloodAlerts")
+      .withIndex("by_closed", (q) => q.eq("closed", false))
+      .order("desc")
+      .take(MAX_ALERTS);
+    const closed = await ctx.db
+      .query("bloodAlerts")
+      .withIndex("by_closed", (q) => q.eq("closed", true))
+      .order("desc")
+      .take(MAX_ALERTS);
+    const moderatorClosed = new Map<Id<"structures">, number>();
+    for (const alert of closed) {
+      if (alert.closedByModerator) {
+        moderatorClosed.set(alert.hospitalId, (moderatorClosed.get(alert.hospitalId) ?? 0) + 1);
+      }
+    }
+    const rows = [];
+    for (const alert of [...open, ...closed]) {
+      const hospital = await ctx.db.get(alert.hospitalId);
+      const responses = await ctx.db
+        .query("bloodResponses")
+        .withIndex("by_alert", (q) => q.eq("alertId", alert._id))
+        .take(500);
+      rows.push({
+        _id: alert._id,
+        hospitalName: hospital?.name ?? "",
+        level: alert.level,
+        bloodTypes: alert.bloodTypes,
+        anyType: alert.anyType ?? false,
+        targetCommunes: alert.targetCommunes,
+        unitsNeeded: alert.unitsNeeded,
+        unitsCollected: alert.unitsCollected,
+        respondersCount: responses.filter((r) => r.cancelledAt === undefined).length,
+        closed: alert.closed || now >= alertDeadline(alert),
+        closeReason: alert.closeReason ?? null,
+        closedByModerator: alert.closedByModerator ?? false,
+        // Interim (G13): shown to the moderator; no automatic review.
+        hospitalModeratorClosedCount: moderatorClosed.get(alert.hospitalId) ?? 0,
+        createdAt: alert.createdAt,
+      });
+    }
+    return rows;
+  },
+});
+
+/** Closes an abusive or mistaken alert. Interim (G13): the reason is required and sent to the hospital. */
+export const closeAlert = mutation({
+  args: { alertId: v.id("bloodAlerts"), reason: v.string() },
+  handler: async (ctx, { alertId, reason }) => {
+    const { user } = await requireRole(ctx, "moderator");
+    const trimmed = reason.trim();
+    if (trimmed.length === 0) {
+      throw appError("VALIDATION", fr.errors.closeReasonRequired, "reason");
+    }
+    const alert = await ctx.db.get(alertId);
+    if (!alert) throw appError("NOT_FOUND", fr.errors.alertNotFound);
+    if (alert.closed) throw appError("CONFLICT", fr.errors.alertClosed);
+    await closeAlertInternal(ctx, alert, { by: user._id, reason: trimmed, moderator: true });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.alert.close",
+      targetTable: "bloodAlerts",
+      targetId: alertId,
+      details: { reason: trimmed },
+    });
+    const responsible = await structureUser(ctx, alert.hospitalId);
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "blood_alert_closed",
+        title: fr.notifications.bloodModeratorClosedTitle,
+        body: fr.notifications.bloodModeratorClosedBody(trimmed),
+        link: "/hopital",
+      });
+    }
+    return { ok: true };
   },
 });
