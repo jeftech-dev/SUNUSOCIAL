@@ -4,6 +4,8 @@
 import { v } from "convex/values";
 
 import { percentOf } from "../lib/causes";
+import { DAY_MS, loadConfig } from "../lib/config";
+import { formatDate } from "../lib/dates";
 import { formatFCFA } from "../lib/money";
 import { fr } from "../lib/strings.fr";
 import type { Category, ModerationQueues } from "../lib/types";
@@ -34,6 +36,12 @@ function structureUser(
     .query("users")
     .withIndex("by_structure", (q) => q.eq("structureId", structureId))
     .first();
+}
+
+/** Masks a wallet number for the moderator view: only the last 4 digits are shown. */
+function maskNumber(value: string): string {
+  const tail = value.slice(-4);
+  return `•••• ${tail}`;
 }
 
 export interface FeaturedCandidate {
@@ -157,6 +165,17 @@ export const queues = query({
       .query("refundRequests")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
+    const allExtensions = await ctx.db
+      .query("extensionRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    // Any structure with a pending change, in any status — payouts are blocked whenever `payoutPending`
+    // is set, so a non-approved structure's change must still reach a moderator. `by_payout_pending`
+    // indexes only the structures that have one (payoutPendingAt set), so this is not a full scan.
+    const allPayoutChanges = await ctx.db
+      .query("structures")
+      .withIndex("by_payout_pending", (q) => q.gt("payoutPendingAt", 0))
+      .collect();
     const structures = allStructures.slice(0, MAX_QUEUE);
     const causes = allCauses.slice(0, MAX_QUEUE);
     const submitted = allSubmitted.slice(0, MAX_QUEUE);
@@ -218,6 +237,43 @@ export const queues = query({
       });
     }
 
+    const extensionItems = [];
+    for (const request of allExtensions.slice(0, MAX_QUEUE)) {
+      const structure = await structureOf(request.structureId);
+      let target = "";
+      let currentUntil: number | null = null;
+      if (request.kind === "cause_deadline") {
+        const causeId = ctx.db.normalizeId("causes", request.targetId);
+        const cause = causeId && (await ctx.db.get(causeId));
+        target = cause?.title ?? "";
+        currentUntil = cause?.deadline ?? null;
+      } else {
+        const deadlineId = ctx.db.normalizeId("proofDeadlines", request.targetId);
+        const deadline = deadlineId && (await ctx.db.get(deadlineId));
+        const cause = deadline && (await ctx.db.get(deadline.causeId));
+        target = cause?.title ?? "";
+        currentUntil = deadline?.dueAt ?? null;
+      }
+      extensionItems.push({
+        id: request._id,
+        kind: request.kind,
+        organization: structure?.name ?? "",
+        target,
+        currentUntil,
+        requestedUntil: request.requestedUntil,
+        reason: request.reason,
+        createdAt: request.createdAt,
+      });
+    }
+
+    const payoutChangeItems = allPayoutChanges.slice(0, MAX_QUEUE).map((s) => ({
+      id: s._id,
+      organization: s.name,
+      method: s.payoutPending!.method,
+      accountNumber: maskNumber(s.payoutPending!.accountNumber),
+      holderName: s.payoutPending!.holderName,
+    }));
+
     const featured = await ctx.db
       .query("causes")
       .withIndex("by_featured", (q) => q.gt("featuredAt", 0))
@@ -239,7 +295,8 @@ export const queues = query({
       proofs: { count: allSubmitted.length, items: proofItems },
       deletions: { count: allDeletions.length, items: deletionItems },
       refunds: { count: allRefunds.length, items: refundItems },
-      payoutChanges: { count: 0, items: [] },
+      extensions: { count: allExtensions.length, items: extensionItems },
+      payoutChanges: { count: allPayoutChanges.length, items: payoutChangeItems },
       featured:
         featured?.featuredAt !== undefined
           ? { causeId: featured._id, since: featured.featuredAt }
@@ -461,8 +518,10 @@ export const notifyCauseDonors = internalMutation({
     causeId: v.id("causes"),
     title: v.string(),
     afterDonor: v.optional(v.id("users")),
+    /** When set, a cause-deadline extension to this date is announced instead of a published proof. */
+    extendedUntil: v.optional(v.number()),
   },
-  handler: async (ctx, { causeId, title, afterDonor }): Promise<void> => {
+  handler: async (ctx, { causeId, title, afterDonor, extendedUntil }): Promise<void> => {
     const rows = await ctx.db
       .query("donations")
       .withIndex("by_cause_donor", (q) =>
@@ -478,13 +537,21 @@ export const notifyCauseDonors = internalMutation({
     const complete = hasMore ? rows.filter((r) => r.donorId !== lastDonor) : rows;
 
     const notify = (donorId: Id<"users">) =>
-      notifyUser(ctx, {
-        userId: donorId,
-        kind: "proof_published",
-        title: fr.notifications.proofPublishedTitle,
-        body: fr.notifications.proofPublishedBody(title),
-        link: `/causes/${causeId}`,
-      });
+      extendedUntil !== undefined
+        ? notifyUser(ctx, {
+            userId: donorId,
+            kind: "extension_decision",
+            title: fr.notifications.extensionApprovedTitle,
+            body: fr.notifications.extensionDonorBody(title, formatDate(extendedUntil)),
+            link: `/causes/${causeId}`,
+          })
+        : notifyUser(ctx, {
+            userId: donorId,
+            kind: "proof_published",
+            title: fr.notifications.proofPublishedTitle,
+            body: fr.notifications.proofPublishedBody(title),
+            link: `/causes/${causeId}`,
+          });
 
     let i = 0;
     let lastComplete: Id<"users"> | null = null;
@@ -509,6 +576,7 @@ export const notifyCauseDonors = internalMutation({
       causeId,
       title,
       afterDonor: lastComplete,
+      extendedUntil,
     });
   },
 });
@@ -786,5 +854,180 @@ export const decideRefund = mutation({
       link: "/profil",
     });
     return { ok: true, refundAmount: amount };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Extensions (DT-30) and payout-account changes (DT-5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Approves or refuses an extension request (DT-30). Approval moves the cause deadline (and bumps
+ * `extensionCount`) or the proof deadline to the requested date; the cause's donors are notified of a
+ * longer hold. The requested date was validated against MAX_EXTENSION_DAYS when the request was made.
+ */
+export const decideExtension = mutation({
+  args: {
+    requestId: v.id("extensionRequests"),
+    decision: decisionV,
+    reason: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    { requestId, decision, reason },
+  ): Promise<{ ok: true; newDate?: number }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const request = await ctx.db.get(requestId);
+    if (!request) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+    if (request.status !== "pending") {
+      throw appError("CONFLICT", fr.errors.extensionAlreadyDecided, "requestId");
+    }
+    const trimmed = reason?.trim();
+    if (decision === "refuse" && !trimmed) {
+      throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    }
+    const responsible = await structureUser(ctx, request.structureId);
+
+    if (decision === "refuse") {
+      await ctx.db.patch(requestId, {
+        status: "refused",
+        moderatorReason: trimmed,
+        decidedBy: user._id,
+      });
+      await logAudit(ctx, {
+        actorId: user._id,
+        action: "extension.refuse",
+        targetTable: "extensionRequests",
+        targetId: requestId,
+        details: { reason: trimmed },
+      });
+      if (responsible) {
+        await notifyUser(ctx, {
+          userId: responsible._id,
+          kind: "extension_decision",
+          title: fr.notifications.extensionRefusedTitle,
+          body: fr.notifications.extensionRefusedBody(trimmed!),
+          link: "/structure",
+        });
+      }
+      return { ok: true };
+    }
+
+    // Approve: move the target deadline to the requested date. The request was validated when it was
+    // made, but the target may have changed since (closed, deleted, or already extended past this
+    // date). Re-check against the *current* state so approval can never move a deadline backwards or
+    // reopen/extend a target that is no longer eligible (TOCTOU, DT-30).
+    const maxDays = loadConfig(process.env).maxExtensionDays;
+    const newDate = request.requestedUntil;
+    if (request.kind === "cause_deadline") {
+      const causeId = ctx.db.normalizeId("causes", request.targetId);
+      const cause = causeId && (await ctx.db.get(causeId));
+      if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "requestId");
+      if (
+        cause.status !== "active" ||
+        newDate <= cause.deadline ||
+        newDate > cause.deadline + maxDays * DAY_MS
+      ) {
+        throw appError("CONFLICT", fr.errors.extensionStale, "requestId");
+      }
+      await ctx.db.patch(cause._id, {
+        deadline: newDate,
+        extensionCount: cause.extensionCount + 1,
+      });
+      await ctx.scheduler.runAfter(0, internal.moderation.notifyCauseDonors, {
+        causeId: cause._id,
+        title: cause.title,
+        extendedUntil: newDate,
+      });
+    } else {
+      const deadlineId = ctx.db.normalizeId("proofDeadlines", request.targetId);
+      const deadline = deadlineId && (await ctx.db.get(deadlineId));
+      if (!deadline) throw appError("NOT_FOUND", fr.errors.generic, "requestId");
+      if (
+        deadline.metAt !== undefined ||
+        newDate <= deadline.dueAt ||
+        newDate > deadline.dueAt + maxDays * DAY_MS
+      ) {
+        throw appError("CONFLICT", fr.errors.extensionStale, "requestId");
+      }
+      await ctx.db.patch(deadline._id, { dueAt: newDate });
+    }
+    await ctx.db.patch(requestId, {
+      status: "approved",
+      moderatorReason: trimmed,
+      decidedBy: user._id,
+    });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "extension.approve",
+      targetTable: "extensionRequests",
+      targetId: requestId,
+      details: { kind: request.kind, newDate },
+    });
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "extension_decision",
+        title: fr.notifications.extensionApprovedTitle,
+        body: fr.notifications.extensionApprovedBody(formatDate(newDate)),
+        link: "/structure",
+      });
+    }
+    return { ok: true, newDate };
+  },
+});
+
+/**
+ * Approves or refuses a requested payout-account change (DT-5). Approval moves `payoutPending` into
+ * the live `payout` (stamped verified) and unblocks payouts; refusal clears the pending change and
+ * keeps the old account. Either way the structure is notified and the decision is audit-logged.
+ */
+export const decidePayoutAccount = mutation({
+  args: { structureId: v.id("structures"), decision: decisionV, reason: v.optional(v.string()) },
+  handler: async (ctx, { structureId, decision, reason }): Promise<{ ok: true }> => {
+    const { user } = await requireRole(ctx, "moderator");
+    const structure = await ctx.db.get(structureId);
+    if (!structure) throw appError("NOT_FOUND", fr.errors.generic, "structureId");
+    if (!structure.payoutPending) {
+      throw appError("CONFLICT", fr.errors.noPayoutChangePending, "structureId");
+    }
+    const trimmed = reason?.trim();
+    if (decision === "refuse" && !trimmed) {
+      throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    }
+
+    if (decision === "approve") {
+      await ctx.db.patch(structureId, {
+        payout: { ...structure.payoutPending, verifiedAt: Date.now(), verifiedBy: user._id },
+        payoutPending: undefined,
+        payoutPendingAt: undefined,
+      });
+    } else {
+      await ctx.db.patch(structureId, { payoutPending: undefined, payoutPendingAt: undefined });
+    }
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: decision === "approve" ? "payout.change_approve" : "payout.change_refuse",
+      targetTable: "structures",
+      targetId: structureId,
+      details: trimmed ? { reason: trimmed } : undefined,
+    });
+    const responsible = await structureUser(ctx, structureId);
+    if (responsible) {
+      await notifyUser(ctx, {
+        userId: responsible._id,
+        kind: "payout_account_decision",
+        title:
+          decision === "approve"
+            ? fr.notifications.payoutApprovedTitle
+            : fr.notifications.payoutRefusedTitle,
+        body:
+          decision === "approve"
+            ? fr.notifications.payoutApprovedBody
+            : fr.notifications.payoutRefusedBody(trimmed!),
+        link: "/structure",
+      });
+    }
+    return { ok: true };
   },
 });

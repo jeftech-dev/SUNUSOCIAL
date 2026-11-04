@@ -406,6 +406,28 @@ export interface RefundQueueItem {
   createdAt: number;
 }
 
+export interface ExtensionQueueItem {
+  id: Id<"extensionRequests">;
+  kind: ExtensionKind;
+  organization: string;
+  /** The cause title (both kinds resolve to the cause the deadline belongs to). */
+  target: string;
+  /** The deadline today and the one requested, so the moderator sees the added hold (DT-30). */
+  currentUntil: number | null;
+  requestedUntil: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface PayoutChangeQueueItem {
+  id: Id<"structures">;
+  organization: string;
+  method: Method;
+  /** The new wallet number, masked (last digits only). */
+  accountNumber: string;
+  holderName: string;
+}
+
 export interface ModerationQueue<T> {
   count: number;
   items: T[];
@@ -417,8 +439,8 @@ export interface ModerationQueues {
   proofs: ModerationQueue<ProofQueueItem>;
   deletions: ModerationQueue<DeletionQueueItem>;
   refunds: ModerationQueue<RefundQueueItem>;
-  /** Filled in a later Sprint 6 PR. */
-  payoutChanges: ModerationQueue<never>;
+  extensions: ModerationQueue<ExtensionQueueItem>;
+  payoutChanges: ModerationQueue<PayoutChangeQueueItem>;
   featured: { causeId: Id<"causes">; since: number } | null;
 }
 

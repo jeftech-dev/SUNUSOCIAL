@@ -127,13 +127,18 @@ export default defineSchema({
     payout: v.optional(payoutAccountV),
     /** A requested payout-account change awaiting moderator review. Blocks payouts while set. */
     payoutPending: v.optional(payoutAccountV),
+    /** Set with `payoutPending` so the moderation queue can find pending changes by index, in any
+     * status (payouts are blocked whenever `payoutPending` is set, not only for approved structures). */
+    payoutPendingAt: v.optional(v.number()),
     status: structureStatusV,
     refusalReason: v.optional(v.string()),
     suspendedAt: v.optional(v.number()),
     onboardingPhase: onboardingPhaseV,
     profileCompletedAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    .index("by_payout_pending", ["payoutPendingAt"]),
 
   // -------------------------------------------------------------------------
   // Causes & money
@@ -327,7 +332,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_status", ["status"])
-    .index("by_structure", ["structureId"]),
+    .index("by_structure", ["structureId"])
+    .index("by_target_status", ["targetId", "status"]),
 
   // -------------------------------------------------------------------------
   // Notifications & audit

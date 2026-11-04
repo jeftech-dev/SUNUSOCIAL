@@ -14,6 +14,7 @@ import type * as auth from "../auth.js";
 import type * as causes from "../causes.js";
 import type * as crons from "../crons.js";
 import type * as donations from "../donations.js";
+import type * as extensions from "../extensions.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as lib_causeViews from "../lib/causeViews.js";
@@ -30,6 +31,7 @@ import type * as payouts from "../payouts.js";
 import type * as proofChecks from "../proofChecks.js";
 import type * as proofs from "../proofs.js";
 import type * as seed from "../seed.js";
+import type * as structures from "../structures.js";
 import type * as validators from "../validators.js";
 
 import type {
@@ -45,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   causes: typeof causes;
   crons: typeof crons;
   donations: typeof donations;
+  extensions: typeof extensions;
   files: typeof files;
   http: typeof http;
   "lib/causeViews": typeof lib_causeViews;
@@ -61,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   proofChecks: typeof proofChecks;
   proofs: typeof proofs;
   seed: typeof seed;
+  structures: typeof structures;
   validators: typeof validators;
 }>;
 
