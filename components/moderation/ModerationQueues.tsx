@@ -20,7 +20,8 @@ import type {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Tab = "structures" | "causes" | "proofs" | "deletions" | "refunds" | "extensions" | "payoutChanges";
+type Tab =
+  "structures" | "causes" | "proofs" | "deletions" | "refunds" | "extensions" | "payoutChanges";
 type Notice = { kind: "success" | "error"; text: string };
 type ReasonTarget =
   | { kind: "structure"; id: Id<"structures"> }
@@ -450,7 +451,8 @@ function ExtensionRow({
     item.kind === "cause_deadline"
       ? fr.moderation.extensionKindCause
       : fr.moderation.extensionKindProof;
-  const current = item.currentUntil === null ? fr.moderation.extensionNoCurrent : formatDate(item.currentUntil);
+  const current =
+    item.currentUntil === null ? fr.moderation.extensionNoCurrent : formatDate(item.currentUntil);
 
   return (
     <li className="flex flex-col gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4">
@@ -476,7 +478,9 @@ function ExtensionRow({
           variant="ghost"
           size="sm"
           disabled={busy || !reason.trim()}
-          onClick={() => onDecide({ requestId: item.id, decision: "refuse", reason: reason.trim() })}
+          onClick={() =>
+            onDecide({ requestId: item.id, decision: "refuse", reason: reason.trim() })
+          }
         >
           {fr.moderation.confirmExtensionRefuse}
         </Button>
@@ -529,7 +533,9 @@ function PayoutChangeRow({
           variant="ghost"
           size="sm"
           disabled={busy || !reason.trim()}
-          onClick={() => onDecide({ structureId: item.id, decision: "refuse", reason: reason.trim() })}
+          onClick={() =>
+            onDecide({ structureId: item.id, decision: "refuse", reason: reason.trim() })
+          }
         >
           {fr.moderation.confirmPayoutRefuse}
         </Button>

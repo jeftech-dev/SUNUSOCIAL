@@ -39,7 +39,8 @@ export const requestPayoutChange = mutation({
     }
 
     const accountNumber = normalizePhone(payout.accountNumber);
-    if (!accountNumber) throw appError("VALIDATION", fr.errors.invalidPhone, "payout.accountNumber");
+    if (!accountNumber)
+      throw appError("VALIDATION", fr.errors.invalidPhone, "payout.accountNumber");
     const holderName = normalizeName(payout.holderName);
     if (!holderName) throw appError("VALIDATION", fr.errors.invalidName, "payout.holderName");
 

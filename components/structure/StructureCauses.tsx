@@ -188,7 +188,10 @@ export function StructureCauses() {
                             requestedUntil,
                             reason,
                           });
-                          setNotice({ kind: "success", text: fr.structureCauses.extensionRequested });
+                          setNotice({
+                            kind: "success",
+                            text: fr.structureCauses.extensionRequested,
+                          });
                           setExtendId(null);
                         } catch (error) {
                           setNotice({ kind: "error", text: toUiError(error).message });

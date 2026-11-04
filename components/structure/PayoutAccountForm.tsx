@@ -65,7 +65,10 @@ export function PayoutAccountForm() {
       <p className="text-sm text-muted-foreground">{fr.payoutChange.intro}</p>
 
       {done ? (
-        <p role="status" className="rounded-lg bg-success-soft p-3 text-sm font-semibold text-brand-green-strong">
+        <p
+          role="status"
+          className="rounded-lg bg-success-soft p-3 text-sm font-semibold text-brand-green-strong"
+        >
           {fr.payoutChange.submitted}
         </p>
       ) : (
@@ -97,11 +100,18 @@ export function PayoutAccountForm() {
               onChange={(e) => setNumber(e.target.value)}
               className="w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
             />
-            <Button variant="outline" size="sm" disabled={busy || !number.trim()} onClick={onSendCode}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || !number.trim()}
+              onClick={onSendCode}
+            >
               {fr.payoutChange.sendCode}
             </Button>
           </div>
-          {sent && <p className="text-xs text-brand-green-strong">{fr.payoutChange.codeSent(sent)}</p>}
+          {sent && (
+            <p className="text-xs text-brand-green-strong">{fr.payoutChange.codeSent(sent)}</p>
+          )}
 
           <label className="text-sm font-semibold" htmlFor="payout-holder">
             {fr.payoutChange.holderLabel}

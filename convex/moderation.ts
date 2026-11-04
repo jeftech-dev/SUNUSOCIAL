@@ -867,7 +867,11 @@ export const decideRefund = mutation({
  * longer hold. The requested date was validated against MAX_EXTENSION_DAYS when the request was made.
  */
 export const decideExtension = mutation({
-  args: { requestId: v.id("extensionRequests"), decision: decisionV, reason: v.optional(v.string()) },
+  args: {
+    requestId: v.id("extensionRequests"),
+    decision: decisionV,
+    reason: v.optional(v.string()),
+  },
   handler: async (
     ctx,
     { requestId, decision, reason },

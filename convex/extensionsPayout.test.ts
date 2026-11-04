@@ -96,7 +96,12 @@ async function structureCtx(t: T) {
 
 async function moderatorClient(t: T) {
   const userId = await t.run((ctx) =>
-    ctx.db.insert("users", { name: "Mod", role: "moderator", disabled: false, createdAt: Date.now() }),
+    ctx.db.insert("users", {
+      name: "Mod",
+      role: "moderator",
+      disabled: false,
+      createdAt: Date.now(),
+    }),
   );
   const sessionId = await t.run((ctx) =>
     ctx.db.insert("authSessions", {
@@ -108,7 +113,11 @@ async function moderatorClient(t: T) {
   return t.withIdentity({ subject: `${userId}|${sessionId}` });
 }
 
-async function activeCause(t: T, structureId: Id<"structures">, deadline = Date.now() + 5 * DAY_MS) {
+async function activeCause(
+  t: T,
+  structureId: Id<"structures">,
+  deadline = Date.now() + 5 * DAY_MS,
+) {
   const bannerFileId = await storeFile(t);
   return t.run((ctx) =>
     ctx.db.insert("causes", {
@@ -462,7 +471,10 @@ describe("moderation.queues (extensions + payout changes)", () => {
 
     const queues = await mod.query(api.moderation.queues, {});
     expect(queues.extensions.count).toBe(1);
-    expect(queues.extensions.items[0]).toMatchObject({ kind: "cause_deadline", target: "Cantine scolaire" });
+    expect(queues.extensions.items[0]).toMatchObject({
+      kind: "cause_deadline",
+      target: "Cantine scolaire",
+    });
     expect(queues.payoutChanges.count).toBe(1);
     expect(queues.payoutChanges.items[0].accountNumber).toContain("0003");
   });

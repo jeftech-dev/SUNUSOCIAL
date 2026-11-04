@@ -493,7 +493,8 @@ export const fr = {
     extensionApprovedTitle: "Prolongation accordée",
     extensionApprovedBody: (until: string) => `Votre échéance est repoussée au ${until}.`,
     extensionRefusedTitle: "Prolongation refusée",
-    extensionRefusedBody: (reason: string) => `Votre demande de prolongation a été refusée : ${reason}`,
+    extensionRefusedBody: (reason: string) =>
+      `Votre demande de prolongation a été refusée : ${reason}`,
     extensionDonorBody: (title: string, until: string) =>
       `La date limite de « ${title} » a été prolongée jusqu'au ${until}.`,
     payoutApprovedTitle: "Compte de réception validé",
