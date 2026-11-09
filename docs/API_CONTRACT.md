@@ -395,11 +395,17 @@ The donor's cumulative impact, for "Vous avez contribué à N causes pour X FCFA
 ### mutation `donations.requestRefund`
 **Request**
 ```json
-{ "donationId": "don_…", "reason": "Je me suis trompé de montant.", "receivingPhone": "+221771234567" }  // reason ≥ 5 chars; phone defaults to the verified one
+{ "donationId": "don_…", "reason": "Je me suis trompé de montant.", "receivingPhone": "77 123 45 67", "otpCode": "482913" }
+// reason required; receivingPhone optional (defaults to the account's verified number) and normalised to +221…;
+// a number other than the account's needs otpCode, a `payout_number` code sent with otp.send (as for DT-5)
 ```
 **Response (success) — 200**
 ```json
-{ "requestId": "ref_…", "status": "pending", "message": "Demande envoyée. Un modérateur décidera." }
+{ "ok": true, "requestId": "ref_…" }
+```
+A wrong or expired code is returned, not thrown, so the failed attempt is counted:
+```json
+{ "ok": false, "error": { "code": "OTP_INVALID", "message": "Code incorrect ou expiré." } }
 ```
 **Response (error)**
 ```json
@@ -497,9 +503,11 @@ Returns `{ stock: { entries: [{ bloodType, units }], updatedAt }, alerts: [...] 
 **Response** `{ "bloodType": "O+", "stockBefore": 6, "stockAfter": 7 }`
 
 ### mutation `blood.closeAlert` / `blood.sendThanks` / `blood.updateStock` (hospital)
-- `closeAlert { alertId }` → `{ ok }`; donors who answered but did not give are told they need not come.
-- `sendThanks { alertId, message }` (10–300 characters) → `{ ok, thanked }`. Allowed once, after the alert is closed or its goal reached, with at least one confirmed donation; only confirmed donors get it (in-app + SMS).
-- `updateStock { entries: [{ bloodType, units }] }` (integers 0–9999, the eight real groups) → `{ ok }`.
+- `closeAlert { alertId }` → `{ ok }`; donors who answered, did not give and whose slot has not ended are told they need not come. Audited `blood.alert.close`.
+- `sendThanks { alertId, message }` (10–300 characters) → `{ ok, thanked }`. Allowed once, after the alert is closed, past its deadline or at its goal, with at least one confirmed donation; only confirmed donors get it (in-app + SMS). Audited `blood.thanks`.
+- `updateStock { entries: [{ bloodType, units }] }` (integers 0–9999, the eight real groups) → `{ ok }`. Audited `blood.stock.update`.
+
+An alert stops taking responses at its deadline; the hourly `closeExpired` job marks it closed only once the last slot (which may start up to the deadline) is over, so nobody on their way is told not to come. `respond`, `cancelResponse` and `confirmDonation` are audited (`blood.respond`, `blood.cancel`, `blood.donation.confirm`).
 
 ### query `moderation.alerts` / mutation `moderation.closeAlert` (moderator)
 `closeAlert { alertId, reason }` — the reason is required (interim G13), stored on the alert, audited as `blood.alert.close` and sent to the hospital.
@@ -563,6 +571,7 @@ Returns `{ stock: { entries: [{ bloodType, units }], updatedAt }, alerts: [...] 
 ```json
 { "error": { "code": "VALIDATION", "message": "Choisissez le sort des fonds collectés.", "field": "fundOutcome" } }
 ```
+Approval is refused (`CONFLICT`) once the cause's release is queued (`fundsReleasedAt`) or the cause is already deleted: its held donations are promised to that payout. The moderator can still `maintain`. On `refund`, each donor's own refund request (pending or rejected) is settled by the deletion and paid to the number it names; a donation whose refund is already queued is not refunded again.
 
 ### mutation `moderation.decideRefund`
 **Request**
@@ -573,6 +582,7 @@ Returns `{ stock: { entries: [{ bloodType, units }], updatedAt }, alerts: [...] 
 ```json
 { "ok": true, "refundAmount": 9700, "payoutStatus": "queued", "message": "Remboursement de 9 700 FCFA (montant net) en cours vers Ousmane Ba sur Wave." }
 ```
+Approval is refused (`CONFLICT`) once the cause's release is queued or a refund of the donation is already queued. An approved refund marks the donation `refundQueuedAt`, which every release sum skips; the donation becomes `refunded` when the payout lands.
 
 ### mutation `moderation.setFeatured`
 **Request**

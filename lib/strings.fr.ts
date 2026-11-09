@@ -73,6 +73,8 @@ export const fr = {
     featured: "Coup de cœur de la semaine",
     cancel: "Annuler",
     confirm: "Confirmer",
+    /** Payout recipient name when the donor's account has none. */
+    donorFallbackName: "Donateur",
     back: "Retour",
   },
 
@@ -185,6 +187,13 @@ export const fr = {
       messagesTitle: "Mes messages",
       messagesEmpty: "Aucun message pour le moment.",
       badge: (n: number) => `${n} alerte${n > 1 ? "s" : ""} à traiter`,
+    },
+    /** Visit-slot labels: "aujourd'hui entre 14 h et 16 h", "le 12/11 entre 8 h et 10 h". */
+    slotTime: {
+      hours: (start: number, end: number) => `entre ${start} h et ${end} h`,
+      today: (hours: string) => `aujourd'hui ${hours}`,
+      tomorrow: (hours: string) => `demain ${hours}`,
+      onDate: (day: number, month: number, hours: string) => `le ${day}/${month} ${hours}`,
     },
     slot: {
       title: "Confirmer ma venue",
@@ -600,7 +609,10 @@ export const fr = {
     refundReasonLabel: "Motif de votre demande",
     refundReasonPlaceholder: "Ex. : je me suis trompé de cause.",
     refundPhoneLabel: "Numéro où recevoir le remboursement",
-    refundPhoneHint: "Par défaut, votre numéro vérifié.",
+    refundPhoneHint: "Par défaut, votre numéro vérifié. Un autre numéro se confirme par SMS.",
+    refundSendCode: "Recevoir un code",
+    refundCodeLabel: "Code reçu par SMS sur ce numéro",
+    refundCodeSent: (to: string) => `Code envoyé au ${to}.`,
     refundSubmit: "Envoyer la demande",
     refundHint: (net: string) =>
       `Tant que les fonds sont bloqués, vous pouvez être remboursé de ${net} (votre don moins les frais NabooPay).`,
@@ -609,6 +621,8 @@ export const fr = {
     causeDeletedPaidOut: (reason: string) =>
       `Cause supprimée${reason ? ` (${reason})` : ""}. Les fonds ont été versés à la structure, qui doit en justifier l'emploi.`,
     refundStatusPending: "Remboursement demandé — en cours d'examen.",
+    refundStatusInProgress: (net: string) =>
+      `Remboursement accepté : ${net} en cours de versement sur votre numéro.`,
     refundStatusRefunded: (net: string) => `Remboursé : ${net} reversés sur votre numéro.`,
     refundStatusRejected: "Demande de remboursement refusée.",
   },
@@ -674,6 +688,10 @@ export const fr = {
       `Votre demande de suppression de « ${title} » a été refusée : ${reason}. La cause reste active.`,
     deletionDonorRefundBody: (title: string, net: string) =>
       `La cause « ${title} » a été supprimée. Votre don vous est remboursé : ${net} (votre don moins les frais NabooPay) sur votre numéro.`,
+    deletionDonorRefundManualBody: (title: string, net: string) =>
+      `La cause « ${title} » a été supprimée. Votre don de ${net} vous sera remboursé : la modération vous contactera pour convenir du numéro.`,
+    refundNoPhoneDetail: (net: string) =>
+      `remboursement de ${net} impossible (cause supprimée) : le donateur n'a pas de numéro`,
     deletionDonorPayoutBody: (title: string) =>
       `La cause « ${title} » a été supprimée. Les fonds déjà collectés ont été versés à la structure, qui doit en justifier l'emploi.`,
     refundApprovedTitle: "Remboursement approuvé",
@@ -996,6 +1014,8 @@ export const fr = {
       "Seule une cause active ayant reçu des dons passe par une demande de suppression.",
     deletionAlreadyRequested: "Une demande de suppression est déjà en cours pour cette cause.",
     deletionAlreadyDecided: "Cette demande de suppression a déjà été traitée.",
+    deletionFundsReleased:
+      "Les fonds de cette cause ont déjà été versés : elle ne peut plus être supprimée. Maintenez-la en expliquant pourquoi.",
     fundOutcomeRequired: "Choisissez le sort des fonds (remboursement ou versement).",
     payoutChangePending:
       "Un changement de compte de réception est en cours : le versement est bloqué en attendant.",
@@ -1003,6 +1023,7 @@ export const fr = {
     refundNotEligible:
       "Ce don ne peut plus être remboursé : les fonds ont été versés ou la cause est close.",
     refundPhoneRequired: "Indiquez le numéro sur lequel recevoir le remboursement.",
+    refundCodeRequired: "Confirmez ce numéro avec le code reçu par SMS.",
     refundAlreadyDecided: "Cette demande de remboursement a déjà été traitée.",
     extensionReasonRequired: "Expliquez la raison de votre demande de prolongation.",
     extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",

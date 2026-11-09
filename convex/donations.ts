@@ -10,6 +10,7 @@ import { computeFee, formatFCFA, isValidDonationAmount } from "../lib/money";
 import { getPaymentProvider, siteUrl } from "../lib/providers";
 import { isPaidStatus, splitFullName } from "../lib/providers/types";
 import { fr } from "../lib/strings.fr";
+import { normalizePhone } from "../lib/validation";
 import type {
   DonationHistoryView,
   DonationStatus,
@@ -32,6 +33,7 @@ import { isListed } from "./lib/causeViews";
 import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
 import { hitRateLimit } from "./lib/rateLimit";
+import { checkOtp, otpErrorMessage } from "./otp";
 import { methodV } from "./validators";
 
 /** Checkouts per donor per window (DT-19): enough to retry, not to flood NabooPay. */
@@ -323,6 +325,7 @@ function isRefundEligible(
   return (
     donation.status === "held" &&
     donation.lateRefundFlaggedAt === undefined &&
+    donation.refundQueuedAt === undefined &&
     request === null &&
     cause !== null &&
     cause.status !== "deleted" &&
@@ -424,10 +427,13 @@ export const mine = query({
   },
 });
 
-/** Confirmed donations (held or released, late payments excluded) and the causes they support. */
+/** Confirmed donations (held or released, late or refund-queued excluded) and their causes. */
 export function impactOf(donations: Doc<"donations">[]): DonorImpact {
   const counted = donations.filter(
-    (d) => (d.status === "held" || d.status === "released") && d.lateRefundFlaggedAt === undefined,
+    (d) =>
+      (d.status === "held" || d.status === "released") &&
+      d.lateRefundFlaggedAt === undefined &&
+      d.refundQueuedAt === undefined,
   );
   return {
     total: counted.reduce((sum, d) => sum + d.amount, 0),
@@ -451,18 +457,25 @@ export const impact = query({
 /**
  * Requests a refund of a held donation (S12, DT-7). Only while eligible; the moderator decides
  * (`moderation.decideRefund`), and an approved refund pays the donation's net to `receivingPhone`
- * (the donor's verified phone by default). A late payment refunds automatically and is not eligible.
+ * (the donor's verified phone by default). Another number must be proved with a `payout_number` SMS
+ * code, exactly like a structure's payout account (DT-5): a mistyped number would pay a stranger.
+ * A wrong code is returned rather than thrown, so the failed attempt is counted. A late payment
+ * refunds automatically and is not eligible.
  */
 export const requestRefund = mutation({
   args: {
     donationId: v.id("donations"),
     reason: v.string(),
     receivingPhone: v.optional(v.string()),
+    otpCode: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    { donationId, reason, receivingPhone },
-  ): Promise<{ requestId: Id<"refundRequests"> }> => {
+    { donationId, reason, receivingPhone, otpCode },
+  ): Promise<
+    | { ok: true; requestId: Id<"refundRequests"> }
+    | { ok: false; error: { code: "OTP_INVALID"; message: string } }
+  > => {
     const { user } = await requireRole(ctx, "donor");
     const donation = await ctx.db.get(donationId);
     if (!donation || donation.donorId !== user._id) {
@@ -479,7 +492,20 @@ export const requestRefund = mutation({
     if (!isRefundEligible(donation, cause, existing ?? null)) {
       throw appError("CONFLICT", fr.errors.refundNotEligible, "donationId");
     }
-    const phone = receivingPhone?.trim() || user.phone;
+    let phone = user.phone;
+    if (receivingPhone?.trim()) {
+      const normalized = normalizePhone(receivingPhone);
+      if (!normalized) throw appError("VALIDATION", fr.errors.invalidPhone, "receivingPhone");
+      if (normalized !== user.phone) {
+        const code = otpCode?.trim();
+        if (!code) throw appError("VALIDATION", fr.errors.refundCodeRequired, "otpCode");
+        const check = await checkOtp(ctx, { purpose: "payout_number", phone: normalized, code });
+        if (!check.ok) {
+          return { ok: false, error: { code: "OTP_INVALID", message: otpErrorMessage(check) } };
+        }
+      }
+      phone = normalized;
+    }
     if (!phone) throw appError("VALIDATION", fr.errors.refundPhoneRequired, "receivingPhone");
 
     const requestId = await ctx.db.insert("refundRequests", {
@@ -495,9 +521,9 @@ export const requestRefund = mutation({
       action: "refund.request",
       targetTable: "donations",
       targetId: donationId,
-      details: { requestId },
+      details: { requestId, ownPhone: phone === user.phone },
     });
-    return { requestId };
+    return { ok: true, requestId };
   },
 });
 

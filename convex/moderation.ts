@@ -19,7 +19,7 @@ import { isListed, structureLoader } from "./lib/causeViews";
 import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
 import { notifyUser } from "./notify";
-import { enqueuePayout } from "./payouts";
+import { alertModerators, enqueueDonationRefund, enqueuePayout, isReleasable } from "./payouts";
 import { fundOutcomeV } from "./validators";
 
 /** Most causes offered by the picker. Active causes last ≤ 30 days, so this is generous. */
@@ -642,6 +642,12 @@ export const decideDeletion = mutation({
 
     // Approve: the cause is deleted; the funds are refunded or paid out.
     if (!fundOutcome) throw appError("VALIDATION", fr.errors.fundOutcomeRequired, "fundOutcome");
+    // Re-check the cause's *current* state: it may have been released (or deleted) since the
+    // request was made. Its held donations are then already promised to a payout in flight, and
+    // settling them again would pay the same money twice. The moderator can only maintain it.
+    if (cause.status === "deleted" || cause.fundsReleasedAt !== undefined) {
+      throw appError("CONFLICT", fr.errors.deletionFundsReleased, "requestId");
+    }
     const structure = await ctx.db.get(cause.structureId);
     if (fundOutcome === "payout") {
       if (!structure?.payout) throw appError("CONFLICT", fr.errors.payoutRequired, "fundOutcome");
@@ -661,11 +667,9 @@ export const decideDeletion = mutation({
         .query("donations")
         .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
         .collect();
-      // Late-flagged donations are refunded to the donor (lateRefundDue), never released to the
-      // structure — exclude them from the payout, exactly as releaseCause does.
-      const total = donations
-        .filter((d) => d.status === "held" && d.lateRefundFlaggedAt === undefined)
-        .reduce((sum, d) => sum + d.net, 0);
+      // Late-flagged and refund-queued donations go back to the donor, never to the structure —
+      // exclude them from the payout, exactly as releaseCause does.
+      const total = donations.filter(isReleasable).reduce((sum, d) => sum + d.net, 0);
       await ctx.db.patch(cause._id, { status: "deleted", fundsReleasedAt: Date.now() });
       if (total > 0 && structure?.payout) {
         const payoutId = await enqueuePayout(ctx, {
@@ -707,13 +711,64 @@ export const decideDeletion = mutation({
   },
 });
 
+/**
+ * Queues the refund of one held donation of a deleted cause. The deletion decision also settles the
+ * donor's own request: a pending or rejected one becomes a refund to the number it names, so it can
+ * no longer be decided and no donor is left with funds held on a deleted cause. Returns false (and
+ * alerts the moderators) when there is no number to pay.
+ */
+async function refundDeletedDonation(
+  ctx: MutationCtx,
+  donation: Doc<"donations">,
+): Promise<boolean> {
+  const donor = await ctx.db.get(donation.donorId);
+  const existing = await ctx.db
+    .query("refundRequests")
+    .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
+    .unique();
+  const phone = existing?.receivingPhone ?? donor?.phone;
+  if (!phone) {
+    await logAudit(ctx, {
+      action: "refund.no_phone",
+      targetTable: "donations",
+      targetId: donation._id,
+      details: { reason: "cause_deleted" },
+    });
+    await alertModerators(ctx, fr.notifications.refundNoPhoneDetail(formatFCFA(donation.net)));
+    return false;
+  }
+  // The deletion decision already settled this refund: record the request as refunded (not
+  // pending), so it never appears in the moderation queue. completeRefund confirms it on landing.
+  const payoutId = await enqueueDonationRefund(ctx, donation, {
+    phone,
+    name: donor?.name ?? fr.common.donorFallbackName,
+  });
+  if (existing) {
+    await ctx.db.patch(existing._id, { status: "refunded", refundAmount: donation.net, payoutId });
+  } else {
+    await ctx.db.insert("refundRequests", {
+      donationId: donation._id,
+      donorId: donation.donorId,
+      reason: "cause_deleted",
+      status: "refunded",
+      receivingPhone: phone,
+      refundAmount: donation.net,
+      payoutId,
+      createdAt: Date.now(),
+    });
+  }
+  return true;
+}
+
 /** Donations settled per `settleDeletedCause` batch before it reschedules itself. */
 const DELETION_SETTLE_BATCH = 100;
 
 /**
  * Settles the donations of a deleted cause: on `refund`, queues a net refund payout per held donation
- * (idempotent — one refund request per donation); on either outcome, notifies each donor. Pages the
- * cause's donations so a cause with many gifts never settles in one oversized transaction.
+ * and notifies each donor. A donor's own refund request (pending or rejected) is settled by the
+ * deletion; a donation whose refund is already queued is not queued again. A donor who cannot be
+ * refunded (no number) is told the moderation will contact them, and the moderators are alerted.
+ * Pages the cause's donations so a cause with many gifts never settles in one oversized transaction.
  */
 export const settleDeletedCause = internalMutation({
   args: {
@@ -733,44 +788,19 @@ export const settleDeletedCause = internalMutation({
       // Late-flagged donations are always refunded to the donor by lateRefundDue, whatever the
       // deletion outcome — skip them here so they are neither paid out nor double-refunded.
       if (donation.status !== "held" || donation.lateRefundFlaggedAt !== undefined) continue;
-      const donor = await ctx.db.get(donation.donorId);
+      let body = fr.notifications.deletionDonorPayoutBody(cause.title);
       if (outcome === "refund") {
-        const existing = await ctx.db
-          .query("refundRequests")
-          .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
-          .unique();
-        if (!existing && donor?.phone) {
-          // The deletion decision already settled this refund: enqueue the payout and record the
-          // request as refunded (not pending), so it never appears in the moderation queue and
-          // cannot be decided a second time. completeRefund confirms it when the payout lands.
-          const payoutId = await enqueuePayout(ctx, {
-            kind: "refund",
-            targetId: donation._id,
-            amount: donation.net,
-            method: donation.paidMethod ?? donation.method,
-            phone: donor.phone,
-            name: donor.name,
-          });
-          await ctx.db.insert("refundRequests", {
-            donationId: donation._id,
-            donorId: donation.donorId,
-            reason: "cause_deleted",
-            status: "refunded",
-            receivingPhone: donor.phone,
-            refundAmount: donation.net,
-            payoutId,
-            createdAt: Date.now(),
-          });
-        }
+        const refunding =
+          donation.refundQueuedAt !== undefined || (await refundDeletedDonation(ctx, donation));
+        body = refunding
+          ? fr.notifications.deletionDonorRefundBody(cause.title, formatFCFA(donation.net))
+          : fr.notifications.deletionDonorRefundManualBody(cause.title, formatFCFA(donation.net));
       }
       await notifyUser(ctx, {
         userId: donation.donorId,
         kind: "deletion_decision",
         title: fr.notifications.deletionApprovedTitle,
-        body:
-          outcome === "refund"
-            ? fr.notifications.deletionDonorRefundBody(cause.title, formatFCFA(donation.net))
-            : fr.notifications.deletionDonorPayoutBody(cause.title),
+        body,
         link: "/profil",
       });
     }
@@ -821,26 +851,30 @@ export const decideRefund = mutation({
       return { ok: true };
     }
 
-    // Approve: only while the funds are still held. Pays the donation's net to the chosen number.
-    if (donation.status !== "held") {
+    // Approve: only while the funds are still held *and* not promised elsewhere. Once the cause's
+    // release is queued (`fundsReleasedAt`) its held donations are in that payout, and a refund
+    // already queued or flagged for this donation is on its way: approving would pay twice.
+    if (
+      donation.status !== "held" ||
+      donation.lateRefundFlaggedAt !== undefined ||
+      donation.refundQueuedAt !== undefined ||
+      !cause ||
+      cause.fundsReleasedAt !== undefined
+    ) {
       throw appError("CONFLICT", fr.errors.refundNotEligible, "requestId");
     }
     const amount = donation.net;
+    const donor = await ctx.db.get(request.donorId);
+    const payoutId = await enqueueDonationRefund(ctx, donation, {
+      phone: request.receivingPhone,
+      name: donor?.name ?? fr.common.donorFallbackName,
+    });
     await ctx.db.patch(requestId, {
       status: "refunded",
       refundAmount: amount,
       decidedBy: user._id,
+      payoutId,
     });
-    const donor = await ctx.db.get(request.donorId);
-    const payoutId = await enqueuePayout(ctx, {
-      kind: "refund",
-      targetId: donation._id,
-      amount,
-      method: donation.paidMethod ?? donation.method,
-      phone: request.receivingPhone,
-      name: donor?.name ?? "Donateur",
-    });
-    await ctx.db.patch(requestId, { payoutId });
     await logAudit(ctx, {
       actorId: user._id,
       action: "refund.approve",
@@ -1062,10 +1096,6 @@ export const alerts = query({
     const rows = [];
     for (const alert of [...open, ...closed]) {
       const hospital = await ctx.db.get(alert.hospitalId);
-      const responses = await ctx.db
-        .query("bloodResponses")
-        .withIndex("by_alert", (q) => q.eq("alertId", alert._id))
-        .take(500);
       rows.push({
         _id: alert._id,
         hospitalName: hospital?.name ?? "",
@@ -1075,7 +1105,8 @@ export const alerts = query({
         targetCommunes: alert.targetCommunes,
         unitsNeeded: alert.unitsNeeded,
         unitsCollected: alert.unitsCollected,
-        respondersCount: responses.filter((r) => r.cancelledAt === undefined).length,
+        // Active responses: still expected plus already confirmed (one unit each).
+        respondersCount: (alert.pendingResponders ?? 0) + alert.unitsCollected,
         closed: alert.closed || now >= alertDeadline(alert),
         closeReason: alert.closeReason ?? null,
         closedByModerator: alert.closedByModerator ?? false,

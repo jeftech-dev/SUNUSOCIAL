@@ -11,7 +11,7 @@ import { isPaidStatus, parseWebhookPayload } from "../lib/providers/types";
 import { fr } from "../lib/strings.fr";
 import type { Method } from "../lib/types";
 import { errorPath, successPath } from "./donations";
-import { enqueuePayout } from "./payouts";
+import { enqueueDonationRefund, enqueuePayout, isReleasable } from "./payouts";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import {
@@ -344,11 +344,9 @@ export const releaseCause = internalMutation({
       .query("donations")
       .withIndex("by_cause", (q) => q.eq("causeId", causeId))
       .collect();
-    // Late-flagged donations are refunded to the donor (lateRefundDue), never released to the
-    // structure, so they must not be summed into the release payout even while still `held`.
-    const total = donations
-      .filter((d) => d.status === "held" && d.lateRefundFlaggedAt === undefined)
-      .reduce((sum, d) => sum + d.net, 0);
+    // Late-flagged and refund-queued donations go back to the donor, never to the structure, so
+    // they must not be summed into the release payout even while still `held`.
+    const total = donations.filter(isReleasable).reduce((sum, d) => sum + d.net, 0);
 
     const now = Date.now();
     const patch: Partial<Doc<"causes">> = { fundsReleasedAt: now };
@@ -442,11 +440,7 @@ export const lateRefundDue = internalMutation({
       // An automatic refund (DB-18): no moderator decision. Enqueue the payout and record the
       // request as refunded (not pending), so it never surfaces in the moderation queue as
       // actionable; completeRefund confirms it when the payout lands.
-      const payoutId = await enqueuePayout(ctx, {
-        kind: "refund",
-        targetId: donation._id,
-        amount: donation.net,
-        method: donation.paidMethod ?? donation.method,
+      const payoutId = await enqueueDonationRefund(ctx, donation, {
         phone: donor.phone,
         name: donor.name,
       });

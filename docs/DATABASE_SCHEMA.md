@@ -128,6 +128,7 @@ Organisations and hospitals. A hospital is a structure whose `type` is "Hôpital
 | `paidMethod` | string | optional | NabooPay `selected_payment_method`. A refund is sent back on this method |
 | `status` | string | `pending`\|`held`\|`released`\|`refunded`\|`failed` | `failed`: NabooPay refused the checkout, or the payment was abandoned and cancelled after 2 h |
 | `lateRefundFlaggedAt` | number | optional | Set when the payment was confirmed after its cause stopped being `active` (DB-18, DT-7). The donation is not counted in the cause's `raised`/`donorCount`; it stays `held` until the payout worker (Sprint 6) refunds its `net` automatically |
+| `refundQueuedAt` | number | optional | Set when a refund payout of this donation is queued (moderator approval, deletion with refund, late payment). The donation stays `held` until the payout lands, so every release sum and completion skips it: the same money is never refunded and released |
 | `createdAt` | number | required | |
 
 ### refundRequests
@@ -299,6 +300,7 @@ Append-only record of sensitive actions **and donor activity** (DB-9, DT-18). Ro
 | `closedByModerator` | boolean | optional | |
 | `thanksSentAt` | number | optional | The thank-you goes out once |
 | `notifiedCount` | number | optional | Donors reached by the fan-out so far |
+| `pendingResponders` | number | optional | Active responses not yet confirmed, kept in step by `respond` / `cancelResponse` / `confirmDonation`, so donor and moderator lists never scan responses |
 
 ### bloodResponses
 | Column | Type | Constraints | Description |
@@ -315,6 +317,15 @@ Append-only record of sensitive actions **and donor activity** (DB-9, DT-18). Ro
 | `confirmedAt` / `confirmedBy` | number / Id<"users"> | optional | Set when the hospital confirms the donation |
 | `donatedType` | string | optional | The group found on site, required when the snapshot is `unknown` |
 | `reminderJobId` | Id<"_scheduled_functions"> | optional | The scheduled SMS reminder, cancelled on cancel/close/confirm |
+
+### bloodReach
+Opted-in donors per (blood group, commune), kept in step with `donorProfiles` on every insert or update (`adjustBloodReach`). The alert composer's reach estimate reads one row per combination. `blood:rebuildReach` backfills it on a deployment with older profiles.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `bloodType` | string | required | Group (including `unknown`) |
+| `commune` | string | required | |
+| `count` | number | ≥ 0 | Opted-in donors with this group and commune |
 
 ### bloodStock
 Each hospital's reserves by blood group.
@@ -383,6 +394,7 @@ CREATE INDEX by_alert                  ON bloodResponses (alertId);
 CREATE INDEX by_alert_donor            ON bloodResponses (alertId, donorId); -- one response per donor and alert
 CREATE INDEX by_donor                  ON bloodResponses (donorId, createdAt);
 CREATE INDEX by_hospital_type          ON bloodStock (hospitalId, bloodType);
+CREATE INDEX by_type_commune           ON bloodReach (bloodType, commune);   -- one counter per combination
 CREATE INDEX by_storage                ON signupUploads (storageId);
 CREATE INDEX by_created                ON signupUploads (createdAt);
 CREATE INDEX by_key                    ON rateLimits (key);

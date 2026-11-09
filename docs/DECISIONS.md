@@ -176,7 +176,8 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 
 **DT-7 — Refunds (DB-13).**
 - An approved refund queues a `refund` payout of **`net`** to the donor's verified phone, on the method they paid with (`selected_payment_method`).
-- The refund form lets the donor confirm the receiving number, which defaults to their verified phone.
+- The refund form lets the donor confirm the receiving number, which defaults to their verified phone. Another number must be proved with an SMS code (`payout_number`, as for a payout account, DT-5), because a mistyped number would pay a stranger.
+- A queued refund marks the donation `refundQueuedAt`; every release sum skips it, and a refund cannot be approved once the cause's release is queued (nor a deletion), so the same money is never both refunded and released. A deletion with refund settles the donor's own pending or rejected request.
 - NabooPay's `GET /refund/{order_id}` is **not** used: it can only refund the full amount, and as a `GET` it is easy to trigger by accident.
 - **Late payments (DB-18, G15).** When `payments.recordPayment` confirms a payment whose cause is no longer `active` (closed, released, deleted), the donation is **not** added to the cause's `raised` or `donorCount`. It is recorded as paid and flagged for an automatic `refund` payout of its `net`, with no moderator decision needed, and the donor gets a clear message (in-app notification and SMS, French copy in `lib/strings.fr.ts`): the cause was already closed, the amount refunded, and similar causes. Sprint 4 records and flags these donations (`donations.lateRefundFlaggedAt`, status stays `held`); the refund payout itself goes out once the payout worker exists (Sprint 6), which looks them up by that flag. A cause counts as closed here when its `status` is not `active`; a suspended structure's still-active cause keeps counting payments started before the suspension.
 
@@ -339,8 +340,8 @@ Placeholders until the board answers `PARCOURS.md` G13, G14 and G16; each is tag
 | G13 | A moderator who closes an alert must give a reason; the hospital receives it. The moderation page shows each hospital's count of moderator-closed alerts. No automatic review. |
 | G14 | A donor can cancel a visit until its slot ends (unless the donation is confirmed); the hospital is notified and the reminder is cancelled. The donor may answer again later. |
 | G16 | Donors whose group is `unknown` receive only alerts marked "Tous groupes" (`anyType`), which reach every opted-in donor in the targeted communes. When confirming such a donor, the hospital enters the group found on site. |
-| BLOOD-A | An alert expires from its level: vitale 24 h, urgente 72 h, normale 14 days; an hourly cron closes expired alerts. |
-| BLOOD-B | When an alert closes, donors who answered but did not give are told they need not come (in-app, plus SMS if `smsOptIn`). |
+| BLOOD-A | An alert expires from its level: vitale 24 h, urgente 72 h, normale 14 days. It stops taking responses at that deadline; the hourly cron marks it closed once the last slot (which may start up to the deadline) is over. |
+| BLOOD-B | When an alert closes, donors who answered, did not give and whose slot has not ended are told they need not come (in-app, plus SMS if `smsOptIn`). |
 | BLOOD-C | Fan-out in pages of 200 profiles; SMS only to `smsOptIn` donors; no daily cap on alert SMS (`SMS_DAILY_CAP` covers sign-in codes only). Visit slots are fixed 2-hour windows (08–18 h) today and tomorrow; the SMS reminder goes 2 h before. |
 
 *Removed since rev. 1:* `OTP_CHANNEL` (codes always go by SMS), `SMS_ENABLED`, `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` (decided: hospitals), `ENFORCE_PROOF_DEADLINE_ON_RELEASE` (decided: always), `REFUND_FEE_POLICY` (decided: net).

@@ -207,6 +207,11 @@ export default defineSchema({
      * `donorCount`, stays `held` until the payout worker refunds its `net` automatically.
      */
     lateRefundFlaggedAt: v.optional(v.number()),
+    /**
+     * Set when a refund payout of this donation is queued (moderator approval, deletion or late
+     * payment). The donation stays `held` until the payout lands, so every release sum must skip it.
+     */
+    refundQueuedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_cause", ["causeId"])
@@ -416,6 +421,8 @@ export default defineSchema({
     thanksSentAt: v.optional(v.number()),
     /** Donors reached by the fan-out so far. */
     notifiedCount: v.optional(v.number()),
+    /** Active responses not yet confirmed: kept in step by respond / cancel / confirm. */
+    pendingResponders: v.optional(v.number()),
   })
     .index("by_hospital_closed", ["hospitalId", "closed"])
     .index("by_closed", ["closed"])
@@ -444,6 +451,16 @@ export default defineSchema({
     .index("by_alert", ["alertId"])
     .index("by_alert_donor", ["alertId", "donorId"])
     .index("by_donor", ["donorId", "createdAt"]),
+
+  /**
+   * Opted-in donors per (group, commune), kept in step with `donorProfiles` by `adjustBloodReach`, so
+   * the composer's reach estimate reads one row per combination instead of every profile.
+   */
+  bloodReach: defineTable({
+    bloodType: bloodTypeV,
+    commune: v.string(),
+    count: v.number(),
+  }).index("by_type_commune", ["bloodType", "commune"]),
 
   bloodStock: defineTable({
     hospitalId: v.id("structures"),
