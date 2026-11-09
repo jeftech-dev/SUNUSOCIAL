@@ -5,8 +5,6 @@
 
 import { v } from "convex/values";
 
-import { getAuthUserId } from "@convex-dev/auth/server";
-
 import { loadConfig } from "../lib/config";
 import { formatFCFA } from "../lib/money";
 import { fr } from "../lib/strings.fr";
@@ -23,7 +21,7 @@ import {
 import { logAudit } from "./audit";
 import { validateUpload, type UploadFamily } from "./files";
 import { appError } from "./lib/errors";
-import { requireOwner } from "./lib/guards";
+import { requireOwner, viewerOrNull } from "./lib/guards";
 import { proofItemKindV, spendLineV } from "./validators";
 
 const REPORT_MIN = 10;
@@ -37,12 +35,6 @@ const FAMILY_BY_KIND: Record<Doc<"proofItems">["kind"], readonly UploadFamily[]>
   invoice: ["pdf", "image"],
   delivery_note: ["pdf", "image"],
 };
-
-/** The signed-in user, or null (used by the public-facing dossier reads). */
-async function viewerOf(ctx: QueryCtx): Promise<Doc<"users"> | null> {
-  const userId = await getAuthUserId(ctx);
-  return userId ? await ctx.db.get(userId) : null;
-}
 
 /** Net FCFA actually received for a cause (held or released donations). */
 async function netReceived(ctx: QueryCtx, causeId: Id<"causes">): Promise<number> {
@@ -240,7 +232,7 @@ export const get = query({
   handler: async (ctx, { proofId }): Promise<ProofDossierView | null> => {
     const proof = await ctx.db.get(proofId);
     if (!proof) return null;
-    const viewer = await viewerOf(ctx);
+    const viewer = await viewerOrNull(ctx);
     const isOwner =
       viewer !== null &&
       (viewer.role === "structure" || viewer.role === "hospital") &&
@@ -308,7 +300,7 @@ export const publicFeed = query({
 export const mine = query({
   args: {},
   handler: async (ctx): Promise<ProofFeedCard[]> => {
-    const viewer = await viewerOf(ctx);
+    const viewer = await viewerOrNull(ctx);
     if (!viewer || viewer.role !== "donor") return [];
     const donations = await ctx.db
       .query("donations")

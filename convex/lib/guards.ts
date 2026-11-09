@@ -29,6 +29,21 @@ export async function requireUser(ctx: QueryCtx): Promise<AuthedUser> {
 }
 
 /**
+ * The signed-in user for reads that are also open to anonymous visitors, or null. A disabled
+ * account, or a structure/hospital/moderator whose session has not passed the SMS code yet, is
+ * treated as anonymous: it must never unlock the private view of a public read.
+ */
+export async function viewerOrNull(ctx: QueryCtx): Promise<Doc<"users"> | null> {
+  const userId = await getAuthUserId(ctx);
+  const sessionId = await getAuthSessionId(ctx);
+  if (!userId || !sessionId) return null;
+  const [user, session] = await Promise.all([ctx.db.get(userId), ctx.db.get(sessionId)]);
+  if (!user || !session || user.disabled) return null;
+  if (MFA_ROLES.has(user.role) && session.mfaVerifiedAt === undefined) return null;
+  return user;
+}
+
+/**
  * Requires one of `roles`. Structures, hospitals and moderators must also have verified the SMS
  * code for this session. Sessions themselves expire after SESSION_TOTAL_DAYS (Convex Auth).
  */
