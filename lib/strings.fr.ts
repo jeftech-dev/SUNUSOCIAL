@@ -898,6 +898,17 @@ export const fr = {
       `Bonjour,\n\nUn accès modérateur SUNUSOCIAL a été créé pour vous. Choisissez votre mot de passe avec ce lien (valable 30 minutes)\u00a0:\n${link}\n\nL'équipe SUNUSOCIAL`,
   },
 
+  /** Route-level loading, error and not-found screens (Sprint 8). */
+  states: {
+    loading: "Chargement de la page…",
+    errorTitle: "Quelque chose s'est mal passé",
+    errorBody: "Cette page n'a pas pu s'afficher. Vos données ne sont pas perdues : réessayez.",
+    retry: "Réessayer",
+    notFoundTitle: "Page introuvable",
+    notFoundBody: "Le lien est peut-être incorrect, ou la page n'existe plus.",
+    backHome: "Retour à l'accueil",
+  },
+
   errors: {
     generic: "Une erreur est survenue. Veuillez réessayer.",
     network: "Connexion impossible. Vérifiez votre réseau et réessayez.",
