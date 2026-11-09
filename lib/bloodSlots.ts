@@ -1,6 +1,7 @@
 // Blood-alert deadlines and visit slots. Pure, shared by Convex and the UI.
 // Senegal is on UTC all year, so UTC hours are Dakar hours.
 
+import { fr } from "./strings.fr";
 import type { BloodAlertLevel } from "./types";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -21,7 +22,7 @@ export const REMINDER_LEAD_MS = 2 * HOUR_MS;
 
 /** Start hours (UTC) of the 2-hour windows a donor can pick. */
 const SLOT_START_HOURS = [8, 10, 12, 14, 16] as const;
-const SLOT_LENGTH_MS = 2 * HOUR_MS;
+export const SLOT_LENGTH_MS = 2 * HOUR_MS;
 
 export interface SlotOption {
   start: number;
@@ -58,10 +59,10 @@ export function isValidSlot(start: number, now: number, deadlineAt: number): boo
 /** "aujourd'hui entre 14 h et 16 h" / "demain entre 8 h et 10 h" / "le 12 novembre entre …". */
 export function slotLabel(start: number, now: number): string {
   const startHour = new Date(start).getUTCHours();
-  const hours = `entre ${startHour} h et ${startHour + SLOT_LENGTH_MS / HOUR_MS} h`;
+  const hours = fr.blood.slotTime.hours(startHour, startHour + SLOT_LENGTH_MS / HOUR_MS);
   const dayDiff = Math.floor(start / DAY_MS) - Math.floor(now / DAY_MS);
-  if (dayDiff === 0) return `aujourd'hui ${hours}`;
-  if (dayDiff === 1) return `demain ${hours}`;
+  if (dayDiff === 0) return fr.blood.slotTime.today(hours);
+  if (dayDiff === 1) return fr.blood.slotTime.tomorrow(hours);
   const date = new Date(start);
-  return `le ${date.getUTCDate()}/${date.getUTCMonth() + 1} ${hours}`;
+  return fr.blood.slotTime.onDate(date.getUTCDate(), date.getUTCMonth() + 1, hours);
 }

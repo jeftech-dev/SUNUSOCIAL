@@ -2,11 +2,12 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { slotOptions } from "../lib/bloodSlots";
+import { SLOT_LENGTH_MS, slotOptions } from "../lib/bloodSlots";
 import { DAY_MS } from "../lib/config";
 import { HOSPITAL_TYPE, type BloodType } from "../lib/types";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { adjustBloodReach } from "./lib/bloodReach";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -102,8 +103,8 @@ async function donorCtx(
   const userId = await t.run((ctx) =>
     ctx.db.insert("users", { name, role: "donor", phone, disabled: false, createdAt: Date.now() }),
   );
-  await t.run((ctx) =>
-    ctx.db.insert("donorProfiles", {
+  await t.run(async (ctx) => {
+    const profile = {
       userId,
       bloodOptIn: optIn,
       ...(bloodType ? { bloodType } : {}),
@@ -111,8 +112,10 @@ async function donorCtx(
       commune,
       smsOptIn,
       updatedAt: Date.now(),
-    }),
-  );
+    };
+    await ctx.db.insert("donorProfiles", profile);
+    await adjustBloodReach(ctx, null, profile);
+  });
   return { userId, phone, client: await session(t, userId) };
 }
 
@@ -208,6 +211,57 @@ describe("createAlert", () => {
     await expectAppError(h.client.mutation(api.blood.createAlert, baseAlert), "RATE_LIMITED");
   });
 
+  it("follows profile changes in the reach counters", async () => {
+    const t = setup();
+    const h = await hospitalCtx(t);
+    const donor = await donorCtx(t);
+    const reach = () =>
+      h.client.query(api.blood.previewRecipients, {
+        bloodTypes: ["O+"],
+        anyType: false,
+        targetCommunes: ["Médina", "Pikine"],
+      });
+    expect((await reach()).total).toBe(1);
+    await donor.client.mutation(api.auth.updateBloodProfile, {
+      optIn: true,
+      bloodType: "O+",
+      region: "Dakar",
+      commune: "Pikine",
+      smsOptIn: true,
+    });
+    expect((await reach()).perCommune).toEqual([
+      { commune: "Médina", count: 0 },
+      { commune: "Pikine", count: 1 },
+    ]);
+    await donor.client.mutation(api.auth.updateBloodProfile, {
+      optIn: false,
+      region: "Dakar",
+      commune: "Pikine",
+      smsOptIn: false,
+    });
+    expect((await reach()).total).toBe(0);
+  });
+
+  it("rebuilds the reach counters from the profiles", async () => {
+    const t = setup();
+    const h = await hospitalCtx(t);
+    await donorCtx(t);
+    await donorCtx(t, { bloodType: "A+" });
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("bloodReach").collect()) {
+        await ctx.db.patch(row._id, { count: 42 });
+      }
+    });
+    await t.mutation(internal.blood.rebuildReach, {});
+    await t.finishAllScheduledFunctions(() => {});
+    const preview = await h.client.query(api.blood.previewRecipients, {
+      bloodTypes: [],
+      anyType: true,
+      targetCommunes: ["Médina"],
+    });
+    expect(preview.total).toBe(2);
+  });
+
   it("returns the same estimate as the preview and logs the creation", async () => {
     const t = setup();
     const h = await hospitalCtx(t);
@@ -294,15 +348,17 @@ describe("fan-out", () => {
           disabled: false,
           createdAt: Date.now(),
         });
-        await ctx.db.insert("donorProfiles", {
+        const profile = {
           userId,
           bloodOptIn: true,
-          bloodType: "O+",
+          bloodType: "O+" as const,
           region: "Dakar",
           commune: "Médina",
           smsOptIn: false,
           updatedAt: Date.now(),
-        });
+        };
+        await ctx.db.insert("donorProfiles", profile);
+        await adjustBloodReach(ctx, null, profile);
       }
     });
     vi.useFakeTimers();
@@ -525,15 +581,73 @@ describe("closing and thanks", () => {
     );
   });
 
-  it("closes expired alerts with the hourly job", async () => {
+  it("closes expired alerts with the hourly job once the last slot is over", async () => {
     const t = setup();
     const h = await hospitalCtx(t);
     const { alertId } = await sendAlert(t, h);
-    await t.run((ctx) => ctx.db.patch(alertId, { deadlineAt: Date.now() - 1000 }));
+    await t.run((ctx) => ctx.db.patch(alertId, { deadlineAt: Date.now() - SLOT_LENGTH_MS - 1000 }));
     await t.mutation(internal.blood.closeExpired, {});
     const alert = await t.run((ctx) => ctx.db.get(alertId));
     expect(alert?.closed).toBe(true);
     expect(alert?.closedByModerator).toBe(false);
+  });
+
+  it("does not tell a donor whose slot is still running not to come", async () => {
+    const t = setup();
+    const h = await hospitalCtx(t);
+    const donor = await donorCtx(t);
+    const { alertId } = await sendAlert(t, h);
+    const slotStart = aSlot();
+    await donor.client.mutation(api.blood.respond, { alertId, slotStart });
+    // The deadline passed 10 minutes ago, inside the donor's 2-hour slot.
+    const now = slotStart + 40 * 60 * 1000;
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    await t.run((ctx) => ctx.db.patch(alertId, { deadlineAt: slotStart + 30 * 60 * 1000 }));
+    await t.mutation(internal.blood.closeExpired, {});
+    const alert = await t.run((ctx) => ctx.db.get(alertId));
+    expect(alert?.closed).toBe(false);
+    // No longer open to new responses, but the hospital can thank once a donation is confirmed.
+    const overview = await h.client.query(api.blood.hospitalOverview, {});
+    expect(overview!.alerts[0].closed).toBe(true);
+    await h.client.mutation(api.blood.confirmDonation, {
+      responseId: overview!.alerts[0].responders[0].responseId,
+    });
+    const result = await h.client.mutation(api.blood.sendThanks, {
+      alertId,
+      message: "Merci pour votre don de sang !",
+    });
+    expect(result.thanked).toBe(1);
+    vi.useRealTimers();
+    const closedNotes = (await notificationsOf(t, donor.userId)).filter(
+      (n) => n.kind === "blood_alert_closed",
+    );
+    expect(closedNotes).toHaveLength(0);
+  });
+
+  it("audits responses, cancellations, confirmations and stock changes", async () => {
+    const t = setup();
+    const h = await hospitalCtx(t);
+    const came = await donorCtx(t);
+    const left = await donorCtx(t, { name: "Moussa Fall" });
+    const { alertId } = await sendAlert(t, h);
+    await came.client.mutation(api.blood.respond, { alertId, slotStart: aSlot() });
+    await left.client.mutation(api.blood.respond, { alertId, slotStart: aSlot() });
+    await left.client.mutation(api.blood.cancelResponse, { alertId });
+    const overview = await h.client.query(api.blood.hospitalOverview, {});
+    const responder = overview!.alerts[0].responders.find((r) => r.firstName === "Aminata")!;
+    await h.client.mutation(api.blood.confirmDonation, { responseId: responder.responseId });
+    await h.client.mutation(api.blood.updateStock, { entries: [{ bloodType: "A+", units: 3 }] });
+    const actions = await t.run(async (ctx) =>
+      (await ctx.db.query("auditLog").collect()).map((a) => a.action),
+    );
+    for (const action of [
+      "blood.respond",
+      "blood.cancel",
+      "blood.donation.confirm",
+      "blood.stock.update",
+    ]) {
+      expect(actions).toContain(action);
+    }
   });
 });
 

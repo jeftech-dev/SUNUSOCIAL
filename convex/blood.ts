@@ -9,6 +9,7 @@ import {
   BLOOD_ALERT_DURATION_MS,
   BLOOD_FANOUT_BATCH,
   REMINDER_LEAD_MS,
+  SLOT_LENGTH_MS,
   THANKS_MAX_LENGTH,
   THANKS_MIN_LENGTH,
   alertDeadline,
@@ -28,6 +29,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { logAudit } from "./audit";
+import { adjustBloodReach, reachOf } from "./lib/bloodReach";
 import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
 import { hitRateLimit } from "./lib/rateLimit";
@@ -121,22 +123,17 @@ interface TargetInput {
   targetCommunes: string[];
 }
 
-/** Opted-in donors per commune that an alert with this targeting would reach. */
+/**
+ * Opted-in donors per commune that an alert with this targeting would reach. Reads one `bloodReach`
+ * counter per (group, commune), never the profiles, so it stays cheap for any audience size.
+ */
 async function countRecipients(ctx: QueryCtx, input: TargetInput) {
   const types = input.anyType ? [...BLOOD_TYPES] : input.bloodTypes;
   const perCommune: Array<{ commune: string; count: number }> = [];
   let total = 0;
   for (const commune of input.targetCommunes) {
     let count = 0;
-    for (const bloodType of types) {
-      const rows = await ctx.db
-        .query("donorProfiles")
-        .withIndex("by_optin_type_commune", (q) =>
-          q.eq("bloodOptIn", true).eq("bloodType", bloodType).eq("commune", commune),
-        )
-        .take(5000);
-      count += rows.length;
-    }
+    for (const bloodType of types) count += await reachOf(ctx, bloodType, commune);
     perCommune.push({ commune, count });
     total += count;
   }
@@ -187,8 +184,9 @@ async function stockRows(ctx: QueryCtx, hospitalId: Id<"structures">) {
 }
 
 /**
- * Closes an alert (hospital, moderator or expiry) and tells donors who answered but whose donation
- * is not confirmed that they no longer need to come (BLOOD-B). Their reminders are cancelled.
+ * Closes an alert (hospital, moderator or expiry) and tells donors who answered, whose donation is
+ * not confirmed and whose slot has not ended yet, that they no longer need to come (BLOOD-B). Their
+ * reminders are cancelled. A donor whose slot is already over is left alone.
  */
 export async function closeAlertInternal(
   ctx: MutationCtx,
@@ -205,12 +203,14 @@ export async function closeAlertInternal(
   });
   const hospital = await ctx.db.get(alert.hospitalId);
   const hospitalName = hospital?.name ?? "";
+  const now = Date.now();
   const responses = await ctx.db
     .query("bloodResponses")
     .withIndex("by_alert", (q) => q.eq("alertId", alert._id))
     .take(MAX_RESPONSES);
   for (const response of responses) {
     if (response.donated || !isActive(response)) continue;
+    if (response.slotEnd !== undefined && response.slotEnd <= now) continue;
     await cancelReminder(ctx, response);
     const profile = await ctx.db
       .query("donorProfiles")
@@ -409,7 +409,7 @@ export const getStock = query({
 export const updateStock = mutation({
   args: { entries: v.array(v.object({ bloodType: bloodTypeV, units: v.number() })) },
   handler: async (ctx, { entries }) => {
-    const { structure } = await requireActiveHospital(ctx);
+    const { user, structure } = await requireActiveHospital(ctx);
     for (const entry of entries) {
       if (
         entry.bloodType === "unknown" ||
@@ -423,6 +423,13 @@ export const updateStock = mutation({
     for (const entry of entries) {
       await upsertStock(ctx, structure._id, entry.bloodType, () => entry.units);
     }
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.stock.update",
+      targetTable: "structures",
+      targetId: structure._id,
+      details: { entries },
+    });
     return { ok: true as const };
   },
 });
@@ -515,8 +522,23 @@ export const confirmDonation = mutation({
       confirmedBy: user._id,
       donatedType,
     });
-    await ctx.db.patch(alert._id, { unitsCollected: alert.unitsCollected + 1 });
+    await ctx.db.patch(alert._id, {
+      unitsCollected: alert.unitsCollected + 1,
+      pendingResponders: Math.max(0, (alert.pendingResponders ?? 0) - 1),
+    });
     const { before, after } = await upsertStock(ctx, structure._id, donatedType, (n) => n + 1);
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.donation.confirm",
+      targetTable: "bloodResponses",
+      targetId: response._id,
+      details: {
+        alertId: alert._id,
+        bloodType: donatedType,
+        stockBefore: before,
+        stockAfter: after,
+      },
+    });
     return { bloodType: donatedType, stockBefore: before, stockAfter: after };
   },
 });
@@ -526,16 +548,27 @@ export const closeAlert = mutation({
   handler: async (ctx, { alertId }) => {
     const { user, structure } = await requireActiveHospital(ctx);
     const alert = await getOwnedAlert(ctx, alertId, structure._id);
+    if (alert.closed) return { ok: true as const };
     await closeAlertInternal(ctx, alert, { by: user._id, moderator: false });
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.alert.close",
+      targetTable: "bloodAlerts",
+      targetId: alertId,
+      details: { by: "hospital" },
+    });
     return { ok: true as const };
   },
 });
 
-/** Thanks go only to donors whose donation was confirmed, once per alert. */
+/**
+ * Thanks go only to donors whose donation was confirmed, once per alert, once the alert is finished:
+ * closed, past its deadline (even before the hourly job closes it) or at its goal.
+ */
 export const sendThanks = mutation({
   args: { alertId: v.id("bloodAlerts"), message: v.string() },
   handler: async (ctx, { alertId, message }) => {
-    const { structure } = await requireActiveHospital(ctx);
+    const { user, structure } = await requireActiveHospital(ctx);
     const alert = await getOwnedAlert(ctx, alertId, structure._id);
     const text = message.trim();
     if (text.length < THANKS_MIN_LENGTH || text.length > THANKS_MAX_LENGTH) {
@@ -545,7 +578,7 @@ export const sendThanks = mutation({
         "message",
       );
     }
-    const finished = alert.closed || alert.unitsCollected >= alert.unitsNeeded;
+    const finished = !isOpen(alert, Date.now()) || alert.unitsCollected >= alert.unitsNeeded;
     const responses = await ctx.db
       .query("bloodResponses")
       .withIndex("by_alert", (q) => q.eq("alertId", alertId))
@@ -569,18 +602,29 @@ export const sendThanks = mutation({
         ...(profile?.smsOptIn ? { sms: text } : {}),
       });
     }
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.thanks",
+      targetTable: "bloodAlerts",
+      targetId: alertId,
+      details: { thanked: donated.length },
+    });
     return { ok: true as const, thanked: donated.length };
   },
 });
 
-/** Hourly: closes alerts past their deadline. */
+/**
+ * Hourly: closes alerts whose last possible slot is over. A slot may start up to the deadline and
+ * lasts SLOT_LENGTH_MS, so closing at the deadline would tell donors on their way not to come. The
+ * alert already stops taking responses at the deadline (`isOpen`); this only finalises it.
+ */
 export const closeExpired = internalMutation({
   args: {},
   handler: async (ctx): Promise<void> => {
-    const now = Date.now();
+    const cutoff = Date.now() - SLOT_LENGTH_MS;
     const due = await ctx.db
       .query("bloodAlerts")
-      .withIndex("by_closed_deadline", (q) => q.eq("closed", false).lt("deadlineAt", now))
+      .withIndex("by_closed_deadline", (q) => q.eq("closed", false).lt("deadlineAt", cutoff))
       .take(EXPIRE_BATCH);
     for (const alert of due) await closeAlertInternal(ctx, alert, { moderator: false });
     if (due.length === EXPIRE_BATCH) {
@@ -620,11 +664,10 @@ export const alertsForDonor = query({
         alert.targetCommunes.includes(profile.commune);
       if (scope === "mine" && !compatibleForMe) continue;
       const hospital = await ctx.db.get(alert.hospitalId);
-      const responses = await ctx.db
+      const mine = await ctx.db
         .query("bloodResponses")
-        .withIndex("by_alert", (q) => q.eq("alertId", alert._id))
-        .take(MAX_RESPONSES);
-      const mine = responses.find((r) => r.donorId === user._id);
+        .withIndex("by_alert_donor", (q) => q.eq("alertId", alert._id).eq("donorId", user._id))
+        .unique();
       const myResponse =
         mine && isActive(mine) ? { slotLabel: responseSlotLabel(mine, now) } : null;
       if (compatibleForMe && !myResponse) pendingCount += 1;
@@ -638,7 +681,7 @@ export const alertsForDonor = query({
         targetCommunes: alert.targetCommunes,
         unitsNeeded: alert.unitsNeeded,
         unitsCollected: alert.unitsCollected,
-        respondersCount: responses.filter((r) => isActive(r) && !r.donated).length,
+        respondersCount: alert.pendingResponders ?? 0,
         deadlineAt: alertDeadline(alert),
         compatibleForMe,
         myResponse,
@@ -697,6 +740,7 @@ export const respond = mutation({
       donated: false,
       cancelledAt: undefined,
     };
+    await ctx.db.patch(alertId, { pendingResponders: (alert.pendingResponders ?? 0) + 1 });
     let responseId: Id<"bloodResponses">;
     if (existing) {
       await ctx.db.patch(existing._id, fields);
@@ -717,6 +761,13 @@ export const respond = mutation({
       );
       await ctx.db.patch(responseId, { reminderJobId });
     }
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.respond",
+      targetTable: "bloodResponses",
+      targetId: responseId,
+      details: { alertId, slotStart },
+    });
     const hospital = await hospitalUser(ctx, alert.hospitalId);
     if (hospital) {
       await notifyUser(ctx, {
@@ -752,6 +803,18 @@ export const cancelResponse = mutation({
     await cancelReminder(ctx, response);
     await ctx.db.patch(response._id, { cancelledAt: now, reminderJobId: undefined });
     const alert = await ctx.db.get(alertId);
+    if (alert) {
+      await ctx.db.patch(alertId, {
+        pendingResponders: Math.max(0, (alert.pendingResponders ?? 0) - 1),
+      });
+    }
+    await logAudit(ctx, {
+      actorId: user._id,
+      action: "blood.cancel",
+      targetTable: "bloodResponses",
+      targetId: response._id,
+      details: { alertId },
+    });
     const hospital = alert ? await hospitalUser(ctx, alert.hospitalId) : null;
     if (hospital) {
       await notifyUser(ctx, {
@@ -793,5 +856,31 @@ export const sendReminder = internalMutation({
       link: "/sang",
       ...(profile?.smsOptIn ? { sms: fr.sms.bloodReminder(hospitalName, slot) } : {}),
     });
+  },
+});
+
+/** Profiles counted per `rebuildReach` run before it reschedules itself. */
+const REACH_REBUILD_BATCH = 500;
+
+/**
+ * One-off backfill of `bloodReach` from `donorProfiles`, for a deployment that had profiles before the
+ * counters existed: `npx convex run blood:rebuildReach`. The first run clears the counters; each run
+ * then counts one page of profiles and schedules the next. Run it while no profile is being edited.
+ */
+export const rebuildReach = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, { cursor }): Promise<void> => {
+    if (cursor === undefined) {
+      for (const row of await ctx.db.query("bloodReach").collect()) await ctx.db.delete(row._id);
+    }
+    const result = await ctx.db
+      .query("donorProfiles")
+      .paginate({ cursor: cursor ?? null, numItems: REACH_REBUILD_BATCH });
+    for (const profile of result.page) await adjustBloodReach(ctx, null, profile);
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.blood.rebuildReach, {
+        cursor: result.continueCursor,
+      });
+    }
   },
 });
