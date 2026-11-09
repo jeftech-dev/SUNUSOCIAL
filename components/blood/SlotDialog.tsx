@@ -1,12 +1,13 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 import { FormError } from "@/components/forms/Field";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { slotLabel, slotOptions } from "@/lib/bloodSlots";
 import { toUiError } from "@/lib/errors";
 import { fr } from "@/lib/strings.fr";
@@ -33,25 +34,7 @@ export function SlotDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  // The parent passes a fresh `onClose` on every live update; reading it through a ref keeps the
-  // mount effect below from re-running (and stealing focus back to the dialog) each time.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onCloseRef.current();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      previouslyFocused?.focus?.();
-    };
-  }, []);
+  useDialogFocus(dialogRef, onClose);
 
   async function confirm() {
     if (selected === null) return;

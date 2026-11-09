@@ -346,7 +346,7 @@ export const payoutConflict = internalMutation({
         targetId: payoutId,
         details: { reason: "max_attempts" },
       });
-      await alertModerators(ctx, `versement ${payoutId} bloqué après ${attempts} tentatives (409)`);
+      await alertModerators(ctx, fr.notifications.payoutBlockedDetail(payoutId, attempts));
       return;
     }
     await ctx.db.patch(payoutId, { status: "queued", attempts });
@@ -389,10 +389,7 @@ export const alertShortBalance = internalMutation({
       targetId: "worker",
       details: { count, balance },
     });
-    await alertModerators(
-      ctx,
-      `solde insuffisant (${formatFCFA(balance)}) pour ${count} versement(s) en attente`,
-    );
+    await alertModerators(ctx, fr.notifications.payoutBalanceLowDetail(formatFCFA(balance), count));
   },
 });
 
@@ -434,7 +431,7 @@ export const payoutFailed = internalMutation({
       targetId: payoutId,
       details: { error },
     });
-    await alertModerators(ctx, `versement ${payoutId} échoué : ${error}`);
+    await alertModerators(ctx, fr.notifications.payoutFailedDetail(payoutId, error));
   },
 });
 
@@ -470,7 +467,7 @@ export const requeueFromUnknown = internalMutation({
         attempts,
         error: "unresolved after reconcile",
       });
-      await alertModerators(ctx, `versement ${payoutId} non résolu après réconciliation`);
+      await alertModerators(ctx, fr.notifications.payoutUnresolvedDetail(payoutId));
       return;
     }
     await ctx.db.patch(payoutId, { status: "queued", attempts });
@@ -731,7 +728,10 @@ export const recordLedgerCheck = internalMutation({
       details,
     });
     if (details.drift < 0) {
-      await alertModerators(ctx, `solde (${formatFCFA(details.balance)}) inférieur aux fonds dus`);
+      await alertModerators(
+        ctx,
+        fr.notifications.payoutBalanceDriftDetail(formatFCFA(details.balance)),
+      );
     }
   },
 });
