@@ -169,16 +169,18 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `blood.createAlert` (types, units, communes, estimate) from the hospital dashboard; moderator view/close | `feat` | `convex/blood.ts`, `app/(hospital)/hopital/alerte`, `app/moderation/alertes` | 📋 |
-| 2 | Donor `/sang`: matching alerts, opt-in profile, respond to slot | `feat` | `app/(donor)/sang/page.tsx`, `components/blood/*` | 📋 |
-| 3 | Hospital dashboard + stock edit + confirm attendee (stock +1) | `feat` | `app/(hospital)/hopital/page.tsx`, `convex/blood.ts` | 📋 |
-| 4 | Close alert + thank-you message (P2) | `feat` | `app/(hospital)/hopital/alerte`, `convex/blood.ts` | 📋 |
-| 5 | In-app + SMS fan-out (batched; real SMS once the provider is chosen) | `feat` | `convex/blood.ts`, `convex/notify.ts` | 📋 |
+| 1 | `blood.createAlert` (types, units, communes, estimate) from the hospital dashboard; moderator view/close | `feat` | `convex/blood.ts`, `app/(hospital)/hopital/alerte`, `app/moderation/alertes` | ✅ |
+| 2 | Donor `/sang`: matching alerts, opt-in profile, respond to slot | `feat` | `app/(donor)/sang/page.tsx`, `components/blood/*` | ✅ |
+| 3 | Hospital dashboard + stock edit + confirm attendee (stock +1) | `feat` | `app/(hospital)/hopital/page.tsx`, `convex/blood.ts` | ✅ |
+| 4 | Close alert + thank-you message (P2) | `feat` | `app/(hospital)/hopital/alerte`, `convex/blood.ts` | ✅ |
+| 5 | In-app + SMS fan-out (batched; real SMS once the provider is chosen) | `feat` | `convex/blood.ts`, `convex/notify.ts` | ✅ |
 
 **Definition of Done:**
-- [ ] Alerts reach only compatible, opted-in donors in targeted communes; addresses never shared.
-- [ ] Donor can confirm a slot; hospital confirms attendees and stock updates.
-- [ ] SMS fan-out works with the console provider and is ready for the real one.
+- [x] Alerts reach only compatible, opted-in donors in targeted communes; addresses never shared.
+- [x] Donor can confirm a slot; hospital confirms attendees and stock updates.
+- [x] SMS fan-out works with the console provider and is ready for the real one.
+
+*Verified with `convex-test` (guards, targeting, fan-out batching, responses, slots, reminders, cancellation, attendance and stock, privacy of responders, closing, thanks, expiry, moderator close, notifications — `convex/blood.test.ts`), `lib/bloodSlots` unit tests, and `lint` / `typecheck` / `next build`. The files differ slightly from the table: functions are `blood.*`, `moderation.alerts` / `moderation.closeAlert` and `notifications.*`; SMS fan-out uses `notify.sendSmsBatch`. Interim answers for G13, G14 and G16 are in `DECISIONS.md` §3. Not yet run against a Convex deployment or in a browser.*
 
 ---
 
@@ -226,9 +228,9 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [ ] Payout-account verification + change review — Sprints 5–6
 - [ ] Automatic fund release (goal or deadline) — Sprint 6
 - [ ] Proof-deadline auto-suspension — Sprint 6
-- [ ] Blood opt-in profile (type + commune) — Sprint 7
-- [ ] Blood alert creation + targeting — Sprint 7
-- [ ] Donor alert response (visit slot) — Sprint 7
-- [ ] Hospital stock + confirm attendee — Sprint 7
-- [ ] Hospital thank-you message — Sprint 7
+- [x] Blood opt-in profile (type + commune) — Sprint 7
+- [x] Blood alert creation + targeting — Sprint 7
+- [x] Donor alert response (visit slot) — Sprint 7
+- [x] Hospital stock + confirm attendee — Sprint 7
+- [x] Hospital thank-you message — Sprint 7
 - [x] WhatsApp contact fallback — Sprint 3 (cause detail + footer; hidden until the board provides the number)

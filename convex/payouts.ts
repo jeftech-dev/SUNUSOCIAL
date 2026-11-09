@@ -72,6 +72,40 @@ export async function enqueuePayout(ctx: MutationCtx, args: EnqueueArgs): Promis
   return payoutId;
 }
 
+/**
+ * Whether a donation's net belongs in a release to its structure: still held, not flagged for a
+ * late refund, and no refund payout queued for it. Every release sum and completion goes through it,
+ * so a donation being refunded can never also be paid to the structure.
+ */
+export function isReleasable(donation: Doc<"donations">): boolean {
+  return (
+    donation.status === "held" &&
+    donation.lateRefundFlaggedAt === undefined &&
+    donation.refundQueuedAt === undefined
+  );
+}
+
+/**
+ * Queues a refund payout of a donation's net to `to` and marks the donation `refundQueuedAt`, in the
+ * caller's transaction, so no release can include it while the refund is in flight.
+ */
+export async function enqueueDonationRefund(
+  ctx: MutationCtx,
+  donation: Doc<"donations">,
+  to: { phone: string; name: string },
+): Promise<Id<"payouts">> {
+  const payoutId = await enqueuePayout(ctx, {
+    kind: "refund",
+    targetId: donation._id,
+    amount: donation.net,
+    method: donation.paidMethod ?? donation.method,
+    phone: to.phone,
+    name: to.name,
+  });
+  await ctx.db.patch(donation._id, { refundQueuedAt: Date.now() });
+  return payoutId;
+}
+
 /** Thin internal wrapper around `enqueuePayout`, for callers that are not already in a mutation. */
 export const enqueue = internalMutation({
   args: {
@@ -116,9 +150,9 @@ async function completeRelease(ctx: MutationCtx, payout: Doc<"payouts">): Promis
     .withIndex("by_cause", (q) => q.eq("causeId", causeId))
     .collect();
   for (const d of donations) {
-    // Late-flagged donations are refunded to the donor, not released to the structure, so leave
-    // them `held` for lateRefundDue to pick up (they were also excluded from the payout amount).
-    if (d.status === "held" && d.lateRefundFlaggedAt === undefined) {
+    // Late-flagged or refund-queued donations go back to the donor, not to the structure: leave
+    // them `held` for their refund (they were also excluded from the payout amount).
+    if (isReleasable(d)) {
       await ctx.db.patch(d._id, { status: "released" });
     }
   }
@@ -206,7 +240,7 @@ async function runCompletion(ctx: MutationCtx, payout: Doc<"payouts">): Promise<
 // Moderator alerting (short balance, failed payout)
 // ---------------------------------------------------------------------------
 
-async function alertModerators(ctx: MutationCtx, detail: string): Promise<void> {
+export async function alertModerators(ctx: MutationCtx, detail: string): Promise<void> {
   const moderators = await ctx.db
     .query("users")
     .withIndex("by_role", (q) => q.eq("role", "moderator"))

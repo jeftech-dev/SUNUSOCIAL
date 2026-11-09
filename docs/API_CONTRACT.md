@@ -395,11 +395,17 @@ The donor's cumulative impact, for "Vous avez contribué à N causes pour X FCFA
 ### mutation `donations.requestRefund`
 **Request**
 ```json
-{ "donationId": "don_…", "reason": "Je me suis trompé de montant.", "receivingPhone": "+221771234567" }  // reason ≥ 5 chars; phone defaults to the verified one
+{ "donationId": "don_…", "reason": "Je me suis trompé de montant.", "receivingPhone": "77 123 45 67", "otpCode": "482913" }
+// reason required; receivingPhone optional (defaults to the account's verified number) and normalised to +221…;
+// a number other than the account's needs otpCode, a `payout_number` code sent with otp.send (as for DT-5)
 ```
 **Response (success) — 200**
 ```json
-{ "requestId": "ref_…", "status": "pending", "message": "Demande envoyée. Un modérateur décidera." }
+{ "ok": true, "requestId": "ref_…" }
+```
+A wrong or expired code is returned, not thrown, so the failed attempt is counted:
+```json
+{ "ok": false, "error": { "code": "OTP_INVALID", "message": "Code incorrect ou expiré." } }
 ```
 **Response (error)**
 ```json
@@ -448,68 +454,63 @@ The donor's cumulative impact, for "Vous avez contribué à N causes pour X FCFA
 
 ## Blood module
 
-### query `bloodAlerts.forDonor`
-**Request**
-```json
-{ "status": "open" }   // open | all
-```
-**Response (success) — 200**
+Implemented in `convex/blood.ts`, `convex/moderation.ts` and `convex/notifications.ts`. Errors use the codes of the other modules (`FORBIDDEN`, `VALIDATION`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`).
+
+### query `blood.alertsForDonor` (donor)
+**Request** `{ "scope": "mine" }` (`mine` | `all`)
+**Response**
 ```json
 {
-  "alerts": [
-    {
-      "id": "alt_…",
-      "hospital": "Hôpital Principal de Dakar",
-      "place": "Dakar-Plateau",
-      "bloodTypes": ["O+", "O-"],
-      "level": "vitale",             // vitale | urgente | normale
-      "unitsNeeded": 4,
-      "unitsCollected": 2,
-      "deadline": "Aujourd'hui",
-      "targetCommunes": ["Médina", "Pikine"],
-      "compatibleForMe": true,
-      "myResponse": null             // null | { slot: "Aujourd'hui, 14 h – 16 h" }
-    }
-  ]
+  "optedIn": true, "bloodType": "O+", "commune": "Médina", "pendingCount": 1,
+  "alerts": [{
+    "_id": "…", "hospitalName": "Hôpital Principal de Dakar", "hospitalCommune": "Dakar-Plateau",
+    "level": "vitale", "bloodTypes": ["O+", "O-"], "anyType": false,
+    "targetCommunes": ["Médina"], "unitsNeeded": 20, "unitsCollected": 7,
+    "respondersCount": 3, "deadlineAt": 1788000000000,
+    "compatibleForMe": true,
+    "myResponse": null            // null | { "slotLabel": "demain entre 8 h et 10 h" }
+  }]
 }
 ```
 
-### mutation `bloodAlerts.respond`
-**Request**
-```json
-{ "alertId": "alt_…", "slot": "Aujourd'hui, 14 h – 16 h" }  // required
-```
-**Response (success) — 200**
-```json
-{ "ok": true, "message": "Venue confirmée. L'hôpital voit votre prénom et votre groupe, pas votre adresse." }
-```
+### mutation `blood.respond` (donor)
+**Request** `{ "alertId": "…", "slotStart": 1788000000000 }` — `slotStart` must be one of the 2-hour windows offered today/tomorrow (`lib/bloodSlots.ts`), before the alert's deadline.
+**Response** `{ "slotLabel": "aujourd'hui entre 14 h et 16 h" }`. Errors: `FORBIDDEN` (not opted in, group/commune not targeted), `CONFLICT` (closed, already answered), `VALIDATION` (slot).
 
-### mutation `bloodAlerts.create` (hospital)
-**Request**
+### mutation `blood.cancelResponse` (donor) — interim G14
+**Request** `{ "alertId": "…" }` → `{ "ok": true }`. `CONFLICT` once the slot has ended or the donation is confirmed.
+
+### query `blood.previewRecipients` / mutation `blood.createAlert` (approved hospital)
+**Request** (hospitalId comes from the session)
 ```json
 {
-  // hospitalId comes from the session
-  "bloodTypes": ["O+"],           // required, ≥ 1
-  "level": "vitale",              // required
-  "unitsNeeded": 10,              // required
-  "targetCommunes": ["Médina", "Pikine"],  // required, within the hospital's region
+  "bloodTypes": ["O+"],            // ≥ 1 unless anyType
+  "anyType": false,                // interim G16 "Tous groupes"
+  "level": "vitale",
+  "unitsNeeded": 10,               // integer 1–500
+  "targetCommunes": ["Médina"],    // ≥ 1, within the hospital's region
   "channels": { "inApp": true, "sms": true }
 }
 ```
-**Response (success) — 200**
-```json
-{ "id": "alt_…", "estimatedRecipients": 470, "message": "470 donneurs compatibles seront notifiés." }
-```
+`previewRecipients` takes the first three targeting fields and returns `{ "total": 470, "perCommune": [{ "commune": "Médina", "count": 470 }] }`.
+`createAlert` returns `{ "alertId": "…", "estimatedRecipients": 470 }`; the fan-out then runs in batches of 200 (in-app for everyone, SMS only for `smsOptIn`). 20 alerts per hour per hospital (`RATE_LIMITED`).
 
-### mutation `bloodAlerts.confirmDonation`
-**Request**
-```json
-{ "alertId": "alt_…", "responderId": "rsp_…" }
-```
-**Response (success) — 200**
-```json
-{ "ok": true, "bloodType": "O+", "stockBefore": 6, "stockAfter": 7 }
-```
+### query `blood.hospitalOverview` (hospital)
+Returns `{ stock: { entries: [{ bloodType, units }], updatedAt }, alerts: [...] }`. Each alert lists `responders: [{ responseId, firstName, bloodType, commune, slotLabel, status: "pending" | "cancelled" | "donated" }]` — never a phone, address or user id.
+
+### mutation `blood.confirmDonation` (hospital)
+**Request** `{ "responseId": "…", "bloodType": "B+" }` — `bloodType` is required only when the donor's group is `unknown`.
+**Response** `{ "bloodType": "O+", "stockBefore": 6, "stockAfter": 7 }`
+
+### mutation `blood.closeAlert` / `blood.sendThanks` / `blood.updateStock` (hospital)
+- `closeAlert { alertId }` → `{ ok }`; donors who answered, did not give and whose slot has not ended are told they need not come. Audited `blood.alert.close`.
+- `sendThanks { alertId, message }` (10–300 characters) → `{ ok, thanked }`. Allowed once, after the alert is closed, past its deadline or at its goal, with at least one confirmed donation; only confirmed donors get it (in-app + SMS). Audited `blood.thanks`.
+- `updateStock { entries: [{ bloodType, units }] }` (integers 0–9999, the eight real groups) → `{ ok }`. Audited `blood.stock.update`.
+
+An alert stops taking responses at its deadline; the hourly `closeExpired` job marks it closed only once the last slot (which may start up to the deadline) is over, so nobody on their way is told not to come. `respond`, `cancelResponse` and `confirmDonation` are audited (`blood.respond`, `blood.cancel`, `blood.donation.confirm`).
+
+### query `moderation.alerts` / mutation `moderation.closeAlert` (moderator)
+`closeAlert { alertId, reason }` — the reason is required (interim G13), stored on the alert, audited as `blood.alert.close` and sent to the hospital.
 
 ---
 
@@ -570,6 +571,7 @@ The donor's cumulative impact, for "Vous avez contribué à N causes pour X FCFA
 ```json
 { "error": { "code": "VALIDATION", "message": "Choisissez le sort des fonds collectés.", "field": "fundOutcome" } }
 ```
+Approval is refused (`CONFLICT`) once the cause's release is queued (`fundsReleasedAt`) or the cause is already deleted: its held donations are promised to that payout. The moderator can still `maintain`. On `refund`, each donor's own refund request (pending or rejected) is settled by the deletion and paid to the number it names; a donation whose refund is already queued is not refunded again.
 
 ### mutation `moderation.decideRefund`
 **Request**
@@ -580,6 +582,7 @@ The donor's cumulative impact, for "Vous avez contribué à N causes pour X FCFA
 ```json
 { "ok": true, "refundAmount": 9700, "payoutStatus": "queued", "message": "Remboursement de 9 700 FCFA (montant net) en cours vers Ousmane Ba sur Wave." }
 ```
+Approval is refused (`CONFLICT`) once the cause's release is queued or a refund of the donation is already queued. An approved refund marks the donation `refundQueuedAt`, which every release sum skips; the donation becomes `refunded` when the payout lands.
 
 ### mutation `moderation.setFeatured`
 **Request**

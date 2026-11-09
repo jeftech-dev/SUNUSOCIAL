@@ -50,6 +50,7 @@ import {
   type MutationCtx,
 } from "./_generated/server";
 import { logAudit } from "./audit";
+import { adjustBloodReach } from "./lib/bloodReach";
 import { appError } from "./lib/errors";
 import { findSignupUpload } from "./files";
 import { requireRole } from "./lib/guards";
@@ -116,7 +117,7 @@ async function insertNewUser(ctx: MutationCtx, profile: NewAccountProfile): Prom
         createdAt: now,
       });
       const blood = profile.bloodProfile;
-      await ctx.db.insert("donorProfiles", {
+      const donorProfile = {
         userId,
         bloodOptIn: blood?.optIn ?? false,
         bloodType: blood?.optIn ? blood.bloodType : undefined,
@@ -124,7 +125,9 @@ async function insertNewUser(ctx: MutationCtx, profile: NewAccountProfile): Prom
         commune: blood?.commune,
         smsOptIn: blood?.optIn ? blood.smsOptIn : false,
         updatedAt: now,
-      });
+      };
+      await ctx.db.insert("donorProfiles", donorProfile);
+      await adjustBloodReach(ctx, null, donorProfile);
       await logAudit(ctx, {
         actorId: userId,
         action: "auth.signup",
@@ -569,6 +572,7 @@ export interface MeView {
     status: Doc<"structures">["status"];
     refusalReason?: string;
     suspendedAt?: number;
+    region: string;
   } | null;
   /** Structures, hospitals and moderators need the SMS code on every login. */
   mfaRequired: boolean;
@@ -610,6 +614,7 @@ export const me = query({
         status: structureDoc.status,
         refusalReason: structureDoc.refusalReason,
         suspendedAt: structureDoc.suspendedAt,
+        region: structureDoc.region,
       },
       mfaRequired,
       mfaVerified: !mfaRequired || session.mfaVerifiedAt !== undefined,
@@ -638,6 +643,7 @@ export const updateBloodProfile = mutation({
     };
     if (profile) await ctx.db.patch(profile._id, next);
     else await ctx.db.insert("donorProfiles", { userId: user._id, ...next });
+    await adjustBloodReach(ctx, profile, next);
     await logAudit(ctx, {
       actorId: user._id,
       action: input.optIn && !profile?.bloodOptIn ? "blood.optIn" : "profile.update",

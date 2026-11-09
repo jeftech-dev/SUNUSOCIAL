@@ -127,13 +127,18 @@ export default defineSchema({
     payout: v.optional(payoutAccountV),
     /** A requested payout-account change awaiting moderator review. Blocks payouts while set. */
     payoutPending: v.optional(payoutAccountV),
+    /** Set with `payoutPending` so the moderation queue can find pending changes by index, in any
+     * status (payouts are blocked whenever `payoutPending` is set, not only for approved structures). */
+    payoutPendingAt: v.optional(v.number()),
     status: structureStatusV,
     refusalReason: v.optional(v.string()),
     suspendedAt: v.optional(v.number()),
     onboardingPhase: onboardingPhaseV,
     profileCompletedAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    .index("by_payout_pending", ["payoutPendingAt"]),
 
   // -------------------------------------------------------------------------
   // Causes & money
@@ -202,6 +207,11 @@ export default defineSchema({
      * `donorCount`, stays `held` until the payout worker refunds its `net` automatically.
      */
     lateRefundFlaggedAt: v.optional(v.number()),
+    /**
+     * Set when a refund payout of this donation is queued (moderator approval, deletion or late
+     * payment). The donation stays `held` until the payout lands, so every release sum must skip it.
+     */
+    refundQueuedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_cause", ["causeId"])
@@ -327,7 +337,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_status", ["status"])
-    .index("by_structure", ["structureId"]),
+    .index("by_structure", ["structureId"])
+    .index("by_target_status", ["targetId", "status"]),
 
   // -------------------------------------------------------------------------
   // Notifications & audit
@@ -399,9 +410,23 @@ export default defineSchema({
     createdBy: v.id("users"),
     closedBy: v.optional(v.id("users")),
     createdAt: v.number(),
+    /** Interim (G16): reaches every opted-in donor, including unknown groups. */
+    anyType: v.optional(v.boolean()),
+    /** When the alert expires on its own; derived from the level when absent. */
+    deadlineAt: v.optional(v.number()),
+    closedAt: v.optional(v.number()),
+    /** Interim (G13): required when a moderator closes an alert. */
+    closeReason: v.optional(v.string()),
+    closedByModerator: v.optional(v.boolean()),
+    thanksSentAt: v.optional(v.number()),
+    /** Donors reached by the fan-out so far. */
+    notifiedCount: v.optional(v.number()),
+    /** Active responses not yet confirmed: kept in step by respond / cancel / confirm. */
+    pendingResponders: v.optional(v.number()),
   })
     .index("by_hospital_closed", ["hospitalId", "closed"])
-    .index("by_closed", ["closed"]),
+    .index("by_closed", ["closed"])
+    .index("by_closed_deadline", ["closed", "deadlineAt"]),
 
   bloodResponses: defineTable({
     alertId: v.id("bloodAlerts"),
@@ -413,9 +438,29 @@ export default defineSchema({
     slot: v.string(),
     donated: v.boolean(),
     createdAt: v.number(),
+    slotStart: v.optional(v.number()),
+    slotEnd: v.optional(v.number()),
+    /** Interim (G14): a donor may cancel before the slot ends. */
+    cancelledAt: v.optional(v.number()),
+    confirmedAt: v.optional(v.number()),
+    confirmedBy: v.optional(v.id("users")),
+    /** The group found on site, when the donor's snapshot is "unknown". */
+    donatedType: v.optional(bloodTypeV),
+    reminderJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_alert", ["alertId"])
-    .index("by_alert_donor", ["alertId", "donorId"]),
+    .index("by_alert_donor", ["alertId", "donorId"])
+    .index("by_donor", ["donorId", "createdAt"]),
+
+  /**
+   * Opted-in donors per (group, commune), kept in step with `donorProfiles` by `adjustBloodReach`, so
+   * the composer's reach estimate reads one row per combination instead of every profile.
+   */
+  bloodReach: defineTable({
+    bloodType: bloodTypeV,
+    commune: v.string(),
+    count: v.number(),
+  }).index("by_type_commune", ["bloodType", "commune"]),
 
   bloodStock: defineTable({
     hospitalId: v.id("structures"),

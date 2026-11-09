@@ -15,7 +15,7 @@ export function AppShell({
 }: {
   home: string;
   /** Primary navigation links shown in the header (e.g. the donor's Causes / Mon profil). */
-  nav?: { href: string; label: string }[];
+  nav?: { href: string; label: string; badge?: ReactNode }[];
   children: ReactNode;
 }) {
   return (
@@ -41,6 +41,7 @@ export function AppShell({
                     className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-blue hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     {item.label}
+                    {item.badge}
                   </Link>
                 ))}
               </nav>

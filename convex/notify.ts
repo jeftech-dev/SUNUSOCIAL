@@ -36,3 +36,22 @@ export const sendSms = internalAction({
     await getSmsProvider().send(to, text);
   },
 });
+
+/**
+ * Sends a batch of SMS one after the other (blood-alert fan-out, BLOOD-C). A failure on one number
+ * is logged and never stops the rest. Same provider interface as `sendSms`, so a real provider
+ * plugs in without changes here.
+ */
+export const sendSmsBatch = internalAction({
+  args: { messages: v.array(v.object({ to: v.string(), text: v.string() })) },
+  handler: async (_ctx, { messages }) => {
+    const provider = getSmsProvider();
+    for (const { to, text } of messages) {
+      try {
+        await provider.send(to, text);
+      } catch (error) {
+        console.error(`SMS batch: failed for ${to}`, error);
+      }
+    }
+  },
+});

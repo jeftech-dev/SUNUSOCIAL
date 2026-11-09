@@ -1,12 +1,14 @@
 "use client";
 
-import { usePaginatedQuery, useQuery } from "convex/react";
+import { useAction, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { DonorProofLink } from "@/components/donor/DonorProofLink";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatDate } from "@/lib/dates";
+import { toUiError } from "@/lib/errors";
 import { formatFCFA } from "@/lib/money";
 import { fr } from "@/lib/strings.fr";
 import type { DonationHistoryView } from "@/lib/types";
@@ -112,11 +114,173 @@ function DonationRow({ donation }: { donation: DonationHistoryView }) {
         </div>
       ) : (
         !donation.lateRefund &&
-        donation.status === "held" && (
+        donation.status === "held" &&
+        !donation.proof.available && (
           <p className="text-xs text-muted-foreground">{fr.profile.proofPending}</p>
         )
       )}
+
+      {/* One settlement notice per gift, in priority order: a late auto-refund and a deleted-cause
+          outcome each subsume the generic refund-request status, so only the most specific shows. */}
+      {!donation.lateRefund && donation.causeDeleted ? (
+        <p className="rounded-lg bg-accent p-2.5 text-xs text-brand-orange-strong">
+          {donation.causeDeleted.outcome === "refunded"
+            ? fr.profile.causeDeletedRefunded(
+                formatFCFA(donation.net),
+                donation.causeDeleted.reason,
+              )
+            : fr.profile.causeDeletedPaidOut(donation.causeDeleted.reason)}
+        </p>
+      ) : (
+        !donation.lateRefund &&
+        donation.refund.request && (
+          <p className="text-xs font-semibold text-brand-blue">
+            {donation.refund.request.status === "refunded"
+              ? // Accepted is not paid: the donation flips to `refunded` only when the payout lands.
+                donation.status === "refunded"
+                ? fr.profile.refundStatusRefunded(
+                    formatFCFA(donation.refund.request.refundAmount ?? donation.net),
+                  )
+                : fr.profile.refundStatusInProgress(
+                    formatFCFA(donation.refund.request.refundAmount ?? donation.net),
+                  )
+              : donation.refund.request.status === "rejected"
+                ? fr.profile.refundStatusRejected
+                : fr.profile.refundStatusPending}
+          </p>
+        )
+      )}
+
+      {donation.refund.eligible && <RefundRequest donation={donation} />}
     </li>
+  );
+}
+
+/**
+ * Inline refund-request form, shown while a held donation is still eligible (DT-7). The refund goes
+ * to the donor's verified number unless they enter another one, which they confirm with an SMS code.
+ */
+function RefundRequest({ donation }: { donation: DonationHistoryView }) {
+  const requestRefund = useMutation(api.donations.requestRefund);
+  const sendCode = useAction(api.otp.send);
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-muted-foreground">
+          {fr.profile.refundHint(formatFCFA(donation.refund.estimatedAmount))}
+        </p>
+        <Button variant="outline" size="sm" className="self-start" onClick={() => setOpen(true)}>
+          {fr.profile.requestRefund}
+        </Button>
+      </div>
+    );
+  }
+
+  const onSendCode = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await sendCode({ purpose: "payout_number", phone: phone.trim() });
+      setSent(res.to);
+    } catch (e) {
+      setError(toUiError(e).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await requestRefund({
+        donationId: donation.id,
+        reason: reason.trim(),
+        receivingPhone: phone.trim() || undefined,
+        otpCode: code.trim() || undefined,
+      });
+      if (!res.ok) {
+        setError(res.error.message);
+        return;
+      }
+      setOpen(false);
+    } catch (e) {
+      setError(toUiError(e).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-input bg-background p-3">
+      <label className="text-xs font-semibold" htmlFor={`refund-reason-${donation.id}`}>
+        {fr.profile.refundReasonLabel}
+      </label>
+      <textarea
+        id={`refund-reason-${donation.id}`}
+        value={reason}
+        placeholder={fr.profile.refundReasonPlaceholder}
+        onChange={(e) => setReason(e.target.value)}
+        className="min-h-16 w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
+      />
+      <label className="text-xs font-semibold" htmlFor={`refund-phone-${donation.id}`}>
+        {fr.profile.refundPhoneLabel}
+      </label>
+      <div className="flex gap-2">
+        <input
+          id={`refund-phone-${donation.id}`}
+          value={phone}
+          inputMode="tel"
+          placeholder={fr.profile.refundPhoneHint}
+          onChange={(e) => setPhone(e.target.value)}
+          className="w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
+        />
+        {phone.trim() && (
+          <Button variant="outline" size="sm" disabled={busy} onClick={onSendCode}>
+            {fr.profile.refundSendCode}
+          </Button>
+        )}
+      </div>
+      {phone.trim() && (
+        <>
+          {sent && (
+            <p className="text-xs text-brand-green-strong">{fr.profile.refundCodeSent(sent)}</p>
+          )}
+          <label className="text-xs font-semibold" htmlFor={`refund-code-${donation.id}`}>
+            {fr.profile.refundCodeLabel}
+          </label>
+          <input
+            id={`refund-code-${donation.id}`}
+            value={code}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            onChange={(e) => setCode(e.target.value)}
+            className="w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
+          />
+        </>
+      )}
+      {error && (
+        <p role="alert" className="text-xs font-semibold text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => setOpen(false)}>
+          {fr.common.cancel}
+        </Button>
+        <Button variant="cta" size="sm" disabled={busy || !reason.trim()} onClick={submit}>
+          {fr.profile.refundSubmit}
+        </Button>
+      </div>
+    </div>
   );
 }
 
