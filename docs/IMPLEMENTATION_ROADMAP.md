@@ -127,12 +127,12 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `causes.create/update/withdraw` + org dashboard + status timeline | `feat` | `convex/causes.ts`, `app/(structure)/structure/*` | 📋 |
-| 2 | Create-cause wizard (banner, end condition w/ mandatory deadline, urgency) | `feat` | `app/(structure)/structure/causes/nouvelle` | 📋 |
-| 3 | `proofs.submit` (≥5 items + report + spend) + auto-flag checks | `feat` | `convex/proofs.ts`, `convex/proofChecks.ts` | 📋 |
-| 4 | Proof submission UI + `ProofGallery` | `feat` | `app/(structure)/structure/preuve/[causeId]`, `components/proof/*` | 📋 |
-| 5 | Moderation queues + decide structure (documents + payout account)/cause/proof (reason on refuse) + audit log + notifications | `feat` | `convex/moderation.ts`, `convex/audit.ts`, `convex/notify.ts`, `app/moderation/*` | 📋 |
-| 6 | Validated proofs → donor dashboard + public feed | `feat` | `convex/proofs.ts`, `app/(donor)/profil`, landing | 📋 |
+| 1 | `causes.create/update/withdraw` + org dashboard + status timeline | `feat` | `convex/causes.ts`, `app/(structure)/structure/*` | ✅ |
+| 2 | Create-cause wizard (banner, end condition w/ mandatory deadline, urgency) | `feat` | `app/(structure)/structure/causes/nouvelle` | ✅ |
+| 3 | `proofs.submit` (≥5 items + report + spend) + auto-flag checks | `feat` | `convex/proofs.ts`, `convex/proofChecks.ts` | ✅ |
+| 4 | Proof submission UI + `ProofGallery` | `feat` | `app/(structure)/structure/preuve/[causeId]`, `components/proof/*` | ✅ |
+| 5 | Moderation queues + decide structure (documents + payout account)/cause/proof (reason on refuse) + audit log + notifications | `feat` | `convex/moderation.ts`, `convex/audit.ts`, `convex/notify.ts`, `app/moderation/*` | ✅ |
+| 6 | Validated proofs → donor dashboard + public feed | `feat` | `convex/proofs.ts`, `app/(donor)/profil`, landing | ✅ |
 
 **Definition of Done:**
 - [ ] Cause lifecycle Soumise→En modération→Approuvée/Refusée→Active→Clôturée works; refusal reason shown.
@@ -147,13 +147,13 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `causes.requestDeletion` + `moderation.decideDeletion` (refund/payout, reason) | `feat` | `convex/causes.ts`, `convex/moderation.ts`, `app/moderation/*` | 📋 |
-| 2 | `donations.requestRefund` + `moderation.decideRefund` (while held, final, net amount paid out to the donor) | `feat` | `convex/donations.ts`, `convex/moderation.ts` | 📋 |
-| 2b | Payout worker (single-flight, 409 retry, no auto-resend on timeout, reconciliation, balance check) | `infra` | `convex/payouts.ts` | 📋 |
-| 2c | Extension requests (cause deadline, proof delay) + moderation queue | `feat` | `convex/extensions.ts`, `app/moderation/*` | 📋 |
-| 3 | Payout-account change flow (`requestPayoutChange` → `decidePayoutAccount`, payouts blocked meanwhile) | `feat` | `convex/structures.ts`, `convex/moderation.ts` | 📋 |
-| 4 | Release: `releaseCause` (goal, scheduled) + deadline cron + proof deadlines + suspension cron | `infra` | `convex/crons.ts`, `convex/payments.ts` | 📋 |
-| 5 | Donor dashboard: deleted-cause notice, refund status | `feat` | `app/(donor)/profil` | 📋 |
+| 1 | `causes.requestDeletion` + `moderation.decideDeletion` (refund/payout, reason) | `feat` | `convex/causes.ts`, `convex/moderation.ts`, `app/moderation/*` | ✅ |
+| 2 | `donations.requestRefund` + `moderation.decideRefund` (while held, final, net amount paid out to the donor) | `feat` | `convex/donations.ts`, `convex/moderation.ts` | ✅ |
+| 2b | Payout worker (single-flight, 409 retry, no auto-resend on timeout, reconciliation, balance check) | `infra` | `convex/payouts.ts` | ✅ |
+| 2c | Extension requests (cause deadline, proof delay) + moderation queue | `feat` | `convex/extensions.ts`, `app/moderation/*` | ✅ |
+| 3 | Payout-account change flow (`requestPayoutChange` → `decidePayoutAccount`, payouts blocked meanwhile) | `feat` | `convex/structures.ts`, `convex/moderation.ts` | ✅ |
+| 4 | Release: `releaseCause` (goal, scheduled) + deadline cron + proof deadlines + suspension cron | `infra` | `convex/crons.ts`, `convex/payments.ts` | ✅ |
+| 5 | Donor dashboard: deleted-cause notice, refund status | `feat` | `app/(donor)/profil` | ✅ |
 
 **Definition of Done:**
 - [ ] Deletion arbitration records a reason visible to structure + donors; payout triggers a 7-day proof deadline + auto-suspend.
@@ -190,18 +190,20 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | Error/loading/empty states across all screens | `feat` | all pages | 📋 |
-| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | 📋 |
-| 3 | Accessibility: focus states, labels, contrast | `chore` | components | 📋 |
-| 4 | Security review (auth, webhook, authz, PII, secrets) | `chore` | `convex/*`, `lib/*` | 📋 |
-| 5 | French copy review with marketing | `chore` | `lib/strings.fr.ts` | 📋 |
-| 6 | Playwright e2e on the donate flow (mock provider) | `chore` | `tests/e2e` | 📋 |
+| 1 | Error/loading/empty states across all screens | `feat` | all pages | ✅ |
+| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | ✅ |
+| 3 | Accessibility: focus states, labels, contrast | `chore` | components | ✅ |
+| 4 | Security review (auth, webhook, authz, PII, secrets) | `chore` | `convex/*`, `lib/*` | ✅ |
+| 5 | French copy review with marketing | `chore` | `lib/strings.fr.ts` | ✅ |
+| 6 | Playwright e2e on the donate flow (mock provider) | `chore` | `tests/e2e` | ✅ |
 | 7 | Vercel production deploy (app + moderation subdomain) + env config + NabooPay sandbox→live | `infra` | Vercel project, env | 📋 |
 
 **Definition of Done:**
-- [ ] Security review checklist (SECURITY.md) passes.
+- [x] Security review checklist (SECURITY.md) passes: see `SECURITY.md` §8.
 - [ ] No horizontal scroll at 375px; all interactive elements have focus states.
 - [ ] Production deploy live; env vars set; NabooPay live keys configured; `PAYMENT_PROVIDER` is not `mock`.
+
+*Sprint 8, tasks 1–6 (integration phase). Done: route-level loading/error/not-found screens (`loading.tsx`, `error.tsx`, `not-found.tsx`, `global-error.tsx`); mobile bottom navigation for the donor space; `useDialogFocus` (Escape, focus restore, Tab trap) for the two modals, plus an audit of labels, focus ring and WCAG AA colour pairs; the security review (one fix, F1, and two residual risks, in `SECURITY.md` §8); French typography (non-breaking space before `: ? ! ;` and inside « ») and the payout alert strings moved into `fr.notifications`; and `tests/e2e/donate.spec.ts` (`npm run test:e2e`). Verified: lint, format, typecheck, 271 `convex-test`/unit tests, `next build`, and the six account-free Playwright checks (login redirect, not-found, no sideways scroll on the public pages) at 375px and desktop. **Not verified:** the signed-in screens at 375px and the bottom navigation (no test account on a test deployment yet), and the donation Playwright test, which needs `E2E_DONOR_PHONE` / `E2E_DONOR_PASSWORD` for a donor created by hand because signup needs an SMS code. Both belong to the manual run of the `CONTRIBUTING.md` exit checklist. Task 7 (deploy) waits for the `dev` → `main` release.*
 
 ---
 
@@ -212,22 +214,22 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [x] One-time code for org/hospital/moderator — Sprint 2 (SMS; console provider until the real one is chosen)
 - [x] Password reset (SMS for donors / email for orgs) — Sprint 2
 - [x] Activity log — Sprint 2
-- [ ] Extension requests (cause deadline, proof delay) — Sprint 6
+- [x] Extension requests (cause deadline, proof delay) — Sprint 6
 - [x] Moderator separate-platform login — Sprint 2
 - [x] Causes feed with categories + filters — Sprint 3
 - [x] Weekly "Coup de cœur" featured — Sprint 3 (picker included)
 - [x] Cause detail (end condition, similar, WhatsApp) — Sprint 3
 - [x] Donation modal with live fee + net (Orange Money/Wave) — Sprint 4
 - [x] Donor dashboard (history + cumulative impact) — Sprint 4
-- [ ] Create/edit/withdraw cause + status timeline — Sprint 5
-- [ ] Proof dossier (≥5 items + report + spend) + auto-flag — Sprint 5
-- [ ] Moderation queues: structures, causes, proofs — Sprint 5
-- [ ] Validated proofs in donor dashboard + public feed — Sprint 5
-- [ ] Deletion requests + moderator arbitration (fund fate) — Sprint 6
-- [ ] Refund requests + arbitration — Sprint 6
-- [ ] Payout-account verification + change review — Sprints 5–6
-- [ ] Automatic fund release (goal or deadline) — Sprint 6
-- [ ] Proof-deadline auto-suspension — Sprint 6
+- [x] Create/edit/withdraw cause + status timeline — Sprint 5
+- [x] Proof dossier (≥5 items + report + spend) + auto-flag — Sprint 5
+- [x] Moderation queues: structures, causes, proofs — Sprint 5
+- [x] Validated proofs in donor dashboard + public feed — Sprint 5
+- [x] Deletion requests + moderator arbitration (fund fate) — Sprint 6
+- [x] Refund requests + arbitration — Sprint 6
+- [x] Payout-account verification + change review — Sprints 5–6
+- [x] Automatic fund release (goal or deadline) — Sprint 6
+- [x] Proof-deadline auto-suspension — Sprint 6
 - [x] Blood opt-in profile (type + commune) — Sprint 7
 - [x] Blood alert creation + targeting — Sprint 7
 - [x] Donor alert response (visit slot) — Sprint 7
