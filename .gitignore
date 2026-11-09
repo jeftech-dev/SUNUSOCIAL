@@ -46,3 +46,7 @@ Thumbs.db
 # TypeScript / certs
 *.tsbuildinfo
 *.pem
+
+# Playwright
+/test-results/
+/playwright-report/
