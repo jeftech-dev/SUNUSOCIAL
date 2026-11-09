@@ -440,7 +440,7 @@ export const fr = {
     confirmPayoutRefuse: "Refuser le compte",
     deletionRaised: (amount: string) => `${amount} collectés`,
     refundMeta: (donor: string, amount: string) => `${donor} · ${amount}`,
-    reasonFromStructure: (reason: string) => `Motif : ${reason}`,
+    reasonFromStructure: (reason: string) => `Motif : ${reason}`,
     decisionReasonLabel: "Motif de la décision (visible par la structure et les donateurs)",
     structureMeta: (type: string, region: string) => `${type} · ${region}`,
     hasPayout: "Compte de réception fourni",
@@ -617,13 +617,13 @@ export const fr = {
     refundHint: (net: string) =>
       `Tant que les fonds sont bloqués, vous pouvez être remboursé de ${net} (votre don moins les frais NabooPay).`,
     causeDeletedRefunded: (net: string, reason: string) =>
-      `Cause supprimée${reason ? ` (${reason})` : ""}. Votre don vous est remboursé : ${net}.`,
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Votre don vous est remboursé : ${net}.`,
     causeDeletedPaidOut: (reason: string) =>
       `Cause supprimée${reason ? ` (${reason})` : ""}. Les fonds ont été versés à la structure, qui doit en justifier l'emploi.`,
     refundStatusPending: "Remboursement demandé — en cours d'examen.",
     refundStatusInProgress: (net: string) =>
-      `Remboursement accepté : ${net} en cours de versement sur votre numéro.`,
-    refundStatusRefunded: (net: string) => `Remboursé : ${net} reversés sur votre numéro.`,
+      `Remboursement accepté : ${net} en cours de versement sur votre numéro.`,
+    refundStatusRefunded: (net: string) => `Remboursé : ${net} reversés sur votre numéro.`,
     refundStatusRejected: "Demande de remboursement refusée.",
   },
 
@@ -674,45 +674,55 @@ export const fr = {
       `Le dossier de « ${title} » doit être complété : ${reason}`,
     fundsReleasedTitle: "Fonds versés",
     fundsReleasedBody: (title: string, amount: string, days: number) =>
-      `Les fonds de « ${title} » (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
+      `Les fonds de « ${title} » (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
     suspendedTitle: "Structure suspendue",
     suspendedBody: (title: string) =>
-      `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées : ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
+      `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées : ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
     payoutAlertTitle: "Versement à vérifier",
-    payoutAlertBody: (detail: string) => `Un versement nécessite une intervention : ${detail}`,
+    payoutAlertBody: (detail: string) => `Un versement nécessite une intervention : ${detail}`,
     deletionApprovedTitle: "Cause supprimée",
     deletionApprovedBody: (title: string, reason: string) =>
-      `La cause « ${title} » a été supprimée : ${reason}`,
+      `La cause « ${title} » a été supprimée : ${reason}`,
     deletionMaintainedTitle: "Cause maintenue",
     deletionMaintainedBody: (title: string, reason: string) =>
-      `Votre demande de suppression de « ${title} » a été refusée : ${reason}. La cause reste active.`,
+      `Votre demande de suppression de « ${title} » a été refusée : ${reason}. La cause reste active.`,
     deletionDonorRefundBody: (title: string, net: string) =>
-      `La cause « ${title} » a été supprimée. Votre don vous est remboursé : ${net} (votre don moins les frais NabooPay) sur votre numéro.`,
+      `La cause « ${title} » a été supprimée. Votre don vous est remboursé : ${net} (votre don moins les frais NabooPay) sur votre numéro.`,
     deletionDonorRefundManualBody: (title: string, net: string) =>
-      `La cause « ${title} » a été supprimée. Votre don de ${net} vous sera remboursé : la modération vous contactera pour convenir du numéro.`,
+      `La cause « ${title} » a été supprimée. Votre don de ${net} vous sera remboursé : la modération vous contactera pour convenir du numéro.`,
+    /** Details of the "Versement à vérifier" alert sent to moderators (payout worker). */
+    payoutBlockedDetail: (payoutId: string, attempts: number) =>
+      `versement ${payoutId} bloqué après ${attempts} tentatives (409)`,
+    payoutFailedDetail: (payoutId: string, error: string) =>
+      `versement ${payoutId} échoué : ${error}`,
+    payoutUnresolvedDetail: (payoutId: string) =>
+      `versement ${payoutId} non résolu après réconciliation`,
+    payoutBalanceLowDetail: (balance: string, count: number) =>
+      `solde insuffisant (${balance}) pour ${count} versement(s) en attente`,
+    payoutBalanceDriftDetail: (balance: string) => `solde (${balance}) inférieur aux fonds dus`,
     refundNoPhoneDetail: (net: string) =>
-      `remboursement de ${net} impossible (cause supprimée) : le donateur n'a pas de numéro`,
+      `remboursement de ${net} impossible (cause supprimée) : le donateur n'a pas de numéro`,
     deletionDonorPayoutBody: (title: string) =>
-      `La cause « ${title} » a été supprimée. Les fonds déjà collectés ont été versés à la structure, qui doit en justifier l'emploi.`,
+      `La cause « ${title} » a été supprimée. Les fonds déjà collectés ont été versés à la structure, qui doit en justifier l'emploi.`,
     refundApprovedTitle: "Remboursement approuvé",
     refundApprovedBody: (title: string, net: string) =>
-      `Votre demande de remboursement pour « ${title} » est acceptée : ${net} vous sont reversés sur votre numéro.`,
+      `Votre demande de remboursement pour « ${title} » est acceptée : ${net} vous sont reversés sur votre numéro.`,
     refundRejectedTitle: "Remboursement refusé",
     refundRejectedBody: (title: string) =>
-      `Votre demande de remboursement pour « ${title} » n'a pas été retenue. Les fonds restent affectés à la cause.`,
+      `Votre demande de remboursement pour « ${title} » n'a pas été retenue. Les fonds restent affectés à la cause.`,
     extensionApprovedTitle: "Prolongation accordée",
     extensionApprovedBody: (until: string) => `Votre échéance est repoussée au ${until}.`,
     extensionRefusedTitle: "Prolongation refusée",
     extensionRefusedBody: (reason: string) =>
-      `Votre demande de prolongation a été refusée : ${reason}`,
+      `Votre demande de prolongation a été refusée : ${reason}`,
     extensionDonorBody: (title: string, until: string) =>
-      `La date limite de « ${title} » a été prolongée jusqu'au ${until}.`,
+      `La date limite de « ${title} » a été prolongée jusqu'au ${until}.`,
     payoutApprovedTitle: "Compte de réception validé",
     payoutApprovedBody:
       "Votre nouveau compte de réception des fonds est validé. Les versements reprennent.",
     payoutRefusedTitle: "Compte de réception refusé",
     payoutRefusedBody: (reason: string) =>
-      `Votre nouveau compte de réception a été refusé : ${reason}. L'ancien compte reste utilisé.`,
+      `Votre nouveau compte de réception a été refusé : ${reason}. L'ancien compte reste utilisé.`,
   },
 
   whatsapp: {
@@ -789,7 +799,7 @@ export const fr = {
     withdrawn: "Cause retirée.",
     requestDeletion: "Demander la suppression",
     deletionPrompt:
-      "Pourquoi supprimer cette cause ? Un modérateur décidera du sort des fonds déjà collectés.",
+      "Pourquoi supprimer cette cause ? Un modérateur décidera du sort des fonds déjà collectés.",
     deletionRequested: "Demande de suppression envoyée. Un modérateur va l'examiner.",
     requestExtension: "Demander une prolongation",
     extensionDateLabel: "Nouvelle date limite",
@@ -802,7 +812,7 @@ export const fr = {
   payoutChange: {
     heading: "Compte de réception des fonds",
     intro:
-      "Pour changer votre numéro Orange Money ou Wave, confirmez le nouveau numéro par SMS. Un modérateur validera le changement ; les versements sont suspendus en attendant.",
+      "Pour changer votre numéro Orange Money ou Wave, confirmez le nouveau numéro par SMS. Un modérateur validera le changement ; les versements sont suspendus en attendant.",
     methodLabel: "Opérateur",
     numberLabel: "Nouveau numéro",
     holderLabel: "Nom du titulaire",
@@ -1015,7 +1025,7 @@ export const fr = {
     deletionAlreadyRequested: "Une demande de suppression est déjà en cours pour cette cause.",
     deletionAlreadyDecided: "Cette demande de suppression a déjà été traitée.",
     deletionFundsReleased:
-      "Les fonds de cette cause ont déjà été versés : elle ne peut plus être supprimée. Maintenez-la en expliquant pourquoi.",
+      "Les fonds de cette cause ont déjà été versés : elle ne peut plus être supprimée. Maintenez-la en expliquant pourquoi.",
     fundOutcomeRequired: "Choisissez le sort des fonds (remboursement ou versement).",
     payoutChangePending:
       "Un changement de compte de réception est en cours : le versement est bloqué en attendant.",
@@ -1029,7 +1039,7 @@ export const fr = {
     extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",
     extensionAlreadyPending: "Une demande de prolongation est déjà en cours pour cette échéance.",
     extensionStale:
-      "Cette demande n'est plus applicable : l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
+      "Cette demande n'est plus applicable : l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
     extensionDateInvalid: (maxDays: number) =>
       `La nouvelle date doit être dans le futur, après l'échéance actuelle et au plus ${maxDays} jours après.`,
     extensionAlreadyDecided: "Cette demande de prolongation a déjà été traitée.",
