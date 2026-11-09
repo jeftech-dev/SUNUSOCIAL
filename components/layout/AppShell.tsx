@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { WhatsAppButton } from "@/components/common/WhatsAppButton";
+import { BottomNav, type NavItem } from "@/components/layout/BottomNav";
 import { fr } from "@/lib/strings.fr";
 import { whatsappLink } from "@/lib/whatsapp";
 
@@ -15,11 +16,13 @@ export function AppShell({
 }: {
   home: string;
   /** Primary navigation links shown in the header (e.g. the donor's Causes / Mon profil). */
-  nav?: { href: string; label: string; badge?: ReactNode }[];
+  nav?: NavItem[];
   children: ReactNode;
 }) {
+  // With several links the mobile nav moves to a bottom bar; a single link stays in the header.
+  const bottomNav = nav !== undefined && nav.length > 1;
   return (
-    <div className="flex flex-1 flex-col">
+    <div className={`flex flex-1 flex-col ${bottomNav ? "pb-14 sm:pb-0" : ""}`}>
       <header className="border-b border-[var(--line-warm)] bg-[color-mix(in_srgb,var(--cream)_92%,transparent)]">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
           <Link href={home} aria-label={fr.app.name}>
@@ -33,7 +36,10 @@ export function AppShell({
           </Link>
           <div className="flex items-center gap-4">
             {nav && nav.length > 0 && (
-              <nav aria-label={fr.nav.main} className="flex items-center gap-1 sm:gap-2">
+              <nav
+                aria-label={fr.nav.main}
+                className={`items-center gap-2 ${bottomNav ? "hidden sm:flex" : "flex"}`}
+              >
                 {nav.map((item) => (
                   <Link
                     key={item.href}
@@ -54,6 +60,7 @@ export function AppShell({
         {children}
       </main>
       <WhatsAppFooter />
+      {bottomNav && <BottomNav items={nav} />}
     </div>
   );
 }
