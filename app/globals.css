@@ -44,6 +44,9 @@
   --danger: #b8322a;
   --danger-soft: #fbeceb;
 
+  /* Mobile bottom navigation: 56px row + top border + the phone's home-indicator inset */
+  --bottom-nav-height: calc(3.5rem + 1px + env(safe-area-inset-bottom, 0px));
+
   /* shadcn/ui semantic tokens */
   --background: var(--cream);
   --foreground: var(--text);

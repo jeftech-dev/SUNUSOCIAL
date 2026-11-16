@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { WhatsAppButton } from "@/components/common/WhatsAppButton";
-import { BottomNav, type NavItem } from "@/components/layout/BottomNav";
+import { MainNav, type NavItem } from "@/components/layout/BottomNav";
 import { fr } from "@/lib/strings.fr";
 import { whatsappLink } from "@/lib/whatsapp";
 
@@ -22,7 +22,9 @@ export function AppShell({
   // With several links the mobile nav moves to a bottom bar; a single link stays in the header.
   const bottomNav = nav !== undefined && nav.length > 1;
   return (
-    <div className={`flex flex-1 flex-col ${bottomNav ? "pb-14 sm:pb-0" : ""}`}>
+    <div
+      className={`flex flex-1 flex-col ${bottomNav ? "pb-[var(--bottom-nav-height)] sm:pb-0" : ""}`}
+    >
       <header className="border-b border-[var(--line-warm)] bg-[color-mix(in_srgb,var(--cream)_92%,transparent)]">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
           <Link href={home} aria-label={fr.app.name}>
@@ -35,23 +37,7 @@ export function AppShell({
             />
           </Link>
           <div className="flex items-center gap-4">
-            {nav && nav.length > 0 && (
-              <nav
-                aria-label={fr.nav.main}
-                className={`items-center gap-2 ${bottomNav ? "hidden sm:flex" : "flex"}`}
-              >
-                {nav.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-blue hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
-                    {item.label}
-                    {item.badge}
-                  </Link>
-                ))}
-              </nav>
-            )}
+            {nav && nav.length > 0 && <MainNav items={nav} bottomOnMobile={bottomNav} />}
             <SignOutButton />
           </div>
         </div>
@@ -60,7 +46,6 @@ export function AppShell({
         {children}
       </main>
       <WhatsAppFooter />
-      {bottomNav && <BottomNav items={nav} />}
     </div>
   );
 }
