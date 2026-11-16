@@ -8,8 +8,13 @@ import { fr } from "../../lib/strings.fr";
 // Donor signup needs an SMS code (SMS_PROVIDER=console only prints it to the Convex logs), so the
 // flow signs in with a donor created once by hand on the test deployment:
 //   E2E_DONOR_PHONE=771234567 E2E_DONOR_PASSWORD=... npm run test:e2e
+//
+// The flow runs once per project and each run adds a donation, so the feed can change between
+// runs. Set E2E_CAUSE_ID to an active cause with a goal far out of reach to give to that cause
+// every time instead of the first one of the feed.
 const phone = process.env.E2E_DONOR_PHONE;
 const password = process.env.E2E_DONOR_PASSWORD;
+const causeId = process.env.E2E_CAUSE_ID;
 
 test.describe("public pages (no account needed)", () => {
   test("a signed-out visitor is sent to the login page", async ({ page }) => {
@@ -36,6 +41,8 @@ test.describe("public pages (no account needed)", () => {
 
 test.describe("donation flow", () => {
   test.skip(!phone || !password, "set E2E_DONOR_PHONE and E2E_DONOR_PASSWORD to run");
+  // Every run records a real donation on the deployment: a retry must not add another one.
+  test.describe.configure({ retries: 0 });
 
   test("a donor gives to a cause through the simulator and sees it confirmed", async ({ page }) => {
     // Sign in.
@@ -45,17 +52,22 @@ test.describe("donation flow", () => {
     await page.getByRole("button", { name: fr.auth.login.submit }).click();
     await expect(page).toHaveURL(/\/causes/);
 
-    // Open the first cause of the feed.
-    const firstCause = page.locator('a[href^="/causes/"]').first();
-    await expect(firstCause).toBeVisible({ timeout: 20_000 });
-    await firstCause.click();
+    // Open the pinned cause, or the first one of the feed.
+    if (causeId) {
+      await page.goto(`/causes/${causeId}`);
+    } else {
+      const firstCause = page.locator('a[href^="/causes/"]').first();
+      await expect(firstCause).toBeVisible({ timeout: 20_000 });
+      await firstCause.click();
+    }
     await expect(page).toHaveURL(/\/causes\/[^/]+$/);
 
     // Give with the default amount and method.
     await page.getByRole("button", { name: fr.common.donate }).first().click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByRole("button", { name: /^Confirmer le don/ }).click();
+    // The label ends with the formatted amount, so match on the part before it.
+    await dialog.getByRole("button", { name: fr.donation.confirm("").trim() }).click();
 
     // The mock provider replaces the NabooPay page with the simulator.
     await expect(page).toHaveURL(/\/paiement\/simulation\//, { timeout: 20_000 });
