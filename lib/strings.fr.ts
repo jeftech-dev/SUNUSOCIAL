@@ -155,7 +155,7 @@ export const fr = {
       saved: "Profil enregistré.",
       optInCta: "Activer les alertes don de sang",
       privacy:
-        "Votre groupe sanguin est une donnée de santé : vous seul le voyez. Les hôpitaux ne voient jamais votre adresse.",
+        "Votre groupe sanguin est une donnée de santé\u00a0: vous seul le voyez. Les hôpitaux ne voient jamais votre adresse.",
       alertsTitle: "Alertes des hôpitaux",
       filterMine: (group: string) => `Pour mon groupe (${group})`,
       filterMineNoGroup: "Pour mon groupe",
@@ -174,7 +174,7 @@ export const fr = {
       notRequested: "Groupe non recherché pour cette alerte",
       exampleTitle: "Exemple d'alerte reçue",
       exampleSms:
-        "SUNUSOCIAL : l'Hôpital Principal de Dakar recherche du sang O+ (Urgence vitale). Alerte envoyée aux donneurs de Médina. Confirmez votre venue sur sunusocial.sn/sang",
+        "SUNUSOCIAL\u00a0: l'Hôpital Principal de Dakar recherche du sang O+ (Urgence vitale). Alerte envoyée aux donneurs de Médina. Confirmez votre venue sur sunusocial.sn/sang",
       exampleNote:
         "Envoyé uniquement aux donneurs du groupe recherché, dans les communes de votre région choisies par l'hôpital. Votre adresse n'est jamais partagée.",
       beforeTitle: "Avant de venir",
@@ -197,7 +197,7 @@ export const fr = {
     },
     slot: {
       title: "Confirmer ma venue",
-      question: "Quand pouvez-vous venir ?",
+      question: "Quand pouvez-vous venir\u00a0?",
       none: "Plus de créneau disponible pour cette alerte.",
       confirm: "Je confirme ma venue",
       confirming: "Confirmation…",
@@ -228,25 +228,25 @@ export const fr = {
       newAlert: "Émettre une alerte",
       none: "Aucune alerte pour le moment.",
       loading: "Chargement…",
-      targeting: (communes: string) => `Ciblage : ${communes}`,
+      targeting: (communes: string) => `Ciblage\u00a0: ${communes}`,
       reached: (reached: number, responses: number) =>
         `${reached} prévenus · ${responses} réponse${responses > 1 ? "s" : ""}`,
       goalReached: "✓ Objectif atteint",
       closedBadge: "✓ Clôturée",
-      closedByModerator: (reason: string) => `Clôturée par la modération : ${reason}`,
+      closedByModerator: (reason: string) => `Clôturée par la modération\u00a0: ${reason}`,
       showDonors: (n: number) => `Voir les ${n} donneur${n > 1 ? "s" : ""}`,
       hideDonors: "Masquer les donneurs",
       waiting: "En attente de réponses…",
       closeAlert: "Clôturer l'alerte",
       confirmClose:
-        "Clôturer cette alerte ? Les donneurs qui n'ont pas encore donné seront prévenus qu'ils n'ont plus besoin de venir.",
+        "Clôturer cette alerte\u00a0? Les donneurs qui n'ont pas encore donné seront prévenus qu'ils n'ont plus besoin de venir.",
       donorCancelled: "Venue annulée",
       confirmDonation: "Confirmer le don",
       donationConfirmed: (group: string) => `✓ Don confirmé · +1 ${group}`,
       groupOnSite: "Groupe constaté sur place",
       groupOnSiteChoose: "Choisir le groupe…",
       donationDone: (name: string, group: string, before: number, after: number) =>
-        `Don de ${name} confirmé · stock ${group} : ${before} → ${after}`,
+        `Don de ${name} confirmé · stock ${group}\u00a0: ${before} → ${after}`,
       thanksTitle: (n: number) => `Remercier les ${n} donneur${n > 1 ? "s" : ""}`,
       thanksDefault: (hospital: string, collected: number, groups: string) =>
         `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poches ${groups} ont été collectées. — SUNUSOCIAL`,
@@ -261,7 +261,7 @@ export const fr = {
     composer: {
       title: "Alertes don de sang",
       intro:
-        "Signalez un groupe sanguin en pénurie : seuls les donneurs compatibles inscrits dans les communes choisies de votre région sont prévenus.",
+        "Signalez un groupe sanguin en pénurie\u00a0: seuls les donneurs compatibles inscrits dans les communes choisies de votre région sont prévenus.",
       groups: "Groupes recherchés",
       level: "Niveau d'urgence",
       units: "Poches nécessaires",
@@ -296,7 +296,7 @@ export const fr = {
       cancel: "Annuler",
       moderatorClosed: (n: number) =>
         `${n} alerte${n > 1 ? "s" : ""} clôturée${n > 1 ? "s" : ""} par la modération pour cet hôpital`,
-      closedReason: (reason: string) => `Motif : ${reason}`,
+      closedReason: (reason: string) => `Motif\u00a0: ${reason}`,
       done: "Alerte clôturée.",
       link: "Alertes don de sang",
     },
@@ -440,7 +440,7 @@ export const fr = {
     confirmPayoutRefuse: "Refuser le compte",
     deletionRaised: (amount: string) => `${amount} collectés`,
     refundMeta: (donor: string, amount: string) => `${donor} · ${amount}`,
-    reasonFromStructure: (reason: string) => `Motif : ${reason}`,
+    reasonFromStructure: (reason: string) => `Motif\u00a0: ${reason}`,
     decisionReasonLabel: "Motif de la décision (visible par la structure et les donateurs)",
     structureMeta: (type: string, region: string) => `${type} · ${region}`,
     hasPayout: "Compte de réception fourni",
@@ -453,7 +453,7 @@ export const fr = {
     flaggedBadge: "Éléments signalés",
     refuseReasonLabel: "Motif du refus (visible par la structure)",
     refuseReasonRequired: "Indiquez un motif de refus.",
-    refuseReasonPlaceholder: "Ex. : le devis des travaux est manquant.",
+    refuseReasonPlaceholder: "Ex.\u00a0: le devis des travaux est manquant.",
     confirmRefuse: "Confirmer le refus",
     confirmEscalate: "Confirmer la demande",
     escalateReasonLabel: "Ce qui manque (visible par la structure)",
@@ -607,7 +607,7 @@ export const fr = {
       `Cause déjà clôturée à l'arrivée du paiement\u00a0: ${net} vous seront remboursés automatiquement.`,
     requestRefund: "Demander un remboursement",
     refundReasonLabel: "Motif de votre demande",
-    refundReasonPlaceholder: "Ex. : je me suis trompé de cause.",
+    refundReasonPlaceholder: "Ex.\u00a0: je me suis trompé de cause.",
     refundPhoneLabel: "Numéro où recevoir le remboursement",
     refundPhoneHint: "Par défaut, votre numéro vérifié. Un autre numéro se confirme par SMS.",
     refundSendCode: "Recevoir un code",
@@ -617,18 +617,18 @@ export const fr = {
     refundHint: (net: string) =>
       `Tant que les fonds sont bloqués, vous pouvez être remboursé de ${net} (votre don moins les frais NabooPay).`,
     causeDeletedRefunded: (net: string, reason: string) =>
-      `Cause supprimée${reason ? ` (${reason})` : ""}. Votre don vous est remboursé : ${net}.`,
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Votre don vous est remboursé\u00a0: ${net}.`,
     causeDeletedPaidOut: (reason: string) =>
       `Cause supprimée${reason ? ` (${reason})` : ""}. Les fonds ont été versés à la structure, qui doit en justifier l'emploi.`,
     refundStatusPending: "Remboursement demandé — en cours d'examen.",
     refundStatusInProgress: (net: string) =>
-      `Remboursement accepté : ${net} en cours de versement sur votre numéro.`,
-    refundStatusRefunded: (net: string) => `Remboursé : ${net} reversés sur votre numéro.`,
+      `Remboursement accepté\u00a0: ${net} en cours de versement sur votre numéro.`,
+    refundStatusRefunded: (net: string) => `Remboursé\u00a0: ${net} reversés sur votre numéro.`,
     refundStatusRejected: "Demande de remboursement refusée.",
   },
 
   notifications: {
-    bloodAlertTitle: (groups: string) => `Alerte don de sang : ${groups}`,
+    bloodAlertTitle: (groups: string) => `Alerte don de sang\u00a0: ${groups}`,
     bloodAlertBody: (hospital: string, level: string) =>
       `${hospital} recherche du sang (${level}). Choisissez un créneau pour confirmer votre venue.`,
     bloodResponseTitle: "Nouveau donneur attendu",
@@ -637,7 +637,7 @@ export const fr = {
     bloodCancelTitle: "Venue annulée",
     bloodCancelBody: (name: string, group: string, slot: string) =>
       `${name} (${group}) ne viendra plus ${slot}.`,
-    bloodReminderTitle: "Rappel : votre don de sang",
+    bloodReminderTitle: "Rappel\u00a0: votre don de sang",
     bloodReminderBody: (hospital: string, slot: string) =>
       `Vous êtes attendu ${slot} à ${hospital}.`,
     bloodClosedTitle: "Alerte terminée",
@@ -646,7 +646,7 @@ export const fr = {
     bloodThanksTitle: (hospital: string) => `Merci de la part de ${hospital}`,
     bloodModeratorClosedTitle: "Alerte clôturée par la modération",
     bloodModeratorClosedBody: (reason: string) =>
-      `Votre alerte a été clôturée par un modérateur : ${reason}`,
+      `Votre alerte a été clôturée par un modérateur\u00a0: ${reason}`,
     donationConfirmedTitle: "Don confirmé",
     donationConfirmedBody: (amount: string, title: string) =>
       `Votre don de ${amount} pour «\u00a0${title}\u00a0» est confirmé. Les fonds restent bloqués jusqu'à la fin de la cause.`,
@@ -657,62 +657,72 @@ export const fr = {
     structureApprovedBody:
       "Votre structure est validée. Vous pouvez maintenant publier des causes.",
     structureRefusedTitle: "Inscription refusée",
-    structureRefusedBody: (reason: string) => `Votre inscription a été refusée : ${reason}`,
+    structureRefusedBody: (reason: string) => `Votre inscription a été refusée\u00a0: ${reason}`,
     causeApprovedTitle: "Cause approuvée",
-    causeApprovedBody: (title: string) => `Votre cause « ${title} » est publiée.`,
+    causeApprovedBody: (title: string) => `Votre cause «\u00a0${title}\u00a0» est publiée.`,
     causeRefusedTitle: "Cause refusée",
     causeRefusedBody: (title: string, reason: string) =>
-      `Votre cause « ${title} » a été refusée : ${reason}. Vous pouvez la modifier et la renvoyer.`,
+      `Votre cause «\u00a0${title}\u00a0» a été refusée\u00a0: ${reason}. Vous pouvez la modifier et la renvoyer.`,
     proofPublishedTitle: "Preuve de réception disponible",
     proofPublishedBody: (title: string) =>
-      `La structure a publié la preuve de réception de la cause « ${title} ». Vous pouvez la consulter.`,
+      `La structure a publié la preuve de réception de la cause «\u00a0${title}\u00a0». Vous pouvez la consulter.`,
     proofValidatedTitle: "Preuve validée",
     proofValidatedBody: (title: string) =>
-      `La preuve de réception de « ${title} » a été validée. Merci !`,
+      `La preuve de réception de «\u00a0${title}\u00a0» a été validée. Merci\u00a0!`,
     proofEscalatedTitle: "Preuve à compléter",
     proofEscalatedBody: (title: string, reason: string) =>
-      `Le dossier de « ${title} » doit être complété : ${reason}`,
+      `Le dossier de «\u00a0${title}\u00a0» doit être complété\u00a0: ${reason}`,
     fundsReleasedTitle: "Fonds versés",
     fundsReleasedBody: (title: string, amount: string, days: number) =>
-      `Les fonds de « ${title} » (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
+      `Les fonds de «\u00a0${title}\u00a0» (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
     suspendedTitle: "Structure suspendue",
     suspendedBody: (title: string) =>
-      `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées : ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
+      `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées\u00a0: ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
     payoutAlertTitle: "Versement à vérifier",
-    payoutAlertBody: (detail: string) => `Un versement nécessite une intervention : ${detail}`,
+    payoutAlertBody: (detail: string) => `Un versement nécessite une intervention\u00a0: ${detail}`,
     deletionApprovedTitle: "Cause supprimée",
     deletionApprovedBody: (title: string, reason: string) =>
-      `La cause « ${title} » a été supprimée : ${reason}`,
+      `La cause «\u00a0${title}\u00a0» a été supprimée\u00a0: ${reason}`,
     deletionMaintainedTitle: "Cause maintenue",
     deletionMaintainedBody: (title: string, reason: string) =>
-      `Votre demande de suppression de « ${title} » a été refusée : ${reason}. La cause reste active.`,
+      `Votre demande de suppression de «\u00a0${title}\u00a0» a été refusée\u00a0: ${reason}. La cause reste active.`,
     deletionDonorRefundBody: (title: string, net: string) =>
-      `La cause « ${title} » a été supprimée. Votre don vous est remboursé : ${net} (votre don moins les frais NabooPay) sur votre numéro.`,
+      `La cause «\u00a0${title}\u00a0» a été supprimée. Votre don vous est remboursé\u00a0: ${net} (votre don moins les frais NabooPay) sur votre numéro.`,
     deletionDonorRefundManualBody: (title: string, net: string) =>
-      `La cause « ${title} » a été supprimée. Votre don de ${net} vous sera remboursé : la modération vous contactera pour convenir du numéro.`,
+      `La cause «\u00a0${title}\u00a0» a été supprimée. Votre don de ${net} vous sera remboursé\u00a0: la modération vous contactera pour convenir du numéro.`,
+    /** Details of the "Versement à vérifier" alert sent to moderators (payout worker). */
+    payoutBlockedDetail: (payoutId: string, attempts: number) =>
+      `versement ${payoutId} bloqué après ${attempts} tentatives (409)`,
+    payoutFailedDetail: (payoutId: string, error: string) =>
+      `versement ${payoutId} échoué\u00a0: ${error}`,
+    payoutUnresolvedDetail: (payoutId: string) =>
+      `versement ${payoutId} non résolu après réconciliation`,
+    payoutBalanceLowDetail: (balance: string, count: number) =>
+      `solde insuffisant (${balance}) pour ${count} versement(s) en attente`,
+    payoutBalanceDriftDetail: (balance: string) => `solde (${balance}) inférieur aux fonds dus`,
     refundNoPhoneDetail: (net: string) =>
-      `remboursement de ${net} impossible (cause supprimée) : le donateur n'a pas de numéro`,
+      `remboursement de ${net} impossible (cause supprimée)\u00a0: le donateur n'a pas de numéro`,
     deletionDonorPayoutBody: (title: string) =>
-      `La cause « ${title} » a été supprimée. Les fonds déjà collectés ont été versés à la structure, qui doit en justifier l'emploi.`,
+      `La cause «\u00a0${title}\u00a0» a été supprimée. Les fonds déjà collectés ont été versés à la structure, qui doit en justifier l'emploi.`,
     refundApprovedTitle: "Remboursement approuvé",
     refundApprovedBody: (title: string, net: string) =>
-      `Votre demande de remboursement pour « ${title} » est acceptée : ${net} vous sont reversés sur votre numéro.`,
+      `Votre demande de remboursement pour «\u00a0${title}\u00a0» est acceptée\u00a0: ${net} vous sont reversés sur votre numéro.`,
     refundRejectedTitle: "Remboursement refusé",
     refundRejectedBody: (title: string) =>
-      `Votre demande de remboursement pour « ${title} » n'a pas été retenue. Les fonds restent affectés à la cause.`,
+      `Votre demande de remboursement pour «\u00a0${title}\u00a0» n'a pas été retenue. Les fonds restent affectés à la cause.`,
     extensionApprovedTitle: "Prolongation accordée",
     extensionApprovedBody: (until: string) => `Votre échéance est repoussée au ${until}.`,
     extensionRefusedTitle: "Prolongation refusée",
     extensionRefusedBody: (reason: string) =>
-      `Votre demande de prolongation a été refusée : ${reason}`,
+      `Votre demande de prolongation a été refusée\u00a0: ${reason}`,
     extensionDonorBody: (title: string, until: string) =>
-      `La date limite de « ${title} » a été prolongée jusqu'au ${until}.`,
+      `La date limite de «\u00a0${title}\u00a0» a été prolongée jusqu'au ${until}.`,
     payoutApprovedTitle: "Compte de réception validé",
     payoutApprovedBody:
       "Votre nouveau compte de réception des fonds est validé. Les versements reprennent.",
     payoutRefusedTitle: "Compte de réception refusé",
     payoutRefusedBody: (reason: string) =>
-      `Votre nouveau compte de réception a été refusé : ${reason}. L'ancien compte reste utilisé.`,
+      `Votre nouveau compte de réception a été refusé\u00a0: ${reason}. L'ancien compte reste utilisé.`,
   },
 
   whatsapp: {
@@ -777,19 +787,19 @@ export const fr = {
     empty: "Vous n'avez pas encore de cause. Publiez-en une pour commencer à collecter.",
     emptyApprovedCta: "Publier ma première cause",
     loading: "Chargement de vos causes…",
-    refusalReason: (reason: string) => `Motif du refus : ${reason}`,
+    refusalReason: (reason: string) => `Motif du refus\u00a0: ${reason}`,
     raisedOf: (raised: string, goal: string) => `${raised} collectés sur ${goal}`,
     donors: (count: number) => (count > 1 ? `${count} donateurs` : `${count} donateur`),
     edit: "Modifier",
     editResend: "Modifier et renvoyer",
     withdraw: "Retirer",
-    withdrawConfirm: "Retirer cette cause ? Elle ne sera plus visible.",
+    withdrawConfirm: "Retirer cette cause\u00a0? Elle ne sera plus visible.",
     submitProof: "Publier la preuve",
     actionFailed: "L'action n'a pas abouti. Réessayez.",
     withdrawn: "Cause retirée.",
     requestDeletion: "Demander la suppression",
     deletionPrompt:
-      "Pourquoi supprimer cette cause ? Un modérateur décidera du sort des fonds déjà collectés.",
+      "Pourquoi supprimer cette cause\u00a0? Un modérateur décidera du sort des fonds déjà collectés.",
     deletionRequested: "Demande de suppression envoyée. Un modérateur va l'examiner.",
     requestExtension: "Demander une prolongation",
     extensionDateLabel: "Nouvelle date limite",
@@ -802,7 +812,7 @@ export const fr = {
   payoutChange: {
     heading: "Compte de réception des fonds",
     intro:
-      "Pour changer votre numéro Orange Money ou Wave, confirmez le nouveau numéro par SMS. Un modérateur validera le changement ; les versements sont suspendus en attendant.",
+      "Pour changer votre numéro Orange Money ou Wave, confirmez le nouveau numéro par SMS. Un modérateur validera le changement\u00a0; les versements sont suspendus en attendant.",
     methodLabel: "Opérateur",
     numberLabel: "Nouveau numéro",
     holderLabel: "Nom du titulaire",
@@ -825,7 +835,7 @@ export const fr = {
     submitting: "Envoi…",
     fields: {
       title: "Titre de la cause",
-      titlePlaceholder: "Ex. : Réfection de la toiture du dortoir",
+      titlePlaceholder: "Ex.\u00a0: Réfection de la toiture du dortoir",
       description: "Description",
       descriptionPlaceholder:
         "Expliquez le besoin, à qui il profite et comment les fonds seront utilisés.",
@@ -872,7 +882,7 @@ export const fr = {
     submitting: "Envoi…",
     sent: "Preuve envoyée, en attente de validation.",
     flaggedNotice: (count: number) =>
-      `${count} élément${count > 1 ? "s" : ""} signalé${count > 1 ? "s" : ""} automatiquement : le modérateur les vérifiera.`,
+      `${count} élément${count > 1 ? "s" : ""} signalé${count > 1 ? "s" : ""} automatiquement\u00a0: le modérateur les vérifiera.`,
     gallery: "Dossier de réception",
     reportHeading: "Compte rendu",
     spendHeading: "Utilisation des fonds",
@@ -889,16 +899,16 @@ export const fr = {
     exifOld: "La photo a été prise avant la création de la cause.",
     invoiceReused: "Cette référence de facture a déjà été utilisée.",
     spendMismatch: (spend: string, net: string) =>
-      `Le total des dépenses (${spend}) s'écarte de plus de 5 % du montant reçu (${net}).`,
+      `Le total des dépenses (${spend}) s'écarte de plus de 5\u00a0% du montant reçu (${net}).`,
   },
 
   sms: {
     bloodAlert: (hospital: string, groups: string, level: string, communes: string) =>
-      `SUNUSOCIAL : ${hospital} recherche du sang ${groups} (${level}). Alerte envoyée aux donneurs de ${communes}. Confirmez votre venue sur sunusocial.sn/sang`,
+      `SUNUSOCIAL\u00a0: ${hospital} recherche du sang ${groups} (${level}). Alerte envoyée aux donneurs de ${communes}. Confirmez votre venue sur sunusocial.sn/sang`,
     bloodReminder: (hospital: string, slot: string) =>
-      `SUNUSOCIAL : rappel, vous êtes attendu ${slot} à ${hospital} pour donner votre sang. Merci !`,
+      `SUNUSOCIAL\u00a0: rappel, vous êtes attendu ${slot} à ${hospital} pour donner votre sang. Merci\u00a0!`,
     bloodClosed: (hospital: string) =>
-      `SUNUSOCIAL : l'alerte de ${hospital} est terminée, vous n'avez plus besoin de venir. Merci pour votre élan !`,
+      `SUNUSOCIAL\u00a0: l'alerte de ${hospital} est terminée, vous n'avez plus besoin de venir. Merci pour votre élan\u00a0!`,
     code: (code: string) =>
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
     accountExists:
@@ -920,7 +930,8 @@ export const fr = {
   states: {
     loading: "Chargement de la page…",
     errorTitle: "Quelque chose s'est mal passé",
-    errorBody: "Cette page n'a pas pu s'afficher. Vos données ne sont pas perdues : réessayez.",
+    errorBody:
+      "Cette page n'a pas pu s'afficher. Vos données ne sont pas perdues\u00a0: réessayez.",
     retry: "Réessayer",
     notFoundTitle: "Page introuvable",
     notFoundBody: "Le lien est peut-être incorrect, ou la page n'existe plus.",
@@ -966,7 +977,7 @@ export const fr = {
     causeNotEligible:
       "Cette cause ne peut pas être choisie\u00a0: elle doit être active et publiée par une structure vérifiée.",
     uploadMissing: "Le fichier n'a pas été reçu. Réessayez l'envoi.",
-    uploadInvalid: "Fichier refusé : vérifiez le format et la taille autorisés.",
+    uploadInvalid: "Fichier refusé\u00a0: vérifiez le format et la taille autorisés.",
     structureNotApproved:
       "Votre structure doit être validée par notre équipe avant de publier une cause.",
     hospitalNotApproved:
@@ -974,7 +985,7 @@ export const fr = {
     alertNotFound: "Alerte introuvable.",
     alertClosed: "Cette alerte est terminée.",
     alertRateLimited: "Trop d'alertes en une heure. Réessayez plus tard.",
-    alertGroupsRequired: "Choisissez au moins un groupe sanguin, ou « Tous groupes ».",
+    alertGroupsRequired: "Choisissez au moins un groupe sanguin, ou «\u00a0Tous groupes\u00a0».",
     alertUnitsInvalid: "Indiquez un nombre de poches entre 1 et 500.",
     alertCommunesRequired: "Choisissez au moins une commune de votre région.",
     alertChannelRequired: "Choisissez au moins un canal d'envoi.",
@@ -1003,7 +1014,7 @@ export const fr = {
     causeNotEditable:
       "Seules les causes en modération ou refusées peuvent être modifiées pour le moment.",
     causeNotWithdrawable:
-      "Cette cause ne peut plus être retirée : elle a déjà reçu des dons ou n'est plus en modération.",
+      "Cette cause ne peut plus être retirée\u00a0: elle a déjà reçu des dons ou n'est plus en modération.",
     proofItemsTooFew: (min: number) => `Ajoutez au moins ${min} fichiers.`,
     proofReportTooShort: "Le compte rendu doit comporter au moins 10 caractères.",
     proofAmountInvalid: "Chaque montant doit être un entier en FCFA, supérieur ou égal à 0.",
@@ -1015,13 +1026,13 @@ export const fr = {
     deletionAlreadyRequested: "Une demande de suppression est déjà en cours pour cette cause.",
     deletionAlreadyDecided: "Cette demande de suppression a déjà été traitée.",
     deletionFundsReleased:
-      "Les fonds de cette cause ont déjà été versés : elle ne peut plus être supprimée. Maintenez-la en expliquant pourquoi.",
+      "Les fonds de cette cause ont déjà été versés\u00a0: elle ne peut plus être supprimée. Maintenez-la en expliquant pourquoi.",
     fundOutcomeRequired: "Choisissez le sort des fonds (remboursement ou versement).",
     payoutChangePending:
-      "Un changement de compte de réception est en cours : le versement est bloqué en attendant.",
+      "Un changement de compte de réception est en cours\u00a0: le versement est bloqué en attendant.",
     refundReasonRequired: "Indiquez le motif de votre demande de remboursement.",
     refundNotEligible:
-      "Ce don ne peut plus être remboursé : les fonds ont été versés ou la cause est close.",
+      "Ce don ne peut plus être remboursé\u00a0: les fonds ont été versés ou la cause est close.",
     refundPhoneRequired: "Indiquez le numéro sur lequel recevoir le remboursement.",
     refundCodeRequired: "Confirmez ce numéro avec le code reçu par SMS.",
     refundAlreadyDecided: "Cette demande de remboursement a déjà été traitée.",
@@ -1029,7 +1040,7 @@ export const fr = {
     extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",
     extensionAlreadyPending: "Une demande de prolongation est déjà en cours pour cette échéance.",
     extensionStale:
-      "Cette demande n'est plus applicable : l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
+      "Cette demande n'est plus applicable\u00a0: l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
     extensionDateInvalid: (maxDays: number) =>
       `La nouvelle date doit être dans le futur, après l'échéance actuelle et au plus ${maxDays} jours après.`,
     extensionAlreadyDecided: "Cette demande de prolongation a déjà été traitée.",

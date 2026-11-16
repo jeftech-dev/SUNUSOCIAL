@@ -452,6 +452,37 @@ describe("proofs reads", () => {
     expect(asMod?.items.length).toBe(5);
   });
 
+  it("treats a session that has not passed the SMS code, or a disabled account, as anonymous", async () => {
+    const t = setup();
+    const owner = await asStructure(t);
+    const { proofId } = await submittedProof(t, owner);
+
+    // Same moderator and owner accounts, but sessions that never verified the SMS code.
+    const modUser = await t.run((ctx) =>
+      ctx.db.insert("users", {
+        name: "Mod",
+        role: "moderator",
+        disabled: false,
+        createdAt: Date.now(),
+      }),
+    );
+    const modSession = await t.run((ctx) =>
+      ctx.db.insert("authSessions", { userId: modUser, expirationTime: Date.now() + DAY_MS }),
+    );
+    const preMfaMod = t.withIdentity({ subject: `${modUser}|${modSession}` });
+    expect(await preMfaMod.query(api.proofs.get, { proofId })).toBeNull();
+
+    const ownerSession = await t.run((ctx) =>
+      ctx.db.insert("authSessions", { userId: owner.userId, expirationTime: Date.now() + DAY_MS }),
+    );
+    const preMfaOwner = t.withIdentity({ subject: `${owner.userId}|${ownerSession}` });
+    expect(await preMfaOwner.query(api.proofs.get, { proofId })).toBeNull();
+
+    // A disabled owner loses the private view even with a verified session.
+    await t.run((ctx) => ctx.db.patch(owner.userId, { disabled: true }));
+    expect(await owner.client.query(api.proofs.get, { proofId })).toBeNull();
+  });
+
   it("exposes a validated dossier to donors without flags, and lists it in the feeds", async () => {
     const t = setup();
     const owner = await asStructure(t);

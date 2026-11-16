@@ -17,15 +17,38 @@ export interface AuthedUser {
 /** Roles that must pass the SMS code on every login (DT-2). */
 const MFA_ROLES: ReadonlySet<Role> = new Set(["structure", "hospital", "moderator"]);
 
-/** The signed-in, enabled user and their session; throws otherwise. Does not check MFA. */
-export async function requireUser(ctx: QueryCtx): Promise<AuthedUser> {
+/** The user and session behind the request, or null when signed out. Checks nothing else. */
+async function loadSession(ctx: QueryCtx): Promise<AuthedUser | null> {
   const userId = await getAuthUserId(ctx);
   const sessionId = await getAuthSessionId(ctx);
-  if (!userId || !sessionId) throw appError("UNAUTHENTICATED", fr.errors.notAuthenticated);
+  if (!userId || !sessionId) return null;
   const [user, session] = await Promise.all([ctx.db.get(userId), ctx.db.get(sessionId)]);
-  if (!user || !session) throw appError("UNAUTHENTICATED", fr.errors.notAuthenticated);
-  if (user.disabled) throw appError("FORBIDDEN", fr.errors.accountDisabled);
+  if (!user || !session) return null;
   return { user, session };
+}
+
+/** False for a structure/hospital/moderator whose session has not passed the SMS code yet. */
+function mfaSatisfied({ user, session }: AuthedUser): boolean {
+  return !MFA_ROLES.has(user.role) || session.mfaVerifiedAt !== undefined;
+}
+
+/** The signed-in, enabled user and their session; throws otherwise. Does not check MFA. */
+export async function requireUser(ctx: QueryCtx): Promise<AuthedUser> {
+  const authed = await loadSession(ctx);
+  if (!authed) throw appError("UNAUTHENTICATED", fr.errors.notAuthenticated);
+  if (authed.user.disabled) throw appError("FORBIDDEN", fr.errors.accountDisabled);
+  return authed;
+}
+
+/**
+ * The signed-in user for reads that are also open to anonymous visitors, or null. A disabled
+ * account, or a structure/hospital/moderator whose session has not passed the SMS code yet, is
+ * treated as anonymous: it must never unlock the private view of a public read.
+ */
+export async function viewerOrNull(ctx: QueryCtx): Promise<Doc<"users"> | null> {
+  const authed = await loadSession(ctx);
+  if (!authed || authed.user.disabled || !mfaSatisfied(authed)) return null;
+  return authed.user;
 }
 
 /**
@@ -35,9 +58,7 @@ export async function requireUser(ctx: QueryCtx): Promise<AuthedUser> {
 export async function requireRole(ctx: QueryCtx, ...roles: Role[]): Promise<AuthedUser> {
   const authed = await requireUser(ctx);
   if (!roles.includes(authed.user.role)) throw appError("FORBIDDEN", fr.errors.forbidden);
-  if (MFA_ROLES.has(authed.user.role) && authed.session.mfaVerifiedAt === undefined) {
-    throw appError("MFA_REQUIRED", fr.errors.mfaRequired);
-  }
+  if (!mfaSatisfied(authed)) throw appError("MFA_REQUIRED", fr.errors.mfaRequired);
   return authed;
 }
 

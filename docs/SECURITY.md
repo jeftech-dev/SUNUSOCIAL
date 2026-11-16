@@ -95,3 +95,26 @@
 6. **Post-mortem** — written, blameless; record timeline, impact, fix, and a prevention item tracked to completion.
 
 Escalation goes through the project owner to the SUNUSOCIAL board. Add a dedicated security contact before launch. A health-data incident may also require notifying the CDP (see `BOARD_QUESTIONS.md` Q8).
+
+## 8. Sprint 8 review (integration phase)
+
+A pass over `convex/`, the client and the dependencies, before `integration` goes to `dev`. Method: the Convex security checklist (public vs internal, auth, validation, ownership, secrets, HTTP and storage), adapted to the `requireRole` / `requireOwner` guards of `convex/lib/guards.ts`.
+
+| Area | Result |
+|---|---|
+| Public vs internal | All 57 public functions have a client; scheduler, crons and webhook handlers call `internal.*` only (no `api.*` inside `convex/`). |
+| Auth | Every public function is guarded by `requireRole`, `requireOwner`, or a local wrapper built on them (`requireActiveHospital`, `requirePublishingStructure`). Anonymous on purpose: signup, password reset, the public feeds. Payment actions delegate to guarded internal functions. |
+| Validation | `v.any()` appears once, in the audit log's `details`, which is written only by the backend. Every function declares `args`. |
+| Ownership | No public function accepts the caller's own user id. Structure ids in `moderation.ts` are arguments of moderator-only functions. Hospitals reach alerts through `getOwnedAlert` (a foreign alert looks missing). |
+| Secrets | No secret literals; the only `process.env` read in the client is `NEXT_PUBLIC_CONVEX_URL`; `.env.local` is not tracked. `PAYMENT_PROVIDER=mock` is refused in production (`lib/config.ts`). |
+| Webhook / HTTP | `X-Signature` is checked on the raw body before parsing. The signup receipt upload checks the phone code, declared and sniffed type, and size. |
+| Dependencies | `npm audit --omit=dev`: 0 vulnerabilities (also in CI). |
+
+**Fixed**
+
+- **F1 — private dossier view without the SMS code.** `proofs.get` decided "owner or moderator" from the user row alone, so a moderator, structure or hospital session that had not yet entered the SMS code (or a disabled account) could read unvalidated dossiers (report, spend, media). It now uses `viewerOrNull` (`convex/lib/guards.ts`), which treats such sessions as anonymous. Regression test in `convex/proofs.test.ts`.
+
+**Residual risks (not fixed)**
+
+- **R1 — uploaded files are not bound to their uploader.** `validateUpload` checks type and size, not who uploaded the file. Storage ids are unguessable, but those inside public proof-photo URLs are visible, so a hostile structure could submit another structure's published photo as its own. Mitigated by the duplicate-photo auto-flag (DT-13) and moderator review of every dossier. Closing it means an `uploads` table (storage id, uploader) checked at link time; proposed for after the board decisions.
+- **R2 — not verified here:** the Convex environment variables on a real deployment, the SMS provider (board Q1), and the NabooPay live keys. These belong to the `integration` → `dev` exit checklist and the production deploy.

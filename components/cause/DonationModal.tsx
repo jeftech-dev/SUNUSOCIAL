@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 
 import { FormError } from "@/components/forms/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { DONATION_PRESETS, useDonation } from "@/hooks/useDonation";
 import { formatFCFA, PROVIDER_RATE } from "@/lib/money";
 import { fr } from "@/lib/strings.fr";
@@ -26,19 +27,7 @@ export function DonationModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const customOn = !DONATION_PRESETS.includes(donation.amount as (typeof DONATION_PRESETS)[number]);
 
-  // Close on Escape; focus the dialog on open; restore focus on close.
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      previouslyFocused?.focus?.();
-    };
-  }, [onClose]);
+  useDialogFocus(dialogRef, onClose);
 
   return (
     <div
