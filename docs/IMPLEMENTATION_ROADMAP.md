@@ -191,10 +191,10 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
 | 1 | Error/loading/empty states across all screens | `feat` | all pages | ✅ |
-| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | ✅ |
+| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | 🔄 |
 | 3 | Accessibility: focus states, labels, contrast | `chore` | components | ✅ |
 | 4 | Security review (auth, webhook, authz, PII, secrets) | `chore` | `convex/*`, `lib/*` | ✅ |
-| 5 | French copy review with marketing | `chore` | `lib/strings.fr.ts` | ✅ |
+| 5 | French copy review with marketing | `chore` | `lib/strings.fr.ts` | 🔄 |
 | 6 | Playwright e2e on the donate flow (mock provider) | `chore` | `tests/e2e` | ✅ |
 | 7 | Vercel production deploy (app + moderation subdomain) + env config + NabooPay sandbox→live | `infra` | Vercel project, env | 📋 |
 
@@ -203,7 +203,7 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [ ] No horizontal scroll at 375px; all interactive elements have focus states.
 - [ ] Production deploy live; env vars set; NabooPay live keys configured; `PAYMENT_PROVIDER` is not `mock`.
 
-*Sprint 8, tasks 1–6 (integration phase). Done: route-level loading/error/not-found screens (`loading.tsx`, `error.tsx`, `not-found.tsx`, `global-error.tsx`); mobile bottom navigation for the donor space; `useDialogFocus` (Escape, focus restore, Tab trap) for the two modals, plus an audit of labels, focus ring and WCAG AA colour pairs; the security review (one fix, F1, and two residual risks, in `SECURITY.md` §8); French typography (non-breaking space before `: ? ! ;` and inside « ») and the payout alert strings moved into `fr.notifications`; and `tests/e2e/donate.spec.ts` (`npm run test:e2e`). Verified: lint, format, typecheck, 271 `convex-test`/unit tests, `next build`, and the six account-free Playwright checks (login redirect, not-found, no sideways scroll on the public pages) at 375px and desktop. **Not verified:** the signed-in screens at 375px and the bottom navigation (no test account on a test deployment yet), and the donation Playwright test, which needs `E2E_DONOR_PHONE` / `E2E_DONOR_PASSWORD` for a donor created by hand because signup needs an SMS code. Both belong to the manual run of the `CONTRIBUTING.md` exit checklist. Task 7 (deploy) waits for the `dev` → `main` release.*
+*Sprint 8, tasks 1–6 (integration phase). Done: route-level loading/error/not-found screens (`loading.tsx`, `error.tsx`, `not-found.tsx`, `global-error.tsx`); mobile bottom navigation for the donor space; `useDialogFocus` (Escape, focus restore, Tab trap) for the two modals, plus an audit of labels, focus ring and WCAG AA colour pairs; the security review (one fix, F1, and two residual risks, in `SECURITY.md` §8); French typography (non-breaking space before `: ? ! ;` and inside « ») and the payout alert strings moved into `fr.notifications`; and `tests/e2e/donate.spec.ts` (`npm run test:e2e`). Verified: lint, format, typecheck, 271 `convex-test`/unit tests, `next build`, and the six account-free Playwright checks (login redirect, not-found, no sideways scroll on the public pages) at 375px and desktop. **Not verified:** the signed-in screens at 375px and the bottom navigation (no test account on a test deployment yet), and the donation Playwright test, which needs `E2E_DONOR_PHONE` / `E2E_DONOR_PASSWORD` for a donor created by hand because signup needs an SMS code. Both belong to the manual run of the `CONTRIBUTING.md` exit checklist, so task 2 stays in progress until that run. Task 5 also stays in progress: the typography pass is done, but marketing has not reviewed the copy yet. Task 7 (deploy) waits for the `dev` → `main` release.*
 
 ---
 
