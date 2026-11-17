@@ -185,8 +185,6 @@ export const fr = {
         "Apporter une pièce d'identité",
         "Le médecin de l'hôpital confirme votre aptitude sur place",
       ],
-      messagesTitle: "Mes messages",
-      messagesEmpty: "Aucun message pour le moment.",
       badge: (n: number) => `${n} alerte${n > 1 ? "s" : ""} à traiter`,
     },
     /** Visit-slot labels: "aujourd'hui entre 14 h et 16 h", "le 12/11 entre 8 h et 10 h". */
@@ -821,6 +819,12 @@ export const fr = {
     suspended:
       "Compte suspendu : une preuve de réception est en retard. Vos causes sont masquées et vous ne pouvez pas en publier de nouvelles jusqu'à la levée de la suspension par la modération.",
     hello: (name: string) => `Bonjour ${name}`,
+  },
+
+  /** In-app notifications list (PARCOURS S06). */
+  messages: {
+    title: "Mes messages",
+    empty: "Aucun message pour le moment.",
   },
 
   /** Structure dashboard: the structure's own causes and their status timeline (PARCOURS S11–S14). */
