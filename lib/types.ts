@@ -393,6 +393,16 @@ export interface StructureQueueItem {
   region: string;
   submittedAt: number;
   hasPayout: boolean;
+  /** What the moderator checks before deciding (PARCOURS S09, S10). */
+  commune: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  receiptNo: string | null;
+  /** The récépissé / agrément, as a short-lived URL. */
+  receiptUrl: string | null;
+  /** The payout account given at signup, number masked (DT-5). Absent for hospitals. */
+  payout: { method: Method; accountNumber: string; holderName: string } | null;
 }
 
 export interface CauseQueueItem {
@@ -400,6 +410,12 @@ export interface CauseQueueItem {
   title: string;
   organization: string;
   urgent: boolean;
+  /** The content the moderator approves or refuses (PARCOURS S12). */
+  description: string;
+  category: Category;
+  bannerUrl: string | null;
+  goal: number;
+  endCondition: EndCondition;
 }
 
 export interface ProofQueueItem {

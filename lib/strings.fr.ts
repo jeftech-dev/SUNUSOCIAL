@@ -450,6 +450,17 @@ export const fr = {
     decisionReasonLabel: "Motif de la décision (visible par la structure et les donateurs)",
     structureMeta: (type: string, region: string) => `${type} · ${region}`,
     hasPayout: "Compte de réception fourni",
+    structureContact: (name: string, phone: string, email: string) =>
+      `Responsable\u00a0: ${name} · ${phone} · ${email}`,
+    structurePlace: (commune: string, region: string) => `${commune}, ${region}`,
+    receiptNo: (no: string) => `Récépissé n°\u00a0${no}`,
+    viewReceipt: "Voir le récépissé ou l'agrément",
+    receiptMissing: "Document introuvable",
+    payoutAccount: (method: string, number: string, holder: string) =>
+      `Compte de réception\u00a0: ${method} ${number} · ${holder}`,
+    noPayoutAccount: "Pas de compte de réception (hôpital)",
+    causeGoal: (goal: string) => `Objectif\u00a0: ${goal}`,
+    causeDeadline: (date: string) => `Date limite\u00a0: ${date}`,
     approve: "Approuver",
     refuse: "Refuser",
     validate: "Valider la preuve",

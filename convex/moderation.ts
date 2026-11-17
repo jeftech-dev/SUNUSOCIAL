@@ -3,7 +3,7 @@
 
 import { v } from "convex/values";
 
-import { percentOf } from "../lib/causes";
+import { endConditionOf, percentOf } from "../lib/causes";
 import { alertDeadline } from "../lib/bloodSlots";
 import { DAY_MS, loadConfig } from "../lib/config";
 import { formatDate } from "../lib/dates";
@@ -191,6 +191,11 @@ export const queues = query({
         title: cause.title,
         organization: structure?.name ?? "",
         urgent: cause.urgency === "urgent",
+        description: cause.description,
+        category: cause.category,
+        bannerUrl: await ctx.storage.getUrl(cause.bannerFileId),
+        goal: cause.goalAmount,
+        endCondition: endConditionOf(cause),
       });
     }
 
@@ -284,14 +289,29 @@ export const queues = query({
     return {
       structures: {
         count: allStructures.length,
-        items: structures.map((s) => ({
-          id: s._id,
-          name: s.name,
-          type: s.type,
-          region: s.region,
-          submittedAt: s.createdAt,
-          hasPayout: s.payout !== undefined,
-        })),
+        items: await Promise.all(
+          structures.map(async (s) => ({
+            id: s._id,
+            name: s.name,
+            type: s.type,
+            region: s.region,
+            submittedAt: s.createdAt,
+            hasPayout: s.payout !== undefined,
+            commune: s.commune,
+            contactName: s.contactName,
+            phone: s.phone,
+            email: s.email,
+            receiptNo: s.receiptNo ?? null,
+            receiptUrl: await ctx.storage.getUrl(s.receiptFileId),
+            payout: s.payout
+              ? {
+                  method: s.payout.method,
+                  accountNumber: maskNumber(s.payout.accountNumber),
+                  holderName: s.payout.holderName,
+                }
+              : null,
+          })),
+        ),
       },
       causes: { count: allCauses.length, items: causeItems },
       proofs: { count: allSubmitted.length, items: proofItems },
