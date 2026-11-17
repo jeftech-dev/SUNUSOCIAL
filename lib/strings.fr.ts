@@ -459,6 +459,25 @@ export const fr = {
     escalateReasonLabel: "Ce qui manque (visible par la structure)",
     cancel: "Annuler",
     done: "Décision enregistrée.",
+    suspended: {
+      title: "Comptes suspendus",
+      intro:
+        "Structures suspendues pour une preuve de réception en retard. Leurs causes sont masquées jusqu'à la levée de la suspension.",
+      since: (date: string) => `Compte suspendu depuis le ${date}`,
+      lateProof: (cause: string, date: string) =>
+        `«\u00a0${cause}\u00a0» · preuve attendue le ${date}`,
+      proofStatus: {
+        submitted: "dossier envoyé, à valider",
+        escalated: "compléments demandés",
+        validated: "dossier validé",
+      },
+      noProof: "aucun dossier envoyé",
+      noLateProof: "Plus aucune preuve en retard.",
+      remind: "Relancer la structure",
+      lift: "Lever la suspension",
+      reminded: "Rappel envoyé à la structure.",
+      lifted: "Suspension levée.",
+    },
     decided: {
       structureApproved: "Structure approuvée — elle a été notifiée.",
       structureRefused: "Structure refusée — elle a été notifiée.",
@@ -675,6 +694,12 @@ export const fr = {
     fundsReleasedTitle: "Fonds versés",
     fundsReleasedBody: (title: string, amount: string, days: number) =>
       `Les fonds de «\u00a0${title}\u00a0» (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
+    proofReminderTitle: "Preuve de réception en retard",
+    proofReminderBody: (title: string, date: string) =>
+      `La preuve de «\u00a0${title}\u00a0» était attendue le ${date}. Publiez-la depuis votre espace pour que la modération puisse lever la suspension.`,
+    suspensionLiftedTitle: "Suspension levée",
+    suspensionLiftedBody:
+      "Votre structure n'est plus suspendue\u00a0: vos causes sont de nouveau visibles et vous pouvez en publier.",
     suspendedTitle: "Structure suspendue",
     suspendedBody: (title: string) =>
       `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées\u00a0: ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
@@ -926,6 +951,10 @@ export const fr = {
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
     accountExists:
       "SUNUSOCIAL\u00a0: un compte donateur existe déjà avec ce numéro. Connectez-vous, ou utilisez «\u00a0Mot de passe oublié\u00a0».",
+    proofReminder: (title: string, date: string) =>
+      `SUNUSOCIAL\u00a0: la preuve de réception de «\u00a0${title}\u00a0» était attendue le ${date}. Publiez-la depuis votre espace pour lever la suspension de votre compte.`,
+    suspensionLifted: (structure: string) =>
+      `SUNUSOCIAL\u00a0: la suspension de ${structure} est levée. Vos causes sont de nouveau visibles.`,
     lateRefund: (title: string, net: string) =>
       `SUNUSOCIAL\u00a0: la cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement est arrivé. ${net} vous seront remboursés sur ce numéro. Découvrez d'autres causes sur SUNUSOCIAL.`,
   },
@@ -1052,6 +1081,10 @@ export const fr = {
     extensionReasonRequired: "Expliquez la raison de votre demande de prolongation.",
     extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",
     extensionAlreadyPending: "Une demande de prolongation est déjà en cours pour cette échéance.",
+    notSuspended: "Cette structure n'est pas suspendue.",
+    noLateProof: "Aucune preuve n'est en retard pour cette structure.",
+    proofStillLate:
+      "Une preuve est encore en retard\u00a0: validez-la ou accordez un délai avant de lever la suspension.",
     extensionStale:
       "Cette demande n'est plus applicable\u00a0: l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
     extensionDateInvalid: (maxDays: number) =>

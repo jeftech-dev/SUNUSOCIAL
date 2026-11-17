@@ -452,6 +452,15 @@ export interface PayoutChangeQueueItem {
   holderName: string;
 }
 
+/** A structure suspended for a late proof, in the moderator's follow-up (PARCOURS S26). */
+export interface SuspendedStructureItem {
+  id: Id<"structures">;
+  organization: string;
+  suspendedAt: number;
+  /** Proofs still overdue; the suspension can be lifted once this is empty. */
+  lateProofs: { cause: string; dueAt: number; proofStatus: ProofStatus | null }[];
+}
+
 export interface ModerationQueue<T> {
   count: number;
   items: T[];

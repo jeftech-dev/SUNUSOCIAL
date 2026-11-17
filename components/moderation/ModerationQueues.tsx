@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ProofReview } from "@/components/moderation/ProofReview";
+import { SuspendedStructures } from "@/components/moderation/SuspendedStructures";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -118,6 +119,8 @@ export function ModerationQueues() {
           </Link>
         </div>
       </div>
+
+      <SuspendedStructures />
 
       <div role="tablist" className="flex flex-wrap gap-2">
         {tabs.map((t) => (
