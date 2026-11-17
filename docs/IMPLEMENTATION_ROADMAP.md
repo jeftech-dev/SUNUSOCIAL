@@ -37,8 +37,8 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | 7 | Root layout, fonts (Montserrat/Inter), Convex provider, charte theme with accessible tokens (DT-11) | `feat` | `app/layout.tsx`, `app/globals.css` | ✅ |
 
 **Definition of Done:**
-- [ ] `npx convex dev` and `npm run dev` both run clean. *(`npm run build` + `npm start` verified in a browser; `npx convex dev` needs the team's Convex project, see below.)*
-- [ ] Schema deploys; `geo` seeded; `lint` + `typecheck` pass. *(`lint`, `typecheck` and `test` pass, and the schema and seed are validated with `convex-test`; the first deploy to a real Convex project is still to do.)*
+- [x] `npx convex dev` and `npm run dev` both run clean. *(Verified against the team's Convex dev deployment: MVP exit run, 16–17 Nov 2026, dev deployment.)*
+- [x] Schema deploys; `geo` seeded; `lint` + `typecheck` pass. *(Schema and seed deployed to the dev deployment; `lint`, `typecheck` and `test` pass.)*
 - [x] Brand colors/fonts match the charte (navy #174a7c, orange #de7d28, green #529e3b); white-on-orange buttons use #a9561a.
 - [x] CI runs lint, typecheck, test and `npm audit` on PRs.
 
@@ -135,9 +135,9 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | 6 | Validated proofs → donor dashboard + public feed | `feat` | `convex/proofs.ts`, `app/(donor)/profil`, landing | ✅ |
 
 **Definition of Done:**
-- [ ] Cause lifecycle Soumise→En modération→Approuvée/Refusée→Active→Clôturée works; refusal reason shown.
-- [ ] Proof blocked under 5 items / short report; flagged items routed to moderator.
-- [ ] Moderator sees the exact donor-facing dossier; validated dossiers appear to donors.
+- [x] Cause lifecycle Soumise→En modération→Approuvée/Refusée→Active→Clôturée works; refusal reason shown. *(MVP exit run, 16–17 Nov 2026, dev deployment.)*
+- [x] Proof blocked under 5 items / short report; flagged items routed to moderator. *(Run live: the spend-mismatch flag reaches the moderator. The image and invoice-reuse flags are covered by `convex-test` only.)*
+- [x] Moderator sees the exact donor-facing dossier; validated dossiers appear to donors. *(Run live: donor profile and public proof feed.)*
 
 ---
 
@@ -156,10 +156,10 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | 5 | Donor dashboard: deleted-cause notice, refund status | `feat` | `app/(donor)/profil` | ✅ |
 
 **Definition of Done:**
-- [ ] Deletion arbitration records a reason visible to structure + donors; payout triggers a 7-day proof deadline + auto-suspend.
-- [ ] Refund only while held; decision is final; the net amount is paid out to the donor's verified phone.
-- [ ] Payouts never run in parallel and are never resent automatically after a timeout.
-- [ ] Every cause releases in one payout at goal or deadline, whichever comes first; release is idempotent and blocked while a payout change is pending.
+- [x] Deletion arbitration records a reason visible to structure + donors; payout triggers a 7-day proof deadline + auto-suspend. *(Run live. The structure only sees the reason and the proof link on its dashboard with the exit-run fixes.)*
+- [x] Refund only while held; decision is final; the net amount is paid out to the donor's verified phone. *(Run live: approve, reject, and another number proved by SMS code.)*
+- [ ] Payouts never run in parallel and are never resent automatically after a timeout. *(Covered by `convex-test`; the timeout, 409 and pending-review branches were not exercised on the dev deployment.)*
+- [x] Every cause releases in one payout at goal or deadline, whichever comes first; release is idempotent and blocked while a payout change is pending. *(Run live: one release payout per cause, equal to the sum of the nets; the deadline release waited for the payout-change decision.)*
 
 ---
 
@@ -191,7 +191,7 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
 | 1 | Error/loading/empty states across all screens | `feat` | all pages | ✅ |
-| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | 🔄 |
+| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | ✅ |
 | 3 | Accessibility: focus states, labels, contrast | `chore` | components | ✅ |
 | 4 | Security review (auth, webhook, authz, PII, secrets) | `chore` | `convex/*`, `lib/*` | ✅ |
 | 5 | French copy review with marketing | `chore` | `lib/strings.fr.ts` | 🔄 |
@@ -200,7 +200,7 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 **Definition of Done:**
 - [x] Security review checklist (SECURITY.md) passes: see `SECURITY.md` §8.
-- [ ] No horizontal scroll at 375px; all interactive elements have focus states.
+- [x] No horizontal scroll at 375px; all interactive elements have focus states. *(Every screen of the exit run was checked for sideways scroll at 375px and 1280px; focus states come from task 3.)*
 - [ ] Production deploy live; env vars set; NabooPay live keys configured; `PAYMENT_PROVIDER` is not `mock`.
 
 *Sprint 8, tasks 1–6 (integration phase). Done: route-level loading/error/not-found screens (`loading.tsx`, `error.tsx`, `not-found.tsx`, `global-error.tsx`); mobile bottom navigation for the donor space; `useDialogFocus` (Escape, focus restore, Tab trap) for the two modals, plus an audit of labels, focus ring and WCAG AA colour pairs; the security review (one fix, F1, and two residual risks, in `SECURITY.md` §8); French typography (non-breaking space before `: ? ! ;` and inside « ») and the payout alert strings moved into `fr.notifications`; and `tests/e2e/donate.spec.ts` (`npm run test:e2e`). Verified: lint, format, typecheck, 271 `convex-test`/unit tests, `next build`, and the six account-free Playwright checks (login redirect, not-found, no sideways scroll on the public pages) at 375px and desktop. **Not verified:** the signed-in screens at 375px and the bottom navigation (no test account on a test deployment yet), and the donation Playwright test, which needs `E2E_DONOR_PHONE` / `E2E_DONOR_PASSWORD` for a donor created by hand because signup needs an SMS code. Both belong to the manual run of the `CONTRIBUTING.md` exit checklist, so task 2 stays in progress until that run. Task 5 also stays in progress: the typography pass is done, but marketing has not reviewed the copy yet. Task 7 (deploy) waits for the `dev` → `main` release.*

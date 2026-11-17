@@ -36,10 +36,10 @@ feat/* ──PR──▶ integration ──(MVP tested)──▶ dev ──(boar
 
 **Exit checklist: `integration` → `dev`**
 
-- [ ] Sprints 1–7 and Sprint 8 tasks 1–6 are merged into `integration`, and CI is green on it.
-- [ ] The app runs against a real Convex deployment (not production) with `PAYMENT_PROVIDER=mock` and `SMS_PROVIDER=console`; `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `MODERATION_SITE_URL` and `OTP_HASH_SECRET` are set in Convex.
-- [ ] Every flow in `docs/PARCOURS.md` has been run by hand in that deployment, on the app and on the moderation subdomain, at 375px and on desktop: signups and logins (SMS codes read from the Convex logs), resets, cause publication and moderation, donation with the mock provider through release and payout, proofs, refunds and deletions, blood alerts.
-- [ ] The Playwright e2e test of the donation flow (Sprint 8 task 6) passes.
+- [x] Sprints 1–7 and Sprint 8 tasks 1–6 are merged into `integration`, and CI is green on it.
+- [x] The app runs against a real Convex deployment (not production) with `PAYMENT_PROVIDER=mock` and `SMS_PROVIDER=console`; `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `MODERATION_SITE_URL` and `OTP_HASH_SECRET` are set in Convex.
+- [x] Every flow in `docs/PARCOURS.md` has been run by hand in that deployment, on the app and on the moderation subdomain, at 375px and on desktop: signups and logins (SMS codes read from the Convex logs), resets, cause publication and moderation, donation with the mock provider through release and payout, proofs, refunds and deletions, blood alerts. *(Run on 16–17 Nov 2026 with scripted browsers. Not run live: the payout failure branches and the 2-hour cancel of a pending payment, which `convex-test` covers. S07, S08 and G8 are undecided and not built.)*
+- [x] The Playwright e2e test of the donation flow (Sprint 8 task 6) passes. *(8/8 at 375px and desktop, donation flow not skipped.)*
 - [ ] The Sprint 8 security review (task 4) is done and its findings are fixed.
 
 **Not required** to leave the integration phase: a real SMS provider (board question Q1) and NabooPay live keys. Both come with the board decisions and the production deploy.
