@@ -194,6 +194,7 @@ async function completeRelease(ctx: MutationCtx, payout: Doc<"payouts">): Promis
         proofDueDays,
       ),
       link: "/structure",
+      sms: fr.sms.fundsReleased(cause.title, formatFCFA(payout.amount), proofDueDays),
     });
   }
 }

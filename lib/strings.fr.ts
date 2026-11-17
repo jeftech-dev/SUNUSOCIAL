@@ -141,7 +141,8 @@ export const fr = {
   blood: {
     allGroups: "tous groupes",
     allGroupsToggle: "Tous groupes",
-    unitsLabel: (collected: number, needed: number) => `${collected} / ${needed} poches`,
+    unitsLabel: (collected: number, needed: number) =>
+      `${collected} / ${needed} poche${needed > 1 ? "s" : ""}`,
     donor: {
       title: "Don de sang",
       intro:
@@ -230,11 +231,11 @@ export const fr = {
       loading: "Chargement…",
       targeting: (communes: string) => `Ciblage\u00a0: ${communes}`,
       reached: (reached: number, responses: number) =>
-        `${reached} prévenus · ${responses} réponse${responses > 1 ? "s" : ""}`,
+        `${reached} prévenu${reached > 1 ? "s" : ""} · ${responses} réponse${responses > 1 ? "s" : ""}`,
       goalReached: "✓ Objectif atteint",
       closedBadge: "✓ Clôturée",
       closedByModerator: (reason: string) => `Clôturée par la modération\u00a0: ${reason}`,
-      showDonors: (n: number) => `Voir les ${n} donneur${n > 1 ? "s" : ""}`,
+      showDonors: (n: number) => (n > 1 ? `Voir les ${n} donneurs` : "Voir le donneur"),
       hideDonors: "Masquer les donneurs",
       waiting: "En attente de réponses…",
       closeAlert: "Clôturer l'alerte",
@@ -247,9 +248,11 @@ export const fr = {
       groupOnSiteChoose: "Choisir le groupe…",
       donationDone: (name: string, group: string, before: number, after: number) =>
         `Don de ${name} confirmé · stock ${group}\u00a0: ${before} → ${after}`,
-      thanksTitle: (n: number) => `Remercier les ${n} donneur${n > 1 ? "s" : ""}`,
+      thanksTitle: (n: number) => (n > 1 ? `Remercier les ${n} donneurs` : "Remercier le donneur"),
       thanksDefault: (hospital: string, collected: number, groups: string) =>
-        `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poches ${groups} ont été collectées. — SUNUSOCIAL`,
+        collected > 1
+          ? `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poches ${groups} ont été collectées. — SUNUSOCIAL`
+          : `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poche ${groups} a été collectée. — SUNUSOCIAL`,
       thanksNote:
         "Envoyé par SMS et notification, uniquement aux donneurs dont le don est confirmé.",
       thanksSend: "Envoyer le message",
@@ -272,13 +275,16 @@ export const fr = {
       channelSms: "SMS (recommandé)",
       channelApp: "Notification sur l'application",
       reach: (n: number) => `donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""}`,
-      reachSuffix: (communes: string) => `inscrits à ${communes} recevront l'alerte.`,
+      reachSuffix: (communes: string, n: number) =>
+        n > 1
+          ? `inscrits à ${communes} recevront l'alerte.`
+          : `inscrit à ${communes} recevra l'alerte.`,
       reachNoCommune: "Choisissez au moins une commune.",
       send: "Envoyer l'alerte",
       sending: "Envoi…",
       sentTitle: "Alerte envoyée",
       sentBody: (n: number) =>
-        `${n} donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""} seront prévenus. Les réponses apparaissent sur votre tableau de bord.`,
+        `${n} donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""} ${n > 1 ? "seront prévenus" : "sera prévenu"}. Les réponses apparaissent sur votre tableau de bord.`,
       another: "Émettre une autre alerte",
       dashboard: "Retour au tableau de bord",
     },
@@ -951,6 +957,16 @@ export const fr = {
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
     accountExists:
       "SUNUSOCIAL\u00a0: un compte donateur existe déjà avec ce numéro. Connectez-vous, ou utilisez «\u00a0Mot de passe oublié\u00a0».",
+    structureApproved: (structure: string) =>
+      `SUNUSOCIAL\u00a0: ${structure} est vérifiée. Vous pouvez publier vos causes depuis votre espace.`,
+    fundsReleased: (title: string, amount: string, days: number) =>
+      `SUNUSOCIAL\u00a0: fonds versés pour «\u00a0${title}\u00a0»\u00a0: ${amount} sur votre compte de réception. Preuve de réception à publier sous ${days} jours.`,
+    refundApproved: (title: string, amount: string) =>
+      `SUNUSOCIAL\u00a0: votre don à «\u00a0${title}\u00a0» est remboursé\u00a0: ${amount} vous sont envoyés.`,
+    causeDeletedRefund: (title: string, amount: string) =>
+      `SUNUSOCIAL\u00a0: la cause «\u00a0${title}\u00a0» a été supprimée. ${amount} vous sont remboursés.`,
+    proofPublished: (title: string) =>
+      `SUNUSOCIAL\u00a0: la preuve de réception de «\u00a0${title}\u00a0» est publiée. Consultez-la sur sunusocial.sn/profil`,
     proofReminder: (title: string, date: string) =>
       `SUNUSOCIAL\u00a0: la preuve de réception de «\u00a0${title}\u00a0» était attendue le ${date}. Publiez-la depuis votre espace pour lever la suspension de votre compte.`,
     suspensionLifted: (structure: string) =>
