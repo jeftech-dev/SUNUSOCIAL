@@ -15,7 +15,7 @@ const REACHED: Record<CauseStatus, number> = {
 /** The structure's cause lifecycle as a compact stepper (PARCOURS S12). */
 export function CauseStatusTimeline({ status }: { status: CauseStatus }) {
   const reached = REACHED[status];
-  const bad = status === "refused" || status === "withdrawn";
+  const bad = status === "refused" || status === "withdrawn" || status === "deleted";
   return (
     <ol
       aria-label={fr.causeStatus[status]}

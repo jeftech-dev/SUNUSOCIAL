@@ -272,6 +272,20 @@ export interface StructureCauseView {
   submittedAt: number;
   /** Funds released to the structure → a reception proof is due (Sprint 5 proof flow). */
   fundsReleased: boolean;
+  /** The moderator's reason when the cause was deleted on request (DT-24); null otherwise. */
+  deletionReason: string | null;
+  /** The reception proof of a funded cause (DB-12, DT-25); null while no proof deadline runs. */
+  proof: StructureCauseProof | null;
+}
+
+export interface StructureCauseProof {
+  /** Target of a delay request (`extensions.request`, kind `proof_deadline`). */
+  deadlineId: Id<"proofDeadlines">;
+  dueAt: number;
+  /** Null until a dossier is sent. */
+  status: ProofStatus | null;
+  /** A delay request is waiting for the moderator. */
+  delayPending: boolean;
 }
 
 /** A structure's own cause with every editable field, to prefill the edit wizard. */

@@ -776,6 +776,8 @@ export const fr = {
       "Votre dossier est en cours de vérification par notre équipe. Vous ne pouvez pas encore publier.",
     refused: (reason: string) => `Votre dossier a été refusé\u00a0: ${reason}`,
     approved: "Structure vérifiée.",
+    suspended:
+      "Compte suspendu : une preuve de réception est en retard. Vos causes sont masquées et vous ne pouvez pas en publier de nouvelles jusqu'à la levée de la suspension par la modération.",
     hello: (name: string) => `Bonjour ${name}`,
   },
 
@@ -806,6 +808,17 @@ export const fr = {
     extensionReasonLabel: "Raison de la prolongation",
     extensionSubmit: "Envoyer la demande",
     extensionRequested: "Demande de prolongation envoyée. Un modérateur va l'examiner.",
+    deleted: "Cause supprimée.",
+    deletionReason: (reason: string) => `Cause supprimée par la modération : ${reason}`,
+    proofDue: (date: string) => `Preuve de réception à publier avant le ${date}.`,
+    proofSubmitted: "Preuve envoyée, en attente de validation.",
+    proofValidated: "Preuve validée.",
+    proofEscalated: "La modération a demandé des compléments sur votre preuve.",
+    requestProofDelay: "Demander un délai",
+    proofDelayDateLabel: "Nouvelle échéance pour la preuve",
+    proofDelayReasonLabel: "Raison du délai",
+    proofDelayRequested: "Demande de délai envoyée. Un modérateur va l'examiner.",
+    proofDelayPending: "Demande de délai en attente de décision.",
   },
 
   /** Payout-account change (S10, DT-5). */

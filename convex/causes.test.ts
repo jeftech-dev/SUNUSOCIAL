@@ -535,7 +535,7 @@ describe("causes.withdraw", () => {
 });
 
 describe("causes.mine", () => {
-  it("returns only the structure's own causes, newest first, without deleted ones", async () => {
+  it("returns only the structure's own causes, newest first, deleted ones included", async () => {
     const t = await seeded();
     const { client } = await asStructure(t);
     const first = await client.mutation(
@@ -549,11 +549,85 @@ describe("causes.mine", () => {
     await t.run((ctx) => ctx.db.patch(first.id, { status: "deleted" }));
 
     const mine = await client.query(api.causes.mine, {});
-    expect(mine.map((c) => c.title)).toEqual(["Deuxième"]);
+    expect(mine.map((c) => c.title)).toEqual(["Deuxième", "Première"]);
     expect(mine[0].id).toBe(second.id);
+    expect(mine[1]).toMatchObject({ status: "deleted", deletionReason: null, proof: null });
 
     // Another structure sees none of these.
     const other = await asStructure(t);
     expect(await other.client.query(api.causes.mine, {})).toEqual([]);
+  });
+});
+
+describe("causes.mine: deleted causes and the proof follow-up", () => {
+  it("keeps a deleted cause with the moderator's reason and its proof deadline", async () => {
+    const t = await seeded();
+    const { client, structureId } = await asStructure(t);
+    const { id } = await client.mutation(api.causes.create, await createArgs(t));
+    const dueAt = Date.now() + 7 * DAY_MS;
+    const deadlineId = await t.run(async (ctx) => {
+      await ctx.db.patch(id, { status: "deleted", fundsReleasedAt: Date.now() });
+      await ctx.db.insert("deletionRequests", {
+        causeId: id,
+        structureReason: "Besoin déjà couvert",
+        status: "approved",
+        fundOutcome: "payout",
+        moderatorReason: "Fonds versés pour le besoin engagé",
+        createdAt: Date.now(),
+      });
+      return ctx.db.insert("proofDeadlines", {
+        causeId: id,
+        structureId,
+        reason: "deletion_payout",
+        dueAt,
+        enforced: true,
+      });
+    });
+
+    const [row] = await client.query(api.causes.mine, {});
+    expect(row).toMatchObject({
+      id,
+      status: "deleted",
+      deletionReason: "Fonds versés pour le besoin engagé",
+      proof: { deadlineId, dueAt, status: null, delayPending: false },
+    });
+  });
+
+  it("reports the dossier status and a pending delay request", async () => {
+    const t = await seeded();
+    const { client, structureId } = await asStructure(t);
+    const { id } = await client.mutation(api.causes.create, await createArgs(t));
+    const deadlineId = await t.run(async (ctx) => {
+      await ctx.db.patch(id, { status: "closed", fundsReleasedAt: Date.now() });
+      return ctx.db.insert("proofDeadlines", {
+        causeId: id,
+        structureId,
+        reason: "release",
+        dueAt: Date.now() + 2 * DAY_MS,
+        enforced: true,
+      });
+    });
+    expect((await client.query(api.causes.mine, {}))[0].proof).toMatchObject({ status: null });
+
+    await client.mutation(api.extensions.request, {
+      kind: "proof_deadline",
+      targetId: deadlineId,
+      requestedUntil: Date.now() + 5 * DAY_MS,
+      reason: "Le fournisseur livre la semaine prochaine.",
+    });
+    await t.run((ctx) =>
+      ctx.db.insert("proofs", {
+        causeId: id,
+        structureId,
+        report: "Matériel reçu et installé.",
+        spend: [],
+        status: "submitted",
+        dossierFlags: [],
+        createdAt: Date.now(),
+      }),
+    );
+    const [row] = await client.query(api.causes.mine, {});
+    expect(row.deletionReason).toBeNull();
+    expect(row.proof).toMatchObject({ status: "submitted", delayPending: true });
   });
 });
