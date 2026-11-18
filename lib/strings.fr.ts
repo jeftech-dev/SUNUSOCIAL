@@ -817,7 +817,7 @@ export const fr = {
     refused: (reason: string) => `Votre dossier a été refusé\u00a0: ${reason}`,
     approved: "Structure vérifiée.",
     suspended:
-      "Compte suspendu : une preuve de réception est en retard. Vos causes sont masquées et vous ne pouvez pas en publier de nouvelles jusqu'à la levée de la suspension par la modération.",
+      "Compte suspendu\u00a0: une preuve de réception est en retard. Vos causes sont masquées et vous ne pouvez pas en publier de nouvelles jusqu'à la levée de la suspension par la modération.",
     hello: (name: string) => `Bonjour ${name}`,
   },
 
@@ -855,7 +855,7 @@ export const fr = {
     extensionSubmit: "Envoyer la demande",
     extensionRequested: "Demande de prolongation envoyée. Un modérateur va l'examiner.",
     deleted: "Cause supprimée.",
-    deletionReason: (reason: string) => `Cause supprimée par la modération : ${reason}`,
+    deletionReason: (reason: string) => `Cause supprimée par la modération\u00a0: ${reason}`,
     proofDue: (date: string) => `Preuve de réception à publier avant le ${date}.`,
     proofSubmitted: "Preuve envoyée, en attente de validation.",
     proofValidated: "Preuve validée.",
