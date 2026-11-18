@@ -129,7 +129,10 @@ export function ModerationQueues() {
             key={t.key}
             role="tab"
             aria-selected={tab === t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => {
+              setTab(t.key);
+              setNotice(null);
+            }}
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
               tab === t.key

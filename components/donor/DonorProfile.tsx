@@ -105,7 +105,10 @@ function DonationRow({ donation }: { donation: DonationHistoryView }) {
           {fr.profile.lateRefund(formatFCFA(donation.net))}
         </p>
       )}
-      {!donation.lateRefund && donation.proof.available && donation.proof.proofId ? (
+      {!donation.lateRefund &&
+      (donation.status === "held" || donation.status === "released") &&
+      donation.proof.available &&
+      donation.proof.proofId ? (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-semibold text-brand-green-strong">
             {fr.profile.proofValidated(donation.proof.itemCount)}

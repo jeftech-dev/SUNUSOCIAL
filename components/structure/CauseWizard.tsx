@@ -91,7 +91,7 @@ export function CauseWizard({ cause }: { cause?: OwnedCauseView }) {
       }
     }
     if (index === 1 && !isEdit && !file) {
-      next.banner = fr.errors.receiptRequired;
+      next.banner = fr.errors.bannerRequired;
     }
     if (index === 2) {
       const amount = Number(goalAmount);

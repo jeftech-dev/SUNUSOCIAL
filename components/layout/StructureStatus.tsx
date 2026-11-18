@@ -41,7 +41,7 @@ export function StructureStatus({ title }: { title: string }) {
           role="status"
           className="rounded-lg bg-[var(--success-soft)] px-4 py-3 text-sm font-semibold text-success"
         >
-          {fr.spaces.approved}
+          {me.user.role === "hospital" ? fr.spaces.approvedHospital : fr.spaces.approved}
         </p>
       )}
     </section>

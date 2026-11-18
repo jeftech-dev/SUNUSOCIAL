@@ -816,6 +816,7 @@ export const fr = {
       "Votre dossier est en cours de vérification par notre équipe. Vous ne pouvez pas encore publier.",
     refused: (reason: string) => `Votre dossier a été refusé\u00a0: ${reason}`,
     approved: "Structure vérifiée.",
+    approvedHospital: "Hôpital vérifié.",
     suspended:
       "Compte suspendu\u00a0: une preuve de réception est en retard. Vos causes sont masquées et vous ne pouvez pas en publier de nouvelles jusqu'à la levée de la suspension par la modération.",
     hello: (name: string) => `Bonjour ${name}`,
@@ -1037,6 +1038,7 @@ export const fr = {
     mfaRequired: "Saisissez le code reçu par SMS pour continuer.",
     accountDisabled: "Ce compte est bloqué. Contactez SUNUSOCIAL sur WhatsApp.",
     receiptRequired: "Ajoutez votre récépissé ou agrément.",
+    bannerRequired: "Ajoutez une image de bannière.",
     receiptInvalid: "Le document doit être un PDF, JPG ou PNG de 5 Mo maximum.",
     payoutRequired: "Indiquez le compte de réception des fonds.",
     resetLinkInvalid: "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
