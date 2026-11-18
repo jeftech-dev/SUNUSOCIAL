@@ -546,7 +546,11 @@ describe("causes.mine", () => {
       api.causes.create,
       await createArgs(t, { title: "Deuxième" }),
     );
-    await t.run((ctx) => ctx.db.patch(first.id, { status: "deleted" }));
+    // Explicit submission times: two causes created in the same millisecond would tie.
+    await t.run(async (ctx) => {
+      await ctx.db.patch(first.id, { status: "deleted", submittedAt: 1_000 });
+      await ctx.db.patch(second.id, { submittedAt: 2_000 });
+    });
 
     const mine = await client.query(api.causes.mine, {});
     expect(mine.map((c) => c.title)).toEqual(["Deuxième", "Première"]);
