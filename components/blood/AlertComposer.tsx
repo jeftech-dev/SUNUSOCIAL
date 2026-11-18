@@ -259,7 +259,7 @@ export function AlertComposer() {
               {preview?.total ?? "…"}
             </strong>{" "}
             {preview && fr.blood.composer.reach(preview.total)}{" "}
-            {fr.blood.composer.reachSuffix(communes.join(", "))}
+            {fr.blood.composer.reachSuffix(communes.join(", "), preview?.total ?? 0)}
           </p>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { RequireRole } from "@/components/auth/RequireRole";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ModerationQueues } from "@/components/moderation/ModerationQueues";
+import { MessageList } from "@/components/notifications/MessageList";
 
 /** Mod 02: the structures / causes / proofs moderation queues. */
 export default function ModerationQueuesPage() {
@@ -11,6 +12,7 @@ export default function ModerationQueuesPage() {
           <SignOutButton />
         </div>
         <ModerationQueues />
+        <MessageList />
       </div>
     </RequireRole>
   );

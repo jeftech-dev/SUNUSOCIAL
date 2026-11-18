@@ -10,14 +10,15 @@
 
 import type * as admin from "../admin.js";
 import type * as audit from "../audit.js";
-import type * as blood from "../blood.js";
 import type * as auth from "../auth.js";
+import type * as blood from "../blood.js";
 import type * as causes from "../causes.js";
 import type * as crons from "../crons.js";
 import type * as donations from "../donations.js";
 import type * as extensions from "../extensions.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as lib_bloodReach from "../lib/bloodReach.js";
 import type * as lib_causeViews from "../lib/causeViews.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_errors from "../lib/errors.js";
@@ -34,6 +35,7 @@ import type * as proofChecks from "../proofChecks.js";
 import type * as proofs from "../proofs.js";
 import type * as seed from "../seed.js";
 import type * as structures from "../structures.js";
+import type * as suspensions from "../suspensions.js";
 import type * as validators from "../validators.js";
 
 import type {
@@ -45,14 +47,15 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   audit: typeof audit;
-  blood: typeof blood;
   auth: typeof auth;
+  blood: typeof blood;
   causes: typeof causes;
   crons: typeof crons;
   donations: typeof donations;
   extensions: typeof extensions;
   files: typeof files;
   http: typeof http;
+  "lib/bloodReach": typeof lib_bloodReach;
   "lib/causeViews": typeof lib_causeViews;
   "lib/crypto": typeof lib_crypto;
   "lib/errors": typeof lib_errors;
@@ -69,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   proofs: typeof proofs;
   seed: typeof seed;
   structures: typeof structures;
+  suspensions: typeof suspensions;
   validators: typeof validators;
 }>;
 

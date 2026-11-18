@@ -1,10 +1,12 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
 import { ProofReview } from "@/components/moderation/ProofReview";
+import { SuspendedStructures } from "@/components/moderation/SuspendedStructures";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -119,6 +121,8 @@ export function ModerationQueues() {
         </div>
       </div>
 
+      <SuspendedStructures />
+
       <div role="tablist" className="flex flex-wrap gap-2">
         {tabs.map((t) => (
           <button
@@ -192,12 +196,39 @@ export function ModerationQueues() {
                 key={s.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4"
               >
-                <div className="flex min-w-0 flex-col">
-                  <strong className="font-heading">{s.name}</strong>
-                  <span className="text-sm text-muted-foreground">
-                    {fr.moderation.structureMeta(s.type, s.region)}
-                    {s.hasPayout ? ` · ${fr.moderation.hasPayout}` : ""}
+                <div className="flex min-w-0 flex-col gap-0.5 text-sm">
+                  <strong className="font-heading text-base">{s.name}</strong>
+                  <span className="text-muted-foreground">
+                    {fr.moderation.structureMeta(
+                      s.type,
+                      fr.moderation.structurePlace(s.commune, s.region),
+                    )}
                   </span>
+                  <span className="break-words">
+                    {fr.moderation.structureContact(s.contactName, s.phone, s.email)}
+                  </span>
+                  <span>
+                    {s.payout
+                      ? fr.moderation.payoutAccount(
+                          fr.methods[s.payout.method],
+                          s.payout.accountNumber,
+                          s.payout.holderName,
+                        )
+                      : fr.moderation.noPayoutAccount}
+                  </span>
+                  {s.receiptNo && <span>{fr.moderation.receiptNo(s.receiptNo)}</span>}
+                  {s.receiptUrl ? (
+                    <a
+                      href={s.receiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-brand-blue underline underline-offset-4"
+                    >
+                      {fr.moderation.viewReceipt}
+                    </a>
+                  ) : (
+                    <span className="text-destructive">{fr.moderation.receiptMissing}</span>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -231,11 +262,25 @@ export function ModerationQueues() {
                 key={c.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line-warm)] bg-card p-4"
               >
-                <div className="flex min-w-0 flex-col">
-                  <strong className="font-heading">{c.title}</strong>
-                  <span className="text-sm text-muted-foreground">
-                    {c.organization}
+                <div className="flex min-w-0 flex-1 basis-72 flex-col gap-1 text-sm">
+                  <strong className="font-heading text-base">{c.title}</strong>
+                  <span className="text-muted-foreground">
+                    {c.organization} · {c.category}
                     {c.urgent ? ` · ${fr.common.urgent}` : ""}
+                  </span>
+                  {c.bannerUrl && (
+                    <Image
+                      src={c.bannerUrl}
+                      alt=""
+                      width={320}
+                      height={160}
+                      className="h-32 w-full max-w-xs rounded-lg object-cover"
+                    />
+                  )}
+                  <p className="whitespace-pre-line break-words">{c.description}</p>
+                  <span className="font-semibold">
+                    {fr.moderation.causeGoal(formatFCFA(c.goal))} ·{" "}
+                    {fr.moderation.causeDeadline(formatDate(c.endCondition.deadline))}
                   </span>
                 </div>
                 <div className="flex gap-2">

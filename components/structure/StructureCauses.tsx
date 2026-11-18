@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMe } from "@/hooks/useMe";
+import { formatDate } from "@/lib/dates";
 import { toUiError } from "@/lib/errors";
 import { formatFCFA } from "@/lib/money";
 import { fr } from "@/lib/strings.fr";
@@ -26,9 +27,11 @@ export function StructureCauses() {
   const requestExtension = useMutation(api.extensions.request);
   const [pending, setPending] = useState<Id<"causes"> | null>(null);
   const [extendId, setExtendId] = useState<Id<"causes"> | null>(null);
+  const [delayId, setDelayId] = useState<Id<"causes"> | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
-  const approved = me?.structure?.status === "approved";
+  // A suspended structure cannot publish (DB-17): the server refuses, so the entry points go too.
+  const approved = me?.structure?.status === "approved" && me.structure.suspendedAt === undefined;
 
   const onWithdraw = async (causeId: Id<"causes">) => {
     if (!window.confirm(fr.structureCauses.withdrawConfirm)) return;
@@ -102,6 +105,9 @@ export function StructureCauses() {
           {causes.map((cause) => {
             const editable = cause.status === "pending_review" || cause.status === "refused";
             const withdrawable = cause.withdrawable;
+            const proof = cause.proof;
+            // A dossier can be sent once funds are out, and only once (proofs.submit).
+            const proofOpen = (cause.fundsReleased || proof !== null) && !proof?.status;
             return (
               <li
                 key={cause.id}
@@ -122,6 +128,13 @@ export function StructureCauses() {
                   {cause.refusalReason && (
                     <p className="text-sm text-destructive">
                       {fr.structureCauses.refusalReason(cause.refusalReason)}
+                    </p>
+                  )}
+                  {cause.status === "deleted" && (
+                    <p className="text-sm text-destructive">
+                      {cause.deletionReason
+                        ? fr.structureCauses.deletionReason(cause.deletionReason)
+                        : fr.structureCauses.deleted}
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground">
@@ -167,16 +180,71 @@ export function StructureCauses() {
                         {fr.structureCauses.requestExtension}
                       </Button>
                     )}
-                    {cause.fundsReleased && (
+                    {proofOpen && (
                       <Button variant="cta" size="sm" asChild>
                         <Link href={`/structure/preuve/${cause.id}`}>
                           {fr.structureCauses.submitProof}
                         </Link>
                       </Button>
                     )}
+                    {proofOpen && proof && !proof.delayPending && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDelayId((id) => (id === cause.id ? null : cause.id))}
+                      >
+                        {fr.structureCauses.requestProofDelay}
+                      </Button>
+                    )}
                   </div>
+                  {proof && (
+                    <p className="text-sm font-semibold text-brand-blue">
+                      {proof.status === "validated"
+                        ? fr.structureCauses.proofValidated
+                        : proof.status === "submitted"
+                          ? fr.structureCauses.proofSubmitted
+                          : proof.status === "escalated"
+                            ? fr.structureCauses.proofEscalated
+                            : fr.structureCauses.proofDue(formatDate(proof.dueAt))}
+                      {proofOpen &&
+                        proof.delayPending &&
+                        ` ${fr.structureCauses.proofDelayPending}`}
+                    </p>
+                  )}
+                  {delayId === cause.id && proof && (
+                    <ExtensionForm
+                      idPrefix="delay"
+                      dateLabel={fr.structureCauses.proofDelayDateLabel}
+                      reasonLabel={fr.structureCauses.proofDelayReasonLabel}
+                      busy={pending === cause.id}
+                      onSubmit={async (requestedUntil, reason) => {
+                        setPending(cause.id);
+                        setNotice(null);
+                        try {
+                          await requestExtension({
+                            kind: "proof_deadline",
+                            targetId: proof.deadlineId,
+                            requestedUntil,
+                            reason,
+                          });
+                          setNotice({
+                            kind: "success",
+                            text: fr.structureCauses.proofDelayRequested,
+                          });
+                          setDelayId(null);
+                        } catch (error) {
+                          setNotice({ kind: "error", text: toUiError(error).message });
+                        } finally {
+                          setPending(null);
+                        }
+                      }}
+                    />
+                  )}
                   {extendId === cause.id && (
                     <ExtensionForm
+                      idPrefix="ext"
+                      dateLabel={fr.structureCauses.extensionDateLabel}
+                      reasonLabel={fr.structureCauses.extensionReasonLabel}
                       busy={pending === cause.id}
                       onSubmit={async (requestedUntil, reason) => {
                         setPending(cause.id);
@@ -211,11 +279,20 @@ export function StructureCauses() {
   );
 }
 
-/** Inline form to request a new cause deadline (DT-30). The server enforces the max extension. */
+/**
+ * Inline form to request a new cause deadline or a proof delay (DT-30). The server enforces the
+ * max extension.
+ */
 function ExtensionForm({
+  idPrefix,
+  dateLabel,
+  reasonLabel,
   busy,
   onSubmit,
 }: {
+  idPrefix: string;
+  dateLabel: string;
+  reasonLabel: string;
   busy: boolean;
   onSubmit: (requestedUntil: number, reason: string) => void;
 }) {
@@ -228,21 +305,21 @@ function ExtensionForm({
   };
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-input bg-background p-3">
-      <label className="text-xs font-semibold" htmlFor="ext-date">
-        {fr.structureCauses.extensionDateLabel}
+      <label className="text-xs font-semibold" htmlFor={`${idPrefix}-date`}>
+        {dateLabel}
       </label>
       <input
-        id="ext-date"
+        id={`${idPrefix}-date`}
         type="date"
         value={date}
         onChange={(e) => setDate(e.target.value)}
         className="w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
       />
-      <label className="text-xs font-semibold" htmlFor="ext-reason">
-        {fr.structureCauses.extensionReasonLabel}
+      <label className="text-xs font-semibold" htmlFor={`${idPrefix}-reason`}>
+        {reasonLabel}
       </label>
       <textarea
-        id="ext-reason"
+        id={`${idPrefix}-reason`}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         className="min-h-16 w-full rounded-lg border-[1.5px] border-input bg-card p-2.5 text-sm"
