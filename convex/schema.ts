@@ -353,7 +353,9 @@ export default defineSchema({
     link: v.optional(v.string()),
     readAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_user_read", ["userId", "readAt"]),
+  })
+    .index("by_user_read", ["userId", "readAt"])
+    .index("by_user_created", ["userId", "createdAt"]),
 
   /** Append-only (DB-9, DT-18). Rows are never edited; donor logins are purged after 12 months. */
   auditLog: defineTable({

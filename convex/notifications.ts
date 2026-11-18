@@ -9,7 +9,11 @@ import { notificationKindV } from "./validators";
 
 const LIST_LIMIT = 30;
 
-/** The latest notifications of the caller, optionally restricted to some kinds. */
+/**
+ * The latest notifications of the caller, newest first, optionally restricted to some kinds.
+ * Ordered by creation time: `by_user_read` sorts by `readAt` first, which pushes new unread rows
+ * behind every read one.
+ */
 export const listMine = query({
   args: { kinds: v.optional(v.array(notificationKindV)) },
   handler: async (ctx, { kinds }) => {
@@ -17,7 +21,7 @@ export const listMine = query({
     const wanted: ReadonlySet<NotificationKind> | null = kinds ? new Set(kinds) : null;
     const rows = await ctx.db
       .query("notifications")
-      .withIndex("by_user_read", (q) => q.eq("userId", user._id))
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
       .order("desc")
       .take(wanted ? 200 : LIST_LIMIT);
     return rows
