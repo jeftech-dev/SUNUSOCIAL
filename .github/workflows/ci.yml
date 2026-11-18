@@ -43,4 +43,7 @@ jobs:
         run: npm run build
 
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audit dev tooling (informational)
+        run: npm audit --audit-level=high || true

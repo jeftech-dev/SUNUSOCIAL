@@ -81,7 +81,7 @@
 
 ## 6. Dependency Security
 
-- **Audit process:** `npm audit` in CI on every PR; block merges on high/critical advisories affecting production deps.
+- **Audit process:** `npm audit --omit=dev` in CI on every PR; block merges on high/critical advisories affecting production deps. Advisories in dev tooling (eslint, vitest, vite) are reported in the CI log without blocking, and those tools are bumped once a non-breaking version exists.
 - **Automated updates:** Dependabot/Renovate for Convex, Next.js, and provider SDKs; review and merge weekly.
 - **CVE policy:** triage high/critical within 48 hours; patch or mitigate before the next release. Pin provider SDK versions and review their changelogs (the payment and SMS SDKs are the highest-risk dependencies).
 
