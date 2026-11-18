@@ -14,6 +14,9 @@ import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
 import { notifyUser } from "./notify";
 
+/** Minimum delay between two reminders to the same structure. */
+const REMIND_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
 /** Enforced proof deadlines of a structure that are past due and still unmet. */
 async function overdueDeadlines(
   ctx: QueryCtx,
@@ -92,6 +95,16 @@ export const remind = mutation({
     const structure = await suspendedStructure(ctx, structureId);
     const overdue = await overdueDeadlines(ctx, structureId, Date.now());
     if (overdue.length === 0) throw appError("CONFLICT", fr.errors.noLateProof, "structureId");
+    // One reminder per cooldown: a double click or several moderators must not spam the SMS.
+    const previous = await ctx.db
+      .query("auditLog")
+      .withIndex("by_target", (q) => q.eq("targetTable", "structures").eq("targetId", structureId))
+      .order("desc")
+      .take(20);
+    const since = Date.now() - REMIND_COOLDOWN_MS;
+    if (previous.some((row) => row.action === "structure.remind" && row.createdAt > since)) {
+      throw appError("CONFLICT", fr.errors.reminderTooSoon, "structureId");
+    }
     const oldest = overdue.reduce((a, b) => (a.dueAt <= b.dueAt ? a : b));
     const cause = await ctx.db.get(oldest.causeId);
     const title = cause?.title ?? structure.name;

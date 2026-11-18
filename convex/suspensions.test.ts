@@ -172,4 +172,22 @@ describe("suspensions (S26)", () => {
     await t.run((ctx) => ctx.db.patch(deadlineId, { metAt: Date.now() }));
     await expectAppError(mod.client.mutation(api.suspensions.remind, { structureId }), "CONFLICT");
   });
+
+  it("refuses a second reminder within the cooldown", async () => {
+    const t = setup();
+    const { structureId } = await lateStructure(t, 2);
+    const mod = await client(t, "moderator");
+    const owner = await client(t, "structure", structureId);
+    await t.mutation(internal.payments.enforceProofDeadlines, {});
+
+    await mod.client.mutation(api.suspensions.remind, { structureId });
+    await expectAppError(mod.client.mutation(api.suspensions.remind, { structureId }), "CONFLICT");
+    const notes = await t.run((ctx) =>
+      ctx.db
+        .query("notifications")
+        .withIndex("by_user_read", (q) => q.eq("userId", owner.userId))
+        .collect(),
+    );
+    expect(notes.filter((n) => n.title === fr.notifications.proofReminderTitle)).toHaveLength(1);
+  });
 });

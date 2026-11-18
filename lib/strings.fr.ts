@@ -1114,6 +1114,7 @@ export const fr = {
     extensionAlreadyPending: "Une demande de prolongation est déjà en cours pour cette échéance.",
     notSuspended: "Cette structure n'est pas suspendue.",
     noLateProof: "Aucune preuve n'est en retard pour cette structure.",
+    reminderTooSoon: "Un rappel vient déjà d'être envoyé à cette structure. Réessayez plus tard.",
     proofStillLate:
       "Une preuve est encore en retard\u00a0: validez-la ou accordez un délai avant de lever la suspension.",
     extensionStale:
