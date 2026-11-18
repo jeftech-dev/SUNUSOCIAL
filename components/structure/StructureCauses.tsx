@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { CauseStatusTimeline } from "@/components/structure/CauseStatusTimeline";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMe } from "@/hooks/useMe";
@@ -17,6 +18,7 @@ import { fr } from "@/lib/strings.fr";
 import { cn } from "@/lib/utils";
 
 type Notice = { kind: "success" | "error"; text: string };
+type Confirming = { action: "withdraw" | "delete"; causeId: Id<"causes"> };
 
 /** The structure's own causes with their moderation status and actions (PARCOURS S12–S14). */
 export function StructureCauses() {
@@ -29,12 +31,13 @@ export function StructureCauses() {
   const [extendId, setExtendId] = useState<Id<"causes"> | null>(null);
   const [delayId, setDelayId] = useState<Id<"causes"> | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [confirming, setConfirming] = useState<Confirming | null>(null);
 
   // A suspended structure cannot publish (DB-17): the server refuses, so the entry points go too.
   const approved = me?.structure?.status === "approved" && me.structure.suspendedAt === undefined;
 
   const onWithdraw = async (causeId: Id<"causes">) => {
-    if (!window.confirm(fr.structureCauses.withdrawConfirm)) return;
+    setConfirming(null);
     setPending(causeId);
     setNotice(null);
     try {
@@ -47,9 +50,8 @@ export function StructureCauses() {
     }
   };
 
-  const onRequestDeletion = async (causeId: Id<"causes">) => {
-    const reason = window.prompt(fr.structureCauses.deletionPrompt);
-    if (reason === null) return;
+  const onRequestDeletion = async (causeId: Id<"causes">, reason: string) => {
+    setConfirming(null);
     setPending(causeId);
     setNotice(null);
     try {
@@ -156,21 +158,24 @@ export function StructureCauses() {
                         variant="ghost"
                         size="sm"
                         disabled={pending === cause.id}
-                        onClick={() => onWithdraw(cause.id)}
+                        onClick={() => setConfirming({ action: "withdraw", causeId: cause.id })}
                       >
                         {fr.structureCauses.withdraw}
                       </Button>
                     )}
-                    {cause.status === "active" && !withdrawable && !cause.fundsReleased && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={pending === cause.id}
-                        onClick={() => onRequestDeletion(cause.id)}
-                      >
-                        {fr.structureCauses.requestDeletion}
-                      </Button>
-                    )}
+                    {cause.status === "active" &&
+                      !withdrawable &&
+                      !cause.fundsReleased &&
+                      !cause.deletionPending && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={pending === cause.id}
+                          onClick={() => setConfirming({ action: "delete", causeId: cause.id })}
+                        >
+                          {fr.structureCauses.requestDeletion}
+                        </Button>
+                      )}
                     {cause.status === "active" && !cause.fundsReleased && (
                       <Button
                         variant="ghost"
@@ -197,6 +202,11 @@ export function StructureCauses() {
                       </Button>
                     )}
                   </div>
+                  {cause.deletionPending && (
+                    <p className="text-sm font-semibold text-brand-blue">
+                      {fr.structureCauses.deletionPending}
+                    </p>
+                  )}
                   {proof && (
                     <p className="text-sm font-semibold text-brand-blue">
                       {proof.status === "validated"
@@ -274,6 +284,25 @@ export function StructureCauses() {
             );
           })}
         </ul>
+      )}
+      {confirming?.action === "withdraw" && (
+        <ConfirmDialog
+          title={fr.structureCauses.withdrawTitle}
+          body={fr.structureCauses.withdrawBody}
+          confirmLabel={fr.structureCauses.withdraw}
+          onConfirm={() => onWithdraw(confirming.causeId)}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
+      {confirming?.action === "delete" && (
+        <ConfirmDialog
+          title={fr.structureCauses.requestDeletion}
+          body={fr.structureCauses.deletionBody}
+          reasonLabel={fr.structureCauses.deletionReasonLabel}
+          confirmLabel={fr.structureCauses.deletionSubmit}
+          onConfirm={(reason) => onRequestDeletion(confirming.causeId, reason)}
+          onCancel={() => setConfirming(null)}
+        />
       )}
     </section>
   );

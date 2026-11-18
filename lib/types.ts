@@ -274,6 +274,8 @@ export interface StructureCauseView {
   fundsReleased: boolean;
   /** The moderator's reason when the cause was deleted on request (DT-24); null otherwise. */
   deletionReason: string | null;
+  /** A deletion request is waiting for a moderator, so a second one would be refused. */
+  deletionPending: boolean;
   /** The reception proof of a funded cause (DB-12, DT-25); null while no proof deadline runs. */
   proof: StructureCauseProof | null;
 }

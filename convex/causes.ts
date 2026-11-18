@@ -255,6 +255,20 @@ async function isWithdrawable(ctx: QueryCtx, cause: Doc<"causes">): Promise<bool
 }
 
 /**
+ * What a structure would receive if the goal is reached (create-cause wizard, PRD): the goal minus
+ * the estimated payment fees, with the same rates as the cause page. `null` for an unusable amount.
+ */
+export const estimateNet = query({
+  args: { goalAmount: v.number() },
+  handler: async (ctx, { goalAmount }): Promise<number | null> => {
+    await requireRole(ctx, "structure");
+    if (!Number.isSafeInteger(goalAmount) || goalAmount < 1) return null;
+    const { paymentProvider, platformFeeRate } = loadConfig(process.env);
+    return computeFee(goalAmount, paymentProvider, platformFeeRate).net;
+  },
+});
+
+/**
  * The structure's own causes, newest first, for the dashboard. Deleted causes stay listed: the
  * structure must read the moderator's reason, and a deletion paid out to it still owes a proof.
  */
@@ -272,12 +286,15 @@ export const mine = query({
     // storage round-trips and makes dashboard latency scale linearly with the number of causes.
     return Promise.all(
       causes.map(async (cause) => {
-        const [bannerUrl, withdrawable, deletionReason, proof] = await Promise.all([
-          ctx.storage.getUrl(cause.bannerFileId),
-          isWithdrawable(ctx, cause),
-          deletionReasonOf(ctx, cause),
-          proofStateOf(ctx, cause._id),
-        ]);
+        const [bannerUrl, withdrawable, deletionReason, deletionPending, proof] = await Promise.all(
+          [
+            ctx.storage.getUrl(cause.bannerFileId),
+            isWithdrawable(ctx, cause),
+            deletionReasonOf(ctx, cause),
+            hasPendingDeletion(ctx, cause),
+            proofStateOf(ctx, cause._id),
+          ],
+        );
         return {
           id: cause._id,
           title: cause.title,
@@ -295,6 +312,7 @@ export const mine = query({
           submittedAt: cause.submittedAt,
           fundsReleased: cause.fundsReleasedAt !== undefined,
           deletionReason,
+          deletionPending,
           proof,
         };
       }),
@@ -310,6 +328,16 @@ async function deletionReasonOf(ctx: QueryCtx, cause: Doc<"causes">): Promise<st
     .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
     .collect();
   return requests.find((r) => r.status === "approved")?.moderatorReason ?? null;
+}
+
+/** Whether an active cause has a deletion request still waiting for a moderator. */
+async function hasPendingDeletion(ctx: QueryCtx, cause: Doc<"causes">): Promise<boolean> {
+  if (cause.status !== "active") return false;
+  const requests = await ctx.db
+    .query("deletionRequests")
+    .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
+    .collect();
+  return requests.some((r) => r.status === "pending");
 }
 
 /** Where the reception proof of a cause stands, once its proof deadline exists (DT-25). */

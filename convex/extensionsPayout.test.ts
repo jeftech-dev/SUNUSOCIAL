@@ -499,3 +499,60 @@ describe("moderation.queues (extensions + payout changes)", () => {
     expect(queues.payoutChanges.count).toBe(1);
   });
 });
+
+describe("structures.myPayout", () => {
+  it("shows the active account and the pending change with masked numbers", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    expect(await s.client.query(api.structures.myPayout, {})).toEqual({
+      active: { method: "wave", maskedNumber: "+221 77 ••• 00 01", holderName: "Awa Diop" },
+      pending: null,
+    });
+
+    await t.action(api.otp.send, { purpose: "payout_number", phone: NEW_NUMBER });
+    await s.client.mutation(api.structures.requestPayoutChange, {
+      payout: {
+        method: "orange_money",
+        accountNumber: NEW_NUMBER,
+        holderName: "Awa Diop",
+        otpCode: lastSmsCode(NEW_NUMBER),
+      },
+    });
+    const view = await s.client.query(api.structures.myPayout, {});
+    expect(view?.pending).toEqual({
+      method: "orange_money",
+      maskedNumber: "+221 76 ••• 00 03",
+      holderName: "Awa Diop",
+    });
+    expect(view?.active?.maskedNumber).toBe("+221 77 ••• 00 01");
+    // The raw number never leaves the server.
+    expect(JSON.stringify(view)).not.toContain(NEW_NUMBER);
+  });
+
+  it("is for structures only", async () => {
+    const t = setup();
+    const mod = await moderatorClient(t);
+    await expectAppError(mod.query(api.structures.myPayout, {}), "FORBIDDEN");
+  });
+});
+
+describe("causes.estimateNet", () => {
+  it("returns the goal minus the estimated payment fees", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    expect(await s.client.query(api.causes.estimateNet, { goalAmount: 100_000 })).toBe(97_000);
+  });
+
+  it("is null for an amount that cannot be a goal", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    expect(await s.client.query(api.causes.estimateNet, { goalAmount: 0 })).toBeNull();
+    expect(await s.client.query(api.causes.estimateNet, { goalAmount: 12.5 })).toBeNull();
+  });
+
+  it("is for structures only", async () => {
+    const t = setup();
+    const mod = await moderatorClient(t);
+    await expectAppError(mod.query(api.causes.estimateNet, { goalAmount: 1000 }), "FORBIDDEN");
+  });
+});

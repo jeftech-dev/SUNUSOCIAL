@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 
 type Notice = { kind: "success" | "error"; text: string };
 
+const NOTICE_MS = 6_000;
+
 /** Structures suspended for a late proof, with "Relancer" and "Lever la suspension" (S26). */
 export function SuspendedStructures() {
   const suspended = useQuery(api.suspensions.list);
@@ -19,6 +21,13 @@ export function SuspendedStructures() {
   const lift = useMutation(api.suspensions.lift);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+
+  // A confirmation is only worth reading for a moment; it must not outlive the action it confirms.
+  useEffect(() => {
+    if (notice?.kind !== "success") return;
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const run = async (action: Promise<unknown>, done: string) => {
     setBusy(true);

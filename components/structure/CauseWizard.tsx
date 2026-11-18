@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,6 +14,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { config, DAY_MS } from "@/lib/config";
 import { toUiError } from "@/lib/errors";
+import { formatFCFA } from "@/lib/money";
 import { fr } from "@/lib/strings.fr";
 import {
   CATEGORIES,
@@ -62,6 +63,11 @@ export function CauseWizard({ cause }: { cause?: OwnedCauseView }) {
   const [file, setFile] = useState<File | null>(null);
   const [endType, setEndType] = useState<EndType>(cause?.endType ?? "date");
   const [goalAmount, setGoalAmount] = useState(cause ? String(cause.goalAmount) : "");
+  // What the structure would receive, from the server's own fee rates (step 3 only).
+  const estimatedNet = useQuery(
+    api.causes.estimateNet,
+    step === 2 && /^[0-9]+$/.test(goalAmount) ? { goalAmount: Number(goalAmount) } : "skip",
+  );
   const [deadline, setDeadline] = useState(cause ? toDateInput(cause.deadline) : "");
 
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -285,7 +291,15 @@ export function CauseWizard({ cause }: { cause?: OwnedCauseView }) {
               </NativeSelect>
             )}
           </Field>
-          <Field label={fr.createCause.fields.goalAmount} error={errors.goalAmount}>
+          <Field
+            label={fr.createCause.fields.goalAmount}
+            hint={
+              estimatedNet != null
+                ? fr.createCause.fields.estimatedNet(formatFCFA(estimatedNet))
+                : undefined
+            }
+            error={errors.goalAmount}
+          >
             {(props) => (
               <Input
                 {...props}

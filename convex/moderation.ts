@@ -472,7 +472,7 @@ export const decideProof = mutation({
 
     if (decision === "escalate") {
       const trimmed = reason?.trim();
-      if (!trimmed) throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+      if (!trimmed) throw appError("VALIDATION", fr.moderation.decisionReasonRequired, "reason");
       await ctx.db.patch(proofId, { status: "escalated" });
       await logAudit(ctx, {
         actorId: user._id,
@@ -633,7 +633,7 @@ export const decideDeletion = mutation({
       throw appError("CONFLICT", fr.errors.deletionAlreadyDecided, "requestId");
     }
     const trimmed = reason.trim();
-    if (!trimmed) throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    if (!trimmed) throw appError("VALIDATION", fr.moderation.decisionReasonRequired, "reason");
     const cause = await ctx.db.get(request.causeId);
     if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "requestId");
     const responsible = await structureUser(ctx, cause.structureId);
