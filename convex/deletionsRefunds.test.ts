@@ -743,6 +743,25 @@ describe("moderation.decideRefund", () => {
     expect(await t.run((ctx) => ctx.db.get(requestId))).toMatchObject({ status: "refunded" });
   });
 
+  it("lowers the cause's collected amount, and its donor count only with the donor's last gift", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    const causeId = await activeCause(t, s.structureId);
+    const donor = await donorCtx(t);
+    const first = await heldDonation(t, causeId, donor.userId, 4900); // amount 5 000
+    const second = await heldDonation(t, causeId, donor.userId, 1900); // amount 2 000
+    await t.run((ctx) => ctx.db.patch(causeId, { raised: 7000, donorCount: 1 }));
+
+    const one = await fileRefund(donor.client, { donationId: first, reason: "erreur" });
+    await mod.mutation(api.moderation.decideRefund, { requestId: one, decision: "refunded" });
+    expect(await getCause(t, causeId)).toMatchObject({ raised: 2000, donorCount: 1 });
+
+    const two = await fileRefund(donor.client, { donationId: second, reason: "erreur" });
+    await mod.mutation(api.moderation.decideRefund, { requestId: two, decision: "refunded" });
+    expect(await getCause(t, causeId)).toMatchObject({ raised: 0, donorCount: 0 });
+  });
+
   it("rejects a refund and notifies the donor, with no payout", async () => {
     const t = setup();
     const s = await structureCtx(t);

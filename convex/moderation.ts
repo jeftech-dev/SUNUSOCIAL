@@ -903,6 +903,24 @@ export const decideRefund = mutation({
       decidedBy: user._id,
       payoutId,
     });
+    // S20: the refunded gift stops counting toward the cause (`raised` is gross, DT-6).
+    const siblings = await ctx.db
+      .query("donations")
+      .withIndex("by_cause_donor", (q) =>
+        q.eq("causeId", donation.causeId).eq("donorId", donation.donorId),
+      )
+      .collect();
+    const donorStillCounted = siblings.some(
+      (d) =>
+        d._id !== donation._id &&
+        (d.status === "held" || d.status === "released") &&
+        d.refundQueuedAt === undefined &&
+        d.lateRefundFlaggedAt === undefined,
+    );
+    await ctx.db.patch(cause._id, {
+      raised: Math.max(0, cause.raised - donation.amount),
+      donorCount: Math.max(0, cause.donorCount - (donorStillCounted ? 0 : 1)),
+    });
     await logAudit(ctx, {
       actorId: user._id,
       action: "refund.approve",

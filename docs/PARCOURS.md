@@ -53,7 +53,7 @@ sequenceDiagram
   alt Système · Identifiants corrects
     Y->>D: Session ouverte 7 jours, connexion enregistrée<br/>dans l'historique
   else Système · Identifiants faux
-    Y->>D: « Numéro ou mot de passe incorrect » (5 essais<br/>par 10 min, puis attente)
+    Y->>D: « Identifiant ou mot de passe incorrect » (5 essais<br/>par 10 min, puis attente)
   end
   Y->>D: Au bout de 7 jours, la session expire : retour<br/>à la connexion
   D->>Y: ▶ Déconnexion · Ferme sa session
@@ -63,7 +63,7 @@ sequenceDiagram
   D->>Y: ▶ Mot de passe oublié ? · Saisit son numéro
   Y->>D: Envoie un code SMS au numéro vérifié (même<br/>message que le compte existe ou non)
   D->>Y: ▶ Changer mon mot de passe · Saisit le code +<br/>un nouveau mot de passe
-  Y->>D: Mot de passe changé, toutes ses sessions<br/>fermées, action enregistrée
+  Y->>D: Mot de passe changé, toutes ses anciennes sessions<br/>fermées, nouvelle connexion automatique, action enregistrée
   S->>Y: ▶ Mot de passe oublié ? · Structure, hôpital<br/>ou modérateur : saisit son e-mail
   Y->>S: Envoie un lien par e-mail, valable 30 min et<br/>utilisable une seule fois
   S->>Y: Choisit un nouveau mot de passe (12 caractères<br/>min.) , le code SMS sera demandé à la<br/>prochaine connexion

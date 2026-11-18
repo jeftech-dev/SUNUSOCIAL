@@ -24,8 +24,22 @@ export const listMine = query({
       .withIndex("by_user_created", (q) => q.eq("userId", user._id))
       .order("desc")
       .take(wanted ? 200 : LIST_LIMIT);
+    // A message pointing at a deleted cause would open a 404: drop it from the list.
+    const causeLinkId = (link?: string) => link?.match(/^\/causes\/([^/?#]+)$/)?.[1];
+    const deletedCauses = new Set<string>();
+    for (const row of rows) {
+      const id = causeLinkId(row.link);
+      if (!id || deletedCauses.has(id)) continue;
+      const causeId = ctx.db.normalizeId("causes", id);
+      const cause = causeId ? await ctx.db.get(causeId) : null;
+      if (!cause || cause.status === "deleted") deletedCauses.add(id);
+    }
     return rows
       .filter((row) => !wanted || wanted.has(row.kind))
+      .filter((row) => {
+        const id = causeLinkId(row.link);
+        return !id || !deletedCauses.has(id);
+      })
       .slice(0, LIST_LIMIT)
       .map(({ _id, kind, title, body, link, readAt, createdAt }) => ({
         _id,

@@ -828,6 +828,8 @@ export const fr = {
   messages: {
     title: "Mes messages",
     empty: "Aucun message pour le moment.",
+    view: "Voir",
+    markAllRead: "Tout marquer comme lu",
   },
 
   /** Structure dashboard: the structure's own causes and their status timeline (PARCOURS S11–S14). */
