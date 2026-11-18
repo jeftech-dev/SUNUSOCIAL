@@ -252,6 +252,31 @@ describe("moderation.queues", () => {
     expect(q.structures.items[0].hasPayout).toBe(true);
     expect(q.deletions.count).toBe(0);
   });
+
+  it("gives the moderator what a decision needs: document, contact, masked payout, cause content", async () => {
+    const t = setup();
+    const { structureId } = await pendingStructure(t);
+    await pendingCause(t, structureId);
+    const { client } = await as(t, "moderator");
+    const q = await client.query(api.moderation.queues, {});
+    const structure = await t.run((ctx) => ctx.db.get(structureId));
+    const row = q.structures.items[0];
+    expect(row).toMatchObject({
+      contactName: structure!.contactName,
+      phone: structure!.phone,
+      email: structure!.email,
+      commune: structure!.commune,
+    });
+    expect(row.receiptUrl).toEqual(expect.any(String));
+    // The wallet number stays masked: only the last four digits (DT-5).
+    expect(row.payout!.accountNumber).toBe(`•••• ${structure!.payout!.accountNumber.slice(-4)}`);
+    expect(row.payout!.holderName).toBe(structure!.payout!.holderName);
+
+    const cause = q.causes.items[0];
+    expect(cause.description.length).toBeGreaterThan(0);
+    expect(cause.goal).toBeGreaterThan(0);
+    expect(cause.endCondition.deadline).toBeGreaterThan(Date.now());
+  });
 });
 
 describe("moderation.decideStructure", () => {

@@ -272,6 +272,20 @@ export interface StructureCauseView {
   submittedAt: number;
   /** Funds released to the structure → a reception proof is due (Sprint 5 proof flow). */
   fundsReleased: boolean;
+  /** The moderator's reason when the cause was deleted on request (DT-24); null otherwise. */
+  deletionReason: string | null;
+  /** The reception proof of a funded cause (DB-12, DT-25); null while no proof deadline runs. */
+  proof: StructureCauseProof | null;
+}
+
+export interface StructureCauseProof {
+  /** Target of a delay request (`extensions.request`, kind `proof_deadline`). */
+  deadlineId: Id<"proofDeadlines">;
+  dueAt: number;
+  /** Null until a dossier is sent. */
+  status: ProofStatus | null;
+  /** A delay request is waiting for the moderator. */
+  delayPending: boolean;
 }
 
 /** A structure's own cause with every editable field, to prefill the edit wizard. */
@@ -379,6 +393,16 @@ export interface StructureQueueItem {
   region: string;
   submittedAt: number;
   hasPayout: boolean;
+  /** What the moderator checks before deciding (PARCOURS S09, S10). */
+  commune: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  receiptNo: string | null;
+  /** The récépissé / agrément, as a short-lived URL. */
+  receiptUrl: string | null;
+  /** The payout account given at signup, number masked (DT-5). Absent for hospitals. */
+  payout: { method: Method; accountNumber: string; holderName: string } | null;
 }
 
 export interface CauseQueueItem {
@@ -386,6 +410,12 @@ export interface CauseQueueItem {
   title: string;
   organization: string;
   urgent: boolean;
+  /** The content the moderator approves or refuses (PARCOURS S12). */
+  description: string;
+  category: Category;
+  bannerUrl: string | null;
+  goal: number;
+  endCondition: EndCondition;
 }
 
 export interface ProofQueueItem {
@@ -436,6 +466,15 @@ export interface PayoutChangeQueueItem {
   /** The new wallet number, masked (last digits only). */
   accountNumber: string;
   holderName: string;
+}
+
+/** A structure suspended for a late proof, in the moderator's follow-up (PARCOURS S26). */
+export interface SuspendedStructureItem {
+  id: Id<"structures">;
+  organization: string;
+  suspendedAt: number;
+  /** Proofs still overdue; the suspension can be lifted once this is empty. */
+  lateProofs: { cause: string; dueAt: number; proofStatus: ProofStatus | null }[];
 }
 
 export interface ModerationQueue<T> {

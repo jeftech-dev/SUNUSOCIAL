@@ -305,6 +305,7 @@ export default defineSchema({
     metAt: v.optional(v.number()),
   })
     .index("by_cause", ["causeId"])
+    .index("by_structure", ["structureId"])
     .index("by_met_due", ["metAt", "dueAt"]),
 
   // -------------------------------------------------------------------------

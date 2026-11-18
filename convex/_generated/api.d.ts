@@ -35,6 +35,7 @@ import type * as proofChecks from "../proofChecks.js";
 import type * as proofs from "../proofs.js";
 import type * as seed from "../seed.js";
 import type * as structures from "../structures.js";
+import type * as suspensions from "../suspensions.js";
 import type * as validators from "../validators.js";
 
 import type {
@@ -71,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   proofs: typeof proofs;
   seed: typeof seed;
   structures: typeof structures;
+  suspensions: typeof suspensions;
   validators: typeof validators;
 }>;
 

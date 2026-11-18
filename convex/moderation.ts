@@ -3,7 +3,7 @@
 
 import { v } from "convex/values";
 
-import { percentOf } from "../lib/causes";
+import { endConditionOf, percentOf } from "../lib/causes";
 import { alertDeadline } from "../lib/bloodSlots";
 import { DAY_MS, loadConfig } from "../lib/config";
 import { formatDate } from "../lib/dates";
@@ -191,6 +191,11 @@ export const queues = query({
         title: cause.title,
         organization: structure?.name ?? "",
         urgent: cause.urgency === "urgent",
+        description: cause.description,
+        category: cause.category,
+        bannerUrl: await ctx.storage.getUrl(cause.bannerFileId),
+        goal: cause.goalAmount,
+        endCondition: endConditionOf(cause),
       });
     }
 
@@ -284,14 +289,29 @@ export const queues = query({
     return {
       structures: {
         count: allStructures.length,
-        items: structures.map((s) => ({
-          id: s._id,
-          name: s.name,
-          type: s.type,
-          region: s.region,
-          submittedAt: s.createdAt,
-          hasPayout: s.payout !== undefined,
-        })),
+        items: await Promise.all(
+          structures.map(async (s) => ({
+            id: s._id,
+            name: s.name,
+            type: s.type,
+            region: s.region,
+            submittedAt: s.createdAt,
+            hasPayout: s.payout !== undefined,
+            commune: s.commune,
+            contactName: s.contactName,
+            phone: s.phone,
+            email: s.email,
+            receiptNo: s.receiptNo ?? null,
+            receiptUrl: await ctx.storage.getUrl(s.receiptFileId),
+            payout: s.payout
+              ? {
+                  method: s.payout.method,
+                  accountNumber: maskNumber(s.payout.accountNumber),
+                  holderName: s.payout.holderName,
+                }
+              : null,
+          })),
+        ),
       },
       causes: { count: allCauses.length, items: causeItems },
       proofs: { count: allSubmitted.length, items: proofItems },
@@ -358,6 +378,8 @@ export const decideStructure = mutation({
           decision === "approve"
             ? fr.notifications.structureApprovedBody
             : fr.notifications.structureRefusedBody(trimmed!),
+        // S09: the approval is one of the "important" events that also go by SMS (DB-7).
+        ...(decision === "approve" ? { sms: fr.sms.structureApproved(structure.name) } : {}),
       });
     }
     return decision === "approve"
@@ -553,6 +575,7 @@ export const notifyCauseDonors = internalMutation({
             title: fr.notifications.proofPublishedTitle,
             body: fr.notifications.proofPublishedBody(title),
             link: `/causes/${causeId}`,
+            sms: fr.sms.proofPublished(title),
           });
 
     let i = 0;
@@ -789,8 +812,9 @@ export const settleDeletedCause = internalMutation({
       // deletion outcome — skip them here so they are neither paid out nor double-refunded.
       if (donation.status !== "held" || donation.lateRefundFlaggedAt !== undefined) continue;
       let body = fr.notifications.deletionDonorPayoutBody(cause.title);
+      let refunding = false;
       if (outcome === "refund") {
-        const refunding =
+        refunding =
           donation.refundQueuedAt !== undefined || (await refundDeletedDonation(ctx, donation));
         body = refunding
           ? fr.notifications.deletionDonorRefundBody(cause.title, formatFCFA(donation.net))
@@ -802,6 +826,10 @@ export const settleDeletedCause = internalMutation({
         title: fr.notifications.deletionApprovedTitle,
         body,
         link: "/profil",
+        // S17: a refunded donor is also told by SMS.
+        ...(refunding
+          ? { sms: fr.sms.causeDeletedRefund(cause.title, formatFCFA(donation.net)) }
+          : {}),
       });
     }
 
@@ -888,6 +916,7 @@ export const decideRefund = mutation({
       title: fr.notifications.refundApprovedTitle,
       body: fr.notifications.refundApprovedBody(title, formatFCFA(amount)),
       link: "/profil",
+      sms: fr.sms.refundApproved(title, formatFCFA(amount)),
     });
     return { ok: true, refundAmount: amount };
   },

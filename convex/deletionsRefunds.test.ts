@@ -781,3 +781,55 @@ describe("moderation.queues (deletions + refunds)", () => {
     expect(queues.refunds.items[0]).toMatchObject({ amount: 4900, donor: "Donor" });
   });
 });
+
+describe("important decisions also go by SMS (DB-7, PARCOURS S17 and S20)", () => {
+  const smsTo = (phone: string) => logs.filter((l) => l.startsWith(`[SMS console] to ${phone}:`));
+
+  it("texts the donor when a refund request is approved, not when it is rejected", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    const causeId = await activeCause(t, s.structureId);
+    const donor = await donorCtx(t, "+221780000011");
+    const other = await donorCtx(t, "+221780000012");
+    const approved = await fileRefund(donor.client, {
+      donationId: await heldDonation(t, causeId, donor.userId, 4900),
+      reason: "erreur",
+    });
+    const rejected = await fileRefund(other.client, {
+      donationId: await heldDonation(t, causeId, other.userId, 4900),
+      reason: "erreur",
+    });
+    logs = [];
+    await mod.mutation(api.moderation.decideRefund, { requestId: approved, decision: "refunded" });
+    await mod.mutation(api.moderation.decideRefund, { requestId: rejected, decision: "rejected" });
+    await t.finishAllScheduledFunctions(() => {});
+
+    expect(smsTo("+221780000011")).toHaveLength(1);
+    expect(smsTo("+221780000011")[0]).toContain("Cantine scolaire");
+    expect(smsTo("+221780000012")).toHaveLength(0);
+  });
+
+  it("texts each refunded donor when a cause is deleted with a refund", async () => {
+    const t = setup();
+    const s = await structureCtx(t);
+    const mod = await moderatorClient(t);
+    const causeId = await activeCause(t, s.structureId);
+    const donor = await donorCtx(t, "+221780000013");
+    await heldDonation(t, causeId, donor.userId, 4900);
+    const { requestId } = await s.client.mutation(api.causes.requestDeletion, {
+      causeId,
+      reason: "Projet abandonné",
+    });
+    logs = [];
+    await mod.mutation(api.moderation.decideDeletion, {
+      requestId,
+      decision: "approve",
+      reason: "Projet abandonné.",
+      fundOutcome: "refund",
+    });
+    await t.finishAllScheduledFunctions(() => {});
+    expect(smsTo("+221780000013")).toHaveLength(1);
+    expect(smsTo("+221780000013")[0]).toContain("remboursés");
+  });
+});

@@ -16,6 +16,7 @@ import {
   type CauseStatus,
   type Category,
   type OwnedCauseView,
+  type StructureCauseProof,
   type StructureCauseView,
 } from "../lib/types";
 import type { DataModel, Doc, Id } from "./_generated/dataModel";
@@ -253,7 +254,10 @@ async function isWithdrawable(ctx: QueryCtx, cause: Doc<"causes">): Promise<bool
   return donation === null;
 }
 
-/** The structure's own causes, newest first, for the dashboard (excludes deleted). */
+/**
+ * The structure's own causes, newest first, for the dashboard. Deleted causes stay listed: the
+ * structure must read the moderator's reason, and a deletion paid out to it still owes a proof.
+ */
 export const mine = query({
   args: {},
   handler: async (ctx): Promise<StructureCauseView[]> => {
@@ -264,14 +268,15 @@ export const mine = query({
       .withIndex("by_structure", (q) => q.eq("structureId", user.structureId!))
       .collect();
     causes.sort((a, b) => b.submittedAt - a.submittedAt);
-    const visible = causes.filter((cause) => cause.status !== "deleted");
     // Resolve the banner URLs concurrently: one awaited getUrl per cause in a loop serialises the
     // storage round-trips and makes dashboard latency scale linearly with the number of causes.
     return Promise.all(
-      visible.map(async (cause) => {
-        const [bannerUrl, withdrawable] = await Promise.all([
+      causes.map(async (cause) => {
+        const [bannerUrl, withdrawable, deletionReason, proof] = await Promise.all([
           ctx.storage.getUrl(cause.bannerFileId),
           isWithdrawable(ctx, cause),
+          deletionReasonOf(ctx, cause),
+          proofStateOf(ctx, cause._id),
         ]);
         return {
           id: cause._id,
@@ -289,11 +294,51 @@ export const mine = query({
           withdrawable,
           submittedAt: cause.submittedAt,
           fundsReleased: cause.fundsReleasedAt !== undefined,
+          deletionReason,
+          proof,
         };
       }),
     );
   },
 });
+
+/** The moderator's reason on the approved deletion request of a deleted cause. */
+async function deletionReasonOf(ctx: QueryCtx, cause: Doc<"causes">): Promise<string | null> {
+  if (cause.status !== "deleted") return null;
+  const requests = await ctx.db
+    .query("deletionRequests")
+    .withIndex("by_cause", (q) => q.eq("causeId", cause._id))
+    .collect();
+  return requests.find((r) => r.status === "approved")?.moderatorReason ?? null;
+}
+
+/** Where the reception proof of a cause stands, once its proof deadline exists (DT-25). */
+async function proofStateOf(
+  ctx: QueryCtx,
+  causeId: Id<"causes">,
+): Promise<StructureCauseProof | null> {
+  const deadline = await ctx.db
+    .query("proofDeadlines")
+    .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+    .unique();
+  if (!deadline) return null;
+  const [proof, delay] = await Promise.all([
+    ctx.db
+      .query("proofs")
+      .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+      .unique(),
+    ctx.db
+      .query("extensionRequests")
+      .withIndex("by_target_status", (q) => q.eq("targetId", deadline._id).eq("status", "pending"))
+      .first(),
+  ]);
+  return {
+    deadlineId: deadline._id,
+    dueAt: deadline.dueAt,
+    status: proof?.status ?? null,
+    delayPending: delay !== null,
+  };
+}
 
 /** One of the caller's own causes with its editable fields, or null if not theirs. */
 export const getOwned = query({

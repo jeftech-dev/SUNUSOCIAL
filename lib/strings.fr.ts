@@ -141,7 +141,8 @@ export const fr = {
   blood: {
     allGroups: "tous groupes",
     allGroupsToggle: "Tous groupes",
-    unitsLabel: (collected: number, needed: number) => `${collected} / ${needed} poches`,
+    unitsLabel: (collected: number, needed: number) =>
+      `${collected} / ${needed} poche${needed > 1 ? "s" : ""}`,
     donor: {
       title: "Don de sang",
       intro:
@@ -184,8 +185,6 @@ export const fr = {
         "Apporter une pièce d'identité",
         "Le médecin de l'hôpital confirme votre aptitude sur place",
       ],
-      messagesTitle: "Mes messages",
-      messagesEmpty: "Aucun message pour le moment.",
       badge: (n: number) => `${n} alerte${n > 1 ? "s" : ""} à traiter`,
     },
     /** Visit-slot labels: "aujourd'hui entre 14 h et 16 h", "le 12/11 entre 8 h et 10 h". */
@@ -230,11 +229,11 @@ export const fr = {
       loading: "Chargement…",
       targeting: (communes: string) => `Ciblage\u00a0: ${communes}`,
       reached: (reached: number, responses: number) =>
-        `${reached} prévenus · ${responses} réponse${responses > 1 ? "s" : ""}`,
+        `${reached} prévenu${reached > 1 ? "s" : ""} · ${responses} réponse${responses > 1 ? "s" : ""}`,
       goalReached: "✓ Objectif atteint",
       closedBadge: "✓ Clôturée",
       closedByModerator: (reason: string) => `Clôturée par la modération\u00a0: ${reason}`,
-      showDonors: (n: number) => `Voir les ${n} donneur${n > 1 ? "s" : ""}`,
+      showDonors: (n: number) => (n > 1 ? `Voir les ${n} donneurs` : "Voir le donneur"),
       hideDonors: "Masquer les donneurs",
       waiting: "En attente de réponses…",
       closeAlert: "Clôturer l'alerte",
@@ -247,9 +246,11 @@ export const fr = {
       groupOnSiteChoose: "Choisir le groupe…",
       donationDone: (name: string, group: string, before: number, after: number) =>
         `Don de ${name} confirmé · stock ${group}\u00a0: ${before} → ${after}`,
-      thanksTitle: (n: number) => `Remercier les ${n} donneur${n > 1 ? "s" : ""}`,
+      thanksTitle: (n: number) => (n > 1 ? `Remercier les ${n} donneurs` : "Remercier le donneur"),
       thanksDefault: (hospital: string, collected: number, groups: string) =>
-        `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poches ${groups} ont été collectées. — SUNUSOCIAL`,
+        collected > 1
+          ? `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poches ${groups} ont été collectées. — SUNUSOCIAL`
+          : `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poche ${groups} a été collectée. — SUNUSOCIAL`,
       thanksNote:
         "Envoyé par SMS et notification, uniquement aux donneurs dont le don est confirmé.",
       thanksSend: "Envoyer le message",
@@ -272,13 +273,16 @@ export const fr = {
       channelSms: "SMS (recommandé)",
       channelApp: "Notification sur l'application",
       reach: (n: number) => `donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""}`,
-      reachSuffix: (communes: string) => `inscrits à ${communes} recevront l'alerte.`,
+      reachSuffix: (communes: string, n: number) =>
+        n > 1
+          ? `inscrits à ${communes} recevront l'alerte.`
+          : `inscrit à ${communes} recevra l'alerte.`,
       reachNoCommune: "Choisissez au moins une commune.",
       send: "Envoyer l'alerte",
       sending: "Envoi…",
       sentTitle: "Alerte envoyée",
       sentBody: (n: number) =>
-        `${n} donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""} seront prévenus. Les réponses apparaissent sur votre tableau de bord.`,
+        `${n} donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""} ${n > 1 ? "seront prévenus" : "sera prévenu"}. Les réponses apparaissent sur votre tableau de bord.`,
       another: "Émettre une autre alerte",
       dashboard: "Retour au tableau de bord",
     },
@@ -444,6 +448,17 @@ export const fr = {
     decisionReasonLabel: "Motif de la décision (visible par la structure et les donateurs)",
     structureMeta: (type: string, region: string) => `${type} · ${region}`,
     hasPayout: "Compte de réception fourni",
+    structureContact: (name: string, phone: string, email: string) =>
+      `Responsable\u00a0: ${name} · ${phone} · ${email}`,
+    structurePlace: (commune: string, region: string) => `${commune}, ${region}`,
+    receiptNo: (no: string) => `Récépissé n°\u00a0${no}`,
+    viewReceipt: "Voir le récépissé ou l'agrément",
+    receiptMissing: "Document introuvable",
+    payoutAccount: (method: string, number: string, holder: string) =>
+      `Compte de réception\u00a0: ${method} ${number} · ${holder}`,
+    noPayoutAccount: "Pas de compte de réception (hôpital)",
+    causeGoal: (goal: string) => `Objectif\u00a0: ${goal}`,
+    causeDeadline: (date: string) => `Date limite\u00a0: ${date}`,
     approve: "Approuver",
     refuse: "Refuser",
     validate: "Valider la preuve",
@@ -459,6 +474,25 @@ export const fr = {
     escalateReasonLabel: "Ce qui manque (visible par la structure)",
     cancel: "Annuler",
     done: "Décision enregistrée.",
+    suspended: {
+      title: "Comptes suspendus",
+      intro:
+        "Structures suspendues pour une preuve de réception en retard. Leurs causes sont masquées jusqu'à la levée de la suspension.",
+      since: (date: string) => `Compte suspendu depuis le ${date}`,
+      lateProof: (cause: string, date: string) =>
+        `«\u00a0${cause}\u00a0» · preuve attendue le ${date}`,
+      proofStatus: {
+        submitted: "dossier envoyé, à valider",
+        escalated: "compléments demandés",
+        validated: "dossier validé",
+      },
+      noProof: "aucun dossier envoyé",
+      noLateProof: "Plus aucune preuve en retard.",
+      remind: "Relancer la structure",
+      lift: "Lever la suspension",
+      reminded: "Rappel envoyé à la structure.",
+      lifted: "Suspension levée.",
+    },
     decided: {
       structureApproved: "Structure approuvée — elle a été notifiée.",
       structureRefused: "Structure refusée — elle a été notifiée.",
@@ -675,6 +709,12 @@ export const fr = {
     fundsReleasedTitle: "Fonds versés",
     fundsReleasedBody: (title: string, amount: string, days: number) =>
       `Les fonds de «\u00a0${title}\u00a0» (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
+    proofReminderTitle: "Preuve de réception en retard",
+    proofReminderBody: (title: string, date: string) =>
+      `La preuve de «\u00a0${title}\u00a0» était attendue le ${date}. Publiez-la depuis votre espace pour que la modération puisse lever la suspension.`,
+    suspensionLiftedTitle: "Suspension levée",
+    suspensionLiftedBody:
+      "Votre structure n'est plus suspendue\u00a0: vos causes sont de nouveau visibles et vous pouvez en publier.",
     suspendedTitle: "Structure suspendue",
     suspendedBody: (title: string) =>
       `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées\u00a0: ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
@@ -776,7 +816,15 @@ export const fr = {
       "Votre dossier est en cours de vérification par notre équipe. Vous ne pouvez pas encore publier.",
     refused: (reason: string) => `Votre dossier a été refusé\u00a0: ${reason}`,
     approved: "Structure vérifiée.",
+    suspended:
+      "Compte suspendu\u00a0: une preuve de réception est en retard. Vos causes sont masquées et vous ne pouvez pas en publier de nouvelles jusqu'à la levée de la suspension par la modération.",
     hello: (name: string) => `Bonjour ${name}`,
+  },
+
+  /** In-app notifications list (PARCOURS S06). */
+  messages: {
+    title: "Mes messages",
+    empty: "Aucun message pour le moment.",
   },
 
   /** Structure dashboard: the structure's own causes and their status timeline (PARCOURS S11–S14). */
@@ -806,6 +854,17 @@ export const fr = {
     extensionReasonLabel: "Raison de la prolongation",
     extensionSubmit: "Envoyer la demande",
     extensionRequested: "Demande de prolongation envoyée. Un modérateur va l'examiner.",
+    deleted: "Cause supprimée.",
+    deletionReason: (reason: string) => `Cause supprimée par la modération\u00a0: ${reason}`,
+    proofDue: (date: string) => `Preuve de réception à publier avant le ${date}.`,
+    proofSubmitted: "Preuve envoyée, en attente de validation.",
+    proofValidated: "Preuve validée.",
+    proofEscalated: "La modération a demandé des compléments sur votre preuve.",
+    requestProofDelay: "Demander un délai",
+    proofDelayDateLabel: "Nouvelle échéance pour la preuve",
+    proofDelayReasonLabel: "Raison du délai",
+    proofDelayRequested: "Demande de délai envoyée. Un modérateur va l'examiner.",
+    proofDelayPending: "Demande de délai en attente de décision.",
   },
 
   /** Payout-account change (S10, DT-5). */
@@ -913,6 +972,20 @@ export const fr = {
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
     accountExists:
       "SUNUSOCIAL\u00a0: un compte donateur existe déjà avec ce numéro. Connectez-vous, ou utilisez «\u00a0Mot de passe oublié\u00a0».",
+    structureApproved: (structure: string) =>
+      `SUNUSOCIAL\u00a0: ${structure} est vérifiée. Vous pouvez publier vos causes depuis votre espace.`,
+    fundsReleased: (title: string, amount: string, days: number) =>
+      `SUNUSOCIAL\u00a0: fonds versés pour «\u00a0${title}\u00a0»\u00a0: ${amount} sur votre compte de réception. Preuve de réception à publier sous ${days} jours.`,
+    refundApproved: (title: string, amount: string) =>
+      `SUNUSOCIAL\u00a0: votre don à «\u00a0${title}\u00a0» est remboursé\u00a0: ${amount} vous sont envoyés.`,
+    causeDeletedRefund: (title: string, amount: string) =>
+      `SUNUSOCIAL\u00a0: la cause «\u00a0${title}\u00a0» a été supprimée. ${amount} vous sont remboursés.`,
+    proofPublished: (title: string) =>
+      `SUNUSOCIAL\u00a0: la preuve de réception de «\u00a0${title}\u00a0» est publiée. Consultez-la sur sunusocial.sn/profil`,
+    proofReminder: (title: string, date: string) =>
+      `SUNUSOCIAL\u00a0: la preuve de réception de «\u00a0${title}\u00a0» était attendue le ${date}. Publiez-la depuis votre espace pour lever la suspension de votre compte.`,
+    suspensionLifted: (structure: string) =>
+      `SUNUSOCIAL\u00a0: la suspension de ${structure} est levée. Vos causes sont de nouveau visibles.`,
     lateRefund: (title: string, net: string) =>
       `SUNUSOCIAL\u00a0: la cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement est arrivé. ${net} vous seront remboursés sur ce numéro. Découvrez d'autres causes sur SUNUSOCIAL.`,
   },
@@ -1039,6 +1112,11 @@ export const fr = {
     extensionReasonRequired: "Expliquez la raison de votre demande de prolongation.",
     extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",
     extensionAlreadyPending: "Une demande de prolongation est déjà en cours pour cette échéance.",
+    notSuspended: "Cette structure n'est pas suspendue.",
+    noLateProof: "Aucune preuve n'est en retard pour cette structure.",
+    reminderTooSoon: "Un rappel vient déjà d'être envoyé à cette structure. Réessayez plus tard.",
+    proofStillLate:
+      "Une preuve est encore en retard\u00a0: validez-la ou accordez un délai avant de lever la suspension.",
     extensionStale:
       "Cette demande n'est plus applicable\u00a0: l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
     extensionDateInvalid: (maxDays: number) =>

@@ -1,4 +1,5 @@
 import { HospitalDashboard } from "@/components/blood/HospitalDashboard";
+import { MessageList } from "@/components/notifications/MessageList";
 import { StructureStatus } from "@/components/layout/StructureStatus";
 import { fr } from "@/lib/strings.fr";
 
@@ -7,6 +8,7 @@ export default function HospitalPage() {
     <div className="flex flex-col gap-8">
       <StructureStatus title={fr.spaces.hospitalTitle} />
       <HospitalDashboard />
+      <MessageList />
     </div>
   );
 }
