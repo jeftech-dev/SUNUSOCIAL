@@ -40,7 +40,7 @@ feat/* ──PR──▶ integration ──(MVP tested)──▶ dev ──(boar
 - [x] The app runs against a real Convex deployment (not production) with `PAYMENT_PROVIDER=mock` and `SMS_PROVIDER=console`; `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `MODERATION_SITE_URL` and `OTP_HASH_SECRET` are set in Convex.
 - [x] Every flow in `docs/PARCOURS.md` has been run by hand in that deployment, on the app and on the moderation subdomain, at 375px and on desktop: signups and logins (SMS codes read from the Convex logs), resets, cause publication and moderation, donation with the mock provider through release and payout, proofs, refunds and deletions, blood alerts. *(Run on 16–17 Nov 2026 with scripted browsers. Not run live: the payout failure branches (timeout, 409, pending review), which `convex-test` covers, and the 2-hour cancel of a pending payment, which no test covers. S07, S08 and G8 are undecided and not built.)*
 - [x] The Playwright e2e test of the donation flow (Sprint 8 task 6) passes. *(8/8 at 375px and desktop, donation flow not skipped.)*
-- [ ] The Sprint 8 security review (task 4) is done and its findings are fixed.
+- [x] The Sprint 8 security review (task 4) is done and its findings are fixed. *(`/security-review` and the Convex security check ran on 19 Nov 2026: no vulnerability at confidence 8 or higher. Carried to the production deploy checklist: set `APP_ENV=production`, since mock payments fail open when it is unset, and note that upload content types are client-declared.)*
 
 **Not required** to leave the integration phase: a real SMS provider (board question Q1) and NabooPay live keys. Both come with the board decisions and the production deploy.
 
