@@ -903,7 +903,10 @@ export const decideRefund = mutation({
       decidedBy: user._id,
       payoutId,
     });
-    // S20: the refunded gift stops counting toward the cause (`raised` is gross, DT-6).
+    // S20: the refunded gift stops counting toward the cause (`raised` is gross, DT-6). The counters
+    // are display only (releases sum `isReleasable` donations), and a refund payout that fails keeps
+    // `refundQueuedAt`, so the donation stays out of the cause for manual handling: no restore needed.
+    // A goal cause already closed keeps its status even if `raised` now falls under the goal.
     const siblings = await ctx.db
       .query("donations")
       .withIndex("by_cause_donor", (q) =>

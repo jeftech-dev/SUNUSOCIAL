@@ -16,7 +16,6 @@ export function ConfirmDialog({
   body,
   confirmLabel,
   reasonLabel,
-  busy = false,
   onConfirm,
   onCancel,
 }: {
@@ -24,7 +23,6 @@ export function ConfirmDialog({
   body?: string;
   confirmLabel: string;
   reasonLabel?: string;
-  busy?: boolean;
   onConfirm: (reason: string) => void;
   onCancel: () => void;
 }) {
@@ -35,7 +33,7 @@ export function ConfirmDialog({
   useDialogFocus(dialogRef, onCancel);
 
   const needsReason = reasonLabel !== undefined;
-  const canConfirm = !busy && (!needsReason || reason.trim() !== "");
+  const canConfirm = !needsReason || reason.trim() !== "";
 
   return (
     <div
