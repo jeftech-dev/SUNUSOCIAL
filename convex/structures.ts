@@ -4,14 +4,36 @@
 
 import { v } from "convex/values";
 
-import { normalizeName, normalizePhone } from "../lib/validation";
+import { maskPhone, normalizeName, normalizePhone } from "../lib/validation";
 import { fr } from "../lib/strings.fr";
-import { mutation } from "./_generated/server";
+import type { Method } from "../lib/types";
+import { mutation, query } from "./_generated/server";
 import { logAudit } from "./audit";
 import { appError } from "./lib/errors";
 import { requireRole } from "./lib/guards";
 import { checkOtp, otpErrorMessage } from "./otp";
 import { methodV } from "./validators";
+
+/** The structure's payout account as shown back to it: number masked, never the raw account. */
+function payoutView(account?: { method: Method; accountNumber: string; holderName: string }) {
+  if (!account) return null;
+  return {
+    method: account.method,
+    maskedNumber: maskPhone(account.accountNumber),
+    holderName: account.holderName,
+  };
+}
+
+/** The caller's active payout account and the change awaiting moderation, if any (S10, DT-5). */
+export const myPayout = query({
+  args: {},
+  handler: async (ctx) => {
+    const { user } = await requireRole(ctx, "structure");
+    const structure = user.structureId ? await ctx.db.get(user.structureId) : null;
+    if (!structure) return null;
+    return { active: payoutView(structure.payout), pending: payoutView(structure.payoutPending) };
+  },
+});
 
 /**
  * Requests a payout-account change (S10). The new number must already have passed a `payout_number`

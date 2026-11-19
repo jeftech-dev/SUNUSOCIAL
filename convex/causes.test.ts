@@ -563,6 +563,29 @@ describe("causes.mine", () => {
   });
 });
 
+describe("causes.mine: pending deletion request", () => {
+  it("flags an active cause whose deletion request still waits for a moderator", async () => {
+    const t = await seeded();
+    const { client } = await asStructure(t);
+    const { id } = await client.mutation(api.causes.create, await createArgs(t));
+    await t.run((ctx) => ctx.db.patch(id, { status: "active" }));
+    expect((await client.query(api.causes.mine, {}))[0].deletionPending).toBe(false);
+
+    const requestId = await t.run((ctx) =>
+      ctx.db.insert("deletionRequests", {
+        causeId: id,
+        structureReason: "Besoin déjà couvert",
+        status: "pending",
+        createdAt: Date.now(),
+      }),
+    );
+    expect((await client.query(api.causes.mine, {}))[0].deletionPending).toBe(true);
+
+    await t.run((ctx) => ctx.db.patch(requestId, { status: "maintained" }));
+    expect((await client.query(api.causes.mine, {}))[0].deletionPending).toBe(false);
+  });
+});
+
 describe("causes.mine: deleted causes and the proof follow-up", () => {
   it("keeps a deleted cause with the moderator's reason and its proof deadline", async () => {
     const t = await seeded();

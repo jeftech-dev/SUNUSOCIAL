@@ -472,7 +472,7 @@ export const decideProof = mutation({
 
     if (decision === "escalate") {
       const trimmed = reason?.trim();
-      if (!trimmed) throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+      if (!trimmed) throw appError("VALIDATION", fr.moderation.decisionReasonRequired, "reason");
       await ctx.db.patch(proofId, { status: "escalated" });
       await logAudit(ctx, {
         actorId: user._id,
@@ -633,7 +633,7 @@ export const decideDeletion = mutation({
       throw appError("CONFLICT", fr.errors.deletionAlreadyDecided, "requestId");
     }
     const trimmed = reason.trim();
-    if (!trimmed) throw appError("VALIDATION", fr.moderation.refuseReasonRequired, "reason");
+    if (!trimmed) throw appError("VALIDATION", fr.moderation.decisionReasonRequired, "reason");
     const cause = await ctx.db.get(request.causeId);
     if (!cause) throw appError("NOT_FOUND", fr.errors.causeNotFound, "requestId");
     const responsible = await structureUser(ctx, cause.structureId);
@@ -902,6 +902,27 @@ export const decideRefund = mutation({
       refundAmount: amount,
       decidedBy: user._id,
       payoutId,
+    });
+    // S20: the refunded gift stops counting toward the cause (`raised` is gross, DT-6). The counters
+    // are display only (releases sum `isReleasable` donations), and a refund payout that fails keeps
+    // `refundQueuedAt`, so the donation stays out of the cause for manual handling: no restore needed.
+    // A goal cause already closed keeps its status even if `raised` now falls under the goal.
+    const siblings = await ctx.db
+      .query("donations")
+      .withIndex("by_cause_donor", (q) =>
+        q.eq("causeId", donation.causeId).eq("donorId", donation.donorId),
+      )
+      .collect();
+    const donorStillCounted = siblings.some(
+      (d) =>
+        d._id !== donation._id &&
+        (d.status === "held" || d.status === "released") &&
+        d.refundQueuedAt === undefined &&
+        d.lateRefundFlaggedAt === undefined,
+    );
+    await ctx.db.patch(cause._id, {
+      raised: Math.max(0, cause.raised - donation.amount),
+      donorCount: Math.max(0, cause.donorCount - (donorStillCounted ? 0 : 1)),
     });
     await logAudit(ctx, {
       actorId: user._id,

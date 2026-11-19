@@ -62,7 +62,7 @@ SCENARIOS = [
                 M("Y", "D", "Session ouverte 7 jours, connexion enregistrée dans l'historique"),
             ]),
             ("Identifiants faux", [
-                M("Y", "D", "« Numéro ou mot de passe incorrect » (5 essais par 10 min, puis attente)"),
+                M("Y", "D", "« Identifiant ou mot de passe incorrect » (5 essais par 10 min, puis attente)"),
             ]),
         ]),
         M("Y", "D", "Au bout de 7 jours, la session expire : retour à la connexion"),
@@ -72,7 +72,7 @@ SCENARIOS = [
         M("D", "Y", "Saisit son numéro", "Mot de passe oublié ?"),
         M("Y", "D", "Envoie un code SMS au numéro vérifié (même message que le compte existe ou non)"),
         M("D", "Y", "Saisit le code + un nouveau mot de passe", "Changer mon mot de passe"),
-        M("Y", "D", "Mot de passe changé, toutes ses sessions fermées, action enregistrée"),
+        M("Y", "D", "Mot de passe changé, toutes ses anciennes sessions fermées, nouvelle connexion automatique, action enregistrée"),
         M("S", "Y", "Structure, hôpital ou modérateur : saisit son e-mail", "Mot de passe oublié ?"),
         M("Y", "S", "Envoie un lien par e-mail, valable 30 min et utilisable une seule fois"),
         M("S", "Y", "Choisit un nouveau mot de passe (12 caractères min.) ; le code SMS sera demandé à la prochaine connexion"),

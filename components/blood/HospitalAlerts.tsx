@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NativeSelect } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -80,12 +81,13 @@ function AlertRow({
   const close = useMutation(api.blood.closeAlert);
   const [showDonors, setShowDonors] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const active = alert.responders.filter((r) => r.status !== "cancelled");
   const donated = alert.responders.filter((r) => r.status === "donated");
   const goalReached = alert.unitsCollected >= alert.unitsNeeded;
 
   async function closeAlert() {
-    if (!window.confirm(fr.blood.hospital.confirmClose)) return;
+    setConfirmingClose(false);
     setBusy(true);
     onNotice(null);
     try {
@@ -141,7 +143,12 @@ function AlertRow({
           )
         )}
         {!alert.closed && (
-          <Button variant="ghost" size="sm" disabled={busy} onClick={closeAlert}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={() => setConfirmingClose(true)}
+          >
             {fr.blood.hospital.closeAlert}
           </Button>
         )}
@@ -161,6 +168,15 @@ function AlertRow({
           hospitalName={hospitalName}
           donatedCount={donated.length}
           onNotice={onNotice}
+        />
+      )}
+      {confirmingClose && (
+        <ConfirmDialog
+          title={fr.blood.hospital.confirmCloseTitle}
+          body={fr.blood.hospital.confirmClose}
+          confirmLabel={fr.blood.hospital.closeAlert}
+          onConfirm={closeAlert}
+          onCancel={() => setConfirmingClose(false)}
         />
       )}
     </li>

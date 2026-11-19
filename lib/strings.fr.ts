@@ -175,7 +175,7 @@ export const fr = {
       notRequested: "Groupe non recherché pour cette alerte",
       exampleTitle: "Exemple d'alerte reçue",
       exampleSms:
-        "SUNUSOCIAL\u00a0: l'Hôpital Principal de Dakar recherche du sang O+ (Urgence vitale). Alerte envoyée aux donneurs de Médina. Confirmez votre venue sur sunusocial.sn/sang",
+        "SUNUSOCIAL\u00a0: l'Hôpital Principal de Dakar recherche du sang O+ (Urgence vitale) à Médina. Confirmez votre venue sur sunusocial.sn/sang",
       exampleNote:
         "Envoyé uniquement aux donneurs du groupe recherché, dans les communes de votre région choisies par l'hôpital. Votre adresse n'est jamais partagée.",
       beforeTitle: "Avant de venir",
@@ -237,8 +237,9 @@ export const fr = {
       hideDonors: "Masquer les donneurs",
       waiting: "En attente de réponses…",
       closeAlert: "Clôturer l'alerte",
+      confirmCloseTitle: "Clôturer cette alerte\u00a0?",
       confirmClose:
-        "Clôturer cette alerte\u00a0? Les donneurs qui n'ont pas encore donné seront prévenus qu'ils n'ont plus besoin de venir.",
+        "Les donneurs qui n'ont pas encore donné seront prévenus qu'ils n'ont plus besoin de venir.",
       donorCancelled: "Venue annulée",
       confirmDonation: "Confirmer le don",
       donationConfirmed: (group: string) => `✓ Don confirmé · +1 ${group}`,
@@ -468,6 +469,7 @@ export const fr = {
     flaggedBadge: "Éléments signalés",
     refuseReasonLabel: "Motif du refus (visible par la structure)",
     refuseReasonRequired: "Indiquez un motif de refus.",
+    decisionReasonRequired: "Indiquez le motif de votre décision.",
     refuseReasonPlaceholder: "Ex.\u00a0: le devis des travaux est manquant.",
     confirmRefuse: "Confirmer le refus",
     confirmEscalate: "Confirmer la demande",
@@ -826,6 +828,8 @@ export const fr = {
   messages: {
     title: "Mes messages",
     empty: "Aucun message pour le moment.",
+    view: "Voir",
+    markAllRead: "Tout marquer comme lu",
   },
 
   /** Structure dashboard: the structure's own causes and their status timeline (PARCOURS S11–S14). */
@@ -842,14 +846,17 @@ export const fr = {
     edit: "Modifier",
     editResend: "Modifier et renvoyer",
     withdraw: "Retirer",
-    withdrawConfirm: "Retirer cette cause\u00a0? Elle ne sera plus visible.",
+    withdrawTitle: "Retirer cette cause\u00a0?",
+    withdrawBody: "Elle ne sera plus visible.",
     submitProof: "Publier la preuve",
     actionFailed: "L'action n'a pas abouti. Réessayez.",
     withdrawn: "Cause retirée.",
     requestDeletion: "Demander la suppression",
-    deletionPrompt:
-      "Pourquoi supprimer cette cause\u00a0? Un modérateur décidera du sort des fonds déjà collectés.",
+    deletionBody: "Un modérateur décidera du sort des fonds déjà collectés.",
+    deletionReasonLabel: "Pourquoi supprimer cette cause\u00a0?",
+    deletionSubmit: "Envoyer la demande",
     deletionRequested: "Demande de suppression envoyée. Un modérateur va l'examiner.",
+    deletionPending: "Demande de suppression en attente de décision.",
     requestExtension: "Demander une prolongation",
     extensionDateLabel: "Nouvelle date limite",
     extensionReasonLabel: "Raison de la prolongation",
@@ -882,6 +889,11 @@ export const fr = {
     submit: "Enregistrer le changement",
     submitted: "Changement envoyé. Un modérateur doit le valider avant qu'il prenne effet.",
     pending: "Un changement de compte est en attente de validation par la modération.",
+    currentLabel: "Compte actuel",
+    pendingLabel: "Changement demandé",
+    noAccount: "Aucun compte de réception enregistré.",
+    account: (method: string, masked: string, holder: string) =>
+      `${method} · ${masked} · ${holder}`,
   },
 
   /** Create-cause wizard (PARCOURS S11). */
@@ -906,6 +918,8 @@ export const fr = {
       endTypeDate: "À une date limite",
       endTypeGoal: "À l'objectif atteint (ou à la date limite)",
       goalAmount: "Objectif en FCFA",
+      estimatedNet: (net: string) =>
+        `Si l'objectif est atteint, vous recevrez environ ${net} après les frais de paiement.`,
       deadline: "Date limite",
       deadlineHint: (maxDays: number) => `Au plus ${maxDays} jours après aujourd'hui.`,
       urgency: "Marquer comme urgent",
@@ -964,7 +978,7 @@ export const fr = {
 
   sms: {
     bloodAlert: (hospital: string, groups: string, level: string, communes: string) =>
-      `SUNUSOCIAL\u00a0: ${hospital} recherche du sang ${groups} (${level}). Alerte envoyée aux donneurs de ${communes}. Confirmez votre venue sur sunusocial.sn/sang`,
+      `SUNUSOCIAL\u00a0: ${hospital} recherche du sang ${groups} (${level}) à ${communes}. Confirmez votre venue sur sunusocial.sn/sang`,
     bloodReminder: (hospital: string, slot: string) =>
       `SUNUSOCIAL\u00a0: rappel, vous êtes attendu ${slot} à ${hospital} pour donner votre sang. Merci\u00a0!`,
     bloodClosed: (hospital: string) =>

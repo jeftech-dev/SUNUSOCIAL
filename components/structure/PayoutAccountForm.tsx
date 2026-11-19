@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,14 @@ import { toUiError } from "@/lib/errors";
 import { fr } from "@/lib/strings.fr";
 import { METHODS, type Method } from "@/lib/types";
 
+function accountLine(account: { method: Method; maskedNumber: string; holderName: string }) {
+  return fr.payoutChange.account(
+    fr.methods[account.method],
+    account.maskedNumber,
+    account.holderName,
+  );
+}
+
 /**
  * Lets a structure change its payout account (S10, DT-5): confirm the new number by SMS, then submit.
  * The change lands in `payoutPending` and a moderator must approve it before it takes effect.
@@ -16,6 +24,7 @@ import { METHODS, type Method } from "@/lib/types";
 export function PayoutAccountForm() {
   const sendCode = useAction(api.otp.send);
   const requestChange = useMutation(api.structures.requestPayoutChange);
+  const payout = useQuery(api.structures.myPayout);
 
   const [method, setMethod] = useState<Method>("wave");
   const [number, setNumber] = useState("");
@@ -64,7 +73,30 @@ export function PayoutAccountForm() {
       <h2 className="font-heading text-lg font-bold text-brand-blue">{fr.payoutChange.heading}</h2>
       <p className="text-sm text-muted-foreground">{fr.payoutChange.intro}</p>
 
-      {done ? (
+      {payout && (
+        <dl className="flex flex-col gap-1 rounded-lg bg-background p-3 text-sm">
+          <dt className="text-xs font-semibold uppercase text-muted-foreground">
+            {fr.payoutChange.currentLabel}
+          </dt>
+          <dd className="font-semibold">
+            {payout.active ? accountLine(payout.active) : fr.payoutChange.noAccount}
+          </dd>
+          {payout.pending && (
+            <>
+              <dt className="mt-2 text-xs font-semibold uppercase text-muted-foreground">
+                {fr.payoutChange.pendingLabel}
+              </dt>
+              <dd className="font-semibold">{accountLine(payout.pending)}</dd>
+            </>
+          )}
+        </dl>
+      )}
+
+      {payout?.pending && !done ? (
+        <p role="status" className="rounded-lg bg-primary-soft p-3 text-sm font-semibold">
+          {fr.payoutChange.pending}
+        </p>
+      ) : done ? (
         <p
           role="status"
           className="rounded-lg bg-success-soft p-3 text-sm font-semibold text-brand-green-strong"
