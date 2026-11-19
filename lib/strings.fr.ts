@@ -735,6 +735,9 @@ export const fr = {
     /** Details of the "Versement à vérifier" alert sent to moderators (payout worker). */
     payoutBlockedDetail: (payoutId: string, attempts: number) =>
       `versement ${payoutId} bloqué après ${attempts} tentatives (409)`,
+    /** Detail of the alert sent to moderators when a paid order cannot be recorded (webhook). */
+    paymentUnrecordedDetail: (orderId: string, expected: string, received: string) =>
+      `paiement ${orderId} reçu mais non enregistré (attendu : ${expected}, reçu : ${received})`,
     payoutFailedDetail: (payoutId: string, error: string) =>
       `versement ${payoutId} échoué\u00a0: ${error}`,
     payoutUnresolvedDetail: (payoutId: string) =>

@@ -11,7 +11,7 @@ import { isPaidStatus, parseWebhookPayload } from "../lib/providers/types";
 import { fr } from "../lib/strings.fr";
 import type { Method } from "../lib/types";
 import { errorPath, successPath } from "./donations";
-import { enqueueDonationRefund, enqueuePayout, isReleasable } from "./payouts";
+import { alertModerators, enqueueDonationRefund, enqueuePayout, isReleasable } from "./payouts";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import {
@@ -92,11 +92,40 @@ export const recordPayment = internalMutation({
         details: { orderId, expected: donation.amount, received: amount },
       });
       console.error(`amount mismatch for ${orderId}: expected ${donation.amount}, got ${amount}`);
+      // The donor paid but nothing is recorded or refunded: a moderator must resolve it by hand.
+      await alertModerators(
+        ctx,
+        fr.notifications.paymentUnrecordedDetail(
+          orderId,
+          formatFCFA(donation.amount),
+          formatFCFA(amount),
+        ),
+      );
       return { outcome: "mismatch" };
     }
 
     const platformFeeRate = loadConfig(process.env).platformFeeRate;
-    const settled = settle(amount, fees, platformFeeRate);
+    let settled;
+    try {
+      settled = settle(amount, fees, platformFeeRate);
+    } catch (error) {
+      // Fees larger than the amount: answer 200 (no endless webhook retries) and flag it.
+      await logAudit(ctx, {
+        action: "donation.amount_mismatch",
+        targetTable: "donations",
+        targetId: donation._id,
+        details: { orderId, amount, fees, error: String(error) },
+      });
+      await alertModerators(
+        ctx,
+        fr.notifications.paymentUnrecordedDetail(
+          orderId,
+          formatFCFA(donation.amount),
+          formatFCFA(amount),
+        ),
+      );
+      return { outcome: "mismatch" };
+    }
     if (settled.fee !== donation.fee) {
       // The 3% was an estimate; NabooPay's actual fee is authoritative (DT-6).
       await logAudit(ctx, {

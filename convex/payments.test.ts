@@ -241,8 +241,31 @@ describe("payments webhook", () => {
 
   it("leaves the donation pending on an amount mismatch", async () => {
     const t = await seeded();
+    await t.run((ctx) =>
+      ctx.db.insert("users", {
+        name: "Mod",
+        role: "moderator",
+        disabled: false,
+        createdAt: Date.now(),
+      }),
+    );
     const { donationId } = await checkout(t, 5000);
     const res = await postPaidWebhook(t, mockOrderId(donationId), 6000, 180);
+    expect(res.status).toBe(200);
+    expect((await getDonation(t, donationId))!.status).toBe("pending");
+    const alerts = await t.run((ctx) =>
+      ctx.db
+        .query("notifications")
+        .filter((q) => q.eq(q.field("kind"), "payout_alert"))
+        .collect(),
+    );
+    expect(alerts.length).toBeGreaterThan(0);
+  });
+
+  it("flags fees larger than the amount instead of failing the webhook", async () => {
+    const t = await seeded();
+    const { donationId } = await checkout(t, 5000);
+    const res = await postPaidWebhook(t, mockOrderId(donationId), 5000, 6000);
     expect(res.status).toBe(200);
     expect((await getDonation(t, donationId))!.status).toBe("pending");
   });
