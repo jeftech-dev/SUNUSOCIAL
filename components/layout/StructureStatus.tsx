@@ -28,12 +28,20 @@ export function StructureStatus({ title }: { title: string }) {
           {fr.spaces.refused(structure.refusalReason ?? "")}
         </p>
       )}
-      {structure?.status === "approved" && (
+      {structure?.status === "approved" && structure.suspendedAt !== undefined && (
+        <p
+          role="status"
+          className="rounded-lg bg-[var(--danger-soft)] px-4 py-3 text-sm font-semibold text-destructive"
+        >
+          {fr.spaces.suspended}
+        </p>
+      )}
+      {structure?.status === "approved" && structure.suspendedAt === undefined && (
         <p
           role="status"
           className="rounded-lg bg-[var(--success-soft)] px-4 py-3 text-sm font-semibold text-success"
         >
-          {fr.spaces.approved}
+          {me.user.role === "hospital" ? fr.spaces.approvedHospital : fr.spaces.approved}
         </p>
       )}
     </section>

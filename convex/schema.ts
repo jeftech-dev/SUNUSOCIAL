@@ -62,7 +62,11 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("email", ["email"])
-    .index("phone", ["phone"]),
+    .index("phone", ["phone"])
+    // The responsible account of a structure/hospital, for moderation notifications.
+    .index("by_structure", ["structureId"])
+    // All moderators, e.g. to alert them when a payout stops on a short balance (DT-4).
+    .index("by_role", ["role"]),
 
   /** Extends Convex Auth sessions with the SMS 2FA step for organisations and moderators (DT-2). */
   authSessions: defineTable({
@@ -123,13 +127,18 @@ export default defineSchema({
     payout: v.optional(payoutAccountV),
     /** A requested payout-account change awaiting moderator review. Blocks payouts while set. */
     payoutPending: v.optional(payoutAccountV),
+    /** Set with `payoutPending` so the moderation queue can find pending changes by index, in any
+     * status (payouts are blocked whenever `payoutPending` is set, not only for approved structures). */
+    payoutPendingAt: v.optional(v.number()),
     status: structureStatusV,
     refusalReason: v.optional(v.string()),
     suspendedAt: v.optional(v.number()),
     onboardingPhase: onboardingPhaseV,
     profileCompletedAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    .index("by_payout_pending", ["payoutPendingAt"]),
 
   // -------------------------------------------------------------------------
   // Causes & money
@@ -161,10 +170,20 @@ export default defineSchema({
     fundsReleasedAt: v.optional(v.number()),
     releasePayoutId: v.optional(v.id("payouts")),
   })
-    .index("by_status_category", ["status", "category"])
+    // Feed orders (DT-34): soonest deadline first by default, newest approval first for "Récent".
+    .index("by_status_deadline", ["status", "deadline"])
+    // Causes awaiting release: query status + fundsReleasedAt === undefined so the hourly release
+    // cron never scans already-released closed causes (which keep status "closed" forever).
+    .index("by_status_released", ["status", "fundsReleasedAt"])
+    .index("by_status_category_deadline", ["status", "category", "deadline"])
+    .index("by_status_approved", ["status", "approvedAt"])
+    .index("by_status_category_approved", ["status", "category", "approvedAt"])
     .index("by_structure", ["structureId"])
     .index("by_featured", ["featuredAt"])
-    .index("by_status_deadline", ["status", "deadline"]),
+    .searchIndex("search_title", {
+      searchField: "title",
+      filterFields: ["status", "category", "urgency"],
+    }),
 
   donations: defineTable({
     causeId: v.id("causes"),
@@ -183,13 +202,24 @@ export default defineSchema({
     /** NabooPay selected_payment_method. Refunds go back on it. */
     paidMethod: v.optional(methodV),
     status: donationStatusV,
+    /**
+     * Paid after its cause stopped being active (DB-18, DT-7): not counted in `raised` /
+     * `donorCount`, stays `held` until the payout worker refunds its `net` automatically.
+     */
+    lateRefundFlaggedAt: v.optional(v.number()),
+    /**
+     * Set when a refund payout of this donation is queued (moderator approval, deletion or late
+     * payment). The donation stays `held` until the payout lands, so every release sum must skip it.
+     */
+    refundQueuedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_cause", ["causeId"])
     .index("by_cause_donor", ["causeId", "donorId"])
     .index("by_donor", ["donorId"])
     .index("by_txn", ["providerTxnId"])
-    .index("by_status_created", ["status", "createdAt"]),
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_late_refund", ["lateRefundFlaggedAt"]),
 
   /** Refund requests, possible while the donation is held. The decision is final (DB-13). */
   refundRequests: defineTable({
@@ -210,7 +240,7 @@ export default defineSchema({
   /** Every outgoing transfer, processed one at a time by the payout worker (DT-4). */
   payouts: defineTable({
     kind: payoutKindV,
-    /** Cause id (release) or refund-request id (refund). */
+    /** Cause id (release / deletion payout) or donation id (refund). */
     targetId: v.string(),
     amount: v.number(),
     method: methodV,
@@ -223,7 +253,9 @@ export default defineSchema({
     error: v.optional(v.string()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
-  }).index("by_status_created", ["status", "createdAt"]),
+  })
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_order", ["providerOrderId"]),
 
   // -------------------------------------------------------------------------
   // Proofs
@@ -241,7 +273,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_cause", ["causeId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_status_validated", ["status", "validatedAt"]),
 
   proofItems: defineTable({
     proofId: v.id("proofs"),
@@ -272,6 +305,7 @@ export default defineSchema({
     metAt: v.optional(v.number()),
   })
     .index("by_cause", ["causeId"])
+    .index("by_structure", ["structureId"])
     .index("by_met_due", ["metAt", "dueAt"]),
 
   // -------------------------------------------------------------------------
@@ -304,7 +338,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_status", ["status"])
-    .index("by_structure", ["structureId"]),
+    .index("by_structure", ["structureId"])
+    .index("by_target_status", ["targetId", "status"]),
 
   // -------------------------------------------------------------------------
   // Notifications & audit
@@ -318,7 +353,9 @@ export default defineSchema({
     link: v.optional(v.string()),
     readAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_user_read", ["userId", "readAt"]),
+  })
+    .index("by_user_read", ["userId", "readAt"])
+    .index("by_user_created", ["userId", "createdAt"]),
 
   /** Append-only (DB-9, DT-18). Rows are never edited; donor logins are purged after 12 months. */
   auditLog: defineTable({
@@ -376,9 +413,23 @@ export default defineSchema({
     createdBy: v.id("users"),
     closedBy: v.optional(v.id("users")),
     createdAt: v.number(),
+    /** Interim (G16): reaches every opted-in donor, including unknown groups. */
+    anyType: v.optional(v.boolean()),
+    /** When the alert expires on its own; derived from the level when absent. */
+    deadlineAt: v.optional(v.number()),
+    closedAt: v.optional(v.number()),
+    /** Interim (G13): required when a moderator closes an alert. */
+    closeReason: v.optional(v.string()),
+    closedByModerator: v.optional(v.boolean()),
+    thanksSentAt: v.optional(v.number()),
+    /** Donors reached by the fan-out so far. */
+    notifiedCount: v.optional(v.number()),
+    /** Active responses not yet confirmed: kept in step by respond / cancel / confirm. */
+    pendingResponders: v.optional(v.number()),
   })
     .index("by_hospital_closed", ["hospitalId", "closed"])
-    .index("by_closed", ["closed"]),
+    .index("by_closed", ["closed"])
+    .index("by_closed_deadline", ["closed", "deadlineAt"]),
 
   bloodResponses: defineTable({
     alertId: v.id("bloodAlerts"),
@@ -390,9 +441,29 @@ export default defineSchema({
     slot: v.string(),
     donated: v.boolean(),
     createdAt: v.number(),
+    slotStart: v.optional(v.number()),
+    slotEnd: v.optional(v.number()),
+    /** Interim (G14): a donor may cancel before the slot ends. */
+    cancelledAt: v.optional(v.number()),
+    confirmedAt: v.optional(v.number()),
+    confirmedBy: v.optional(v.id("users")),
+    /** The group found on site, when the donor's snapshot is "unknown". */
+    donatedType: v.optional(bloodTypeV),
+    reminderJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_alert", ["alertId"])
-    .index("by_alert_donor", ["alertId", "donorId"]),
+    .index("by_alert_donor", ["alertId", "donorId"])
+    .index("by_donor", ["donorId", "createdAt"]),
+
+  /**
+   * Opted-in donors per (group, commune), kept in step with `donorProfiles` by `adjustBloodReach`, so
+   * the composer's reach estimate reads one row per combination instead of every profile.
+   */
+  bloodReach: defineTable({
+    bloodType: bloodTypeV,
+    commune: v.string(),
+    count: v.number(),
+  }).index("by_type_commune", ["bloodType", "commune"]),
 
   bloodStock: defineTable({
     hospitalId: v.id("structures"),

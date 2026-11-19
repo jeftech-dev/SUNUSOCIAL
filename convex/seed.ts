@@ -6,6 +6,7 @@
 // Every seeded donation keeps `fee + platformFee + net === amount`, and each cause's `raised`
 // and `donorCount` match its donations exactly.
 
+import { BLOOD_ALERT_DURATION_MS } from "../lib/bloodSlots";
 import { v } from "convex/values";
 
 import { DAY_MS, loadConfig } from "../lib/config";
@@ -23,6 +24,7 @@ import {
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { adjustBloodReach } from "./lib/bloodReach";
 
 // ---------------------------------------------------------------------------
 // Data (from prototype/Donateur-v2.dc.html and prototype/Moderateur-v2.dc.html)
@@ -493,7 +495,7 @@ export const insert = internalMutation({
         disabled: false,
         createdAt: now - 20 * DAY_MS,
       });
-      await ctx.db.insert("donorProfiles", {
+      const donorProfile = {
         userId,
         bloodOptIn: d.bloodType !== undefined,
         bloodType: d.bloodType,
@@ -501,7 +503,9 @@ export const insert = internalMutation({
         commune: d.commune,
         smsOptIn: d.bloodType !== undefined,
         updatedAt: now - 20 * DAY_MS,
-      });
+      };
+      await ctx.db.insert("donorProfiles", donorProfile);
+      await adjustBloodReach(ctx, null, donorProfile);
       donorIds.push(userId);
     }
 
@@ -582,6 +586,8 @@ export const insert = internalMutation({
       closed: false,
       createdBy: hospitalUser,
       createdAt: now - DAY_MS / 4,
+      anyType: false,
+      deadlineAt: now - DAY_MS / 4 + BLOOD_ALERT_DURATION_MS.vitale,
     });
 
     await ctx.db.insert("auditLog", {

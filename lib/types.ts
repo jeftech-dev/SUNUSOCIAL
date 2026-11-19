@@ -46,11 +46,21 @@ export type DonationStatus = (typeof DONATION_STATUSES)[number];
 export const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "unknown"] as const;
 export type BloodType = (typeof BLOOD_TYPES)[number];
 
+/** The eight real groups, for pickers (the "unknown" option is profile-only). */
+export const KNOWN_BLOOD_TYPES = BLOOD_TYPES.filter((t) => t !== "unknown") as Exclude<
+  BloodType,
+  "unknown"
+>[];
+
 export const BLOOD_ALERT_LEVELS = ["vitale", "urgente", "normale"] as const;
 export type BloodAlertLevel = (typeof BLOOD_ALERT_LEVELS)[number];
 
 export const END_TYPES = ["date", "goal"] as const;
 export type EndType = (typeof END_TYPES)[number];
+
+/** Secondary feed filters: Urgent, Presque atteint, Récent (DT-34). One at a time. */
+export const CAUSE_FILTERS = ["urgent", "almost", "recent"] as const;
+export type CauseFilter = (typeof CAUSE_FILTERS)[number];
 
 /** The structure type that marks a hospital account (blood alerts only, no fundraising). */
 export const HOSPITAL_TYPE = "Hôpital (don de sang)";
@@ -129,6 +139,7 @@ export type ExtensionStatus = (typeof EXTENSION_STATUSES)[number];
 /** In-app notification kinds (DT-17). */
 export const NOTIFICATION_KINDS = [
   "donation_confirmed",
+  "donation_late_refund",
   "proof_published",
   "cause_decision",
   "structure_decision",
@@ -136,8 +147,13 @@ export const NOTIFICATION_KINDS = [
   "extension_decision",
   "deletion_decision",
   "refund_decision",
+  "funds_released",
+  "payout_alert",
   "blood_alert",
   "blood_thanks",
+  "blood_response",
+  "blood_reminder",
+  "blood_alert_closed",
   "account_suspended",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -200,12 +216,283 @@ export interface SubmitProofInput {
 }
 
 export interface CreateAlertInput {
-  hospitalId: Id<"structures">;
   bloodTypes: BloodType[];
+  /** Interim (G16): "Tous groupes". */
+  anyType: boolean;
   level: BloodAlertLevel;
   unitsNeeded: number;
   targetCommunes: string[];
   channels: { inApp: boolean; sms: boolean };
+}
+
+// ---------------------------------------------------------------------------
+// Views (what the causes queries return; docs/API_CONTRACT.md "Causes")
+// ---------------------------------------------------------------------------
+
+/** Every cause ends at its deadline; a `goal` cause also ends as soon as the goal is reached. */
+export interface EndCondition {
+  type: EndType;
+  deadline: number;
+}
+
+/** One card of the causes feed. */
+export interface CauseCardView {
+  id: Id<"causes">;
+  title: string;
+  category: Category;
+  organization: { name: string; verified: boolean };
+  bannerUrl: string | null;
+  raised: number;
+  goal: number;
+  /** Integer, 0–100. */
+  percent: number;
+  urgent: boolean;
+  endCondition: EndCondition;
+}
+
+/** One of the structure's own causes, with its moderation status (structure dashboard). */
+export interface StructureCauseView {
+  id: Id<"causes">;
+  title: string;
+  category: Category;
+  bannerUrl: string | null;
+  raised: number;
+  goal: number;
+  /** Integer, 0–100. */
+  percent: number;
+  urgent: boolean;
+  status: CauseStatus;
+  /** Shown when the cause was refused. */
+  refusalReason: string | null;
+  endCondition: EndCondition;
+  donorCount: number;
+  /** Whether `causes.withdraw` would currently succeed (in moderation, or active with no donation
+   * row at all). Computed server-side so the dashboard never offers a withdraw the server rejects. */
+  withdrawable: boolean;
+  submittedAt: number;
+  /** Funds released to the structure → a reception proof is due (Sprint 5 proof flow). */
+  fundsReleased: boolean;
+  /** The moderator's reason when the cause was deleted on request (DT-24); null otherwise. */
+  deletionReason: string | null;
+  /** A deletion request is waiting for a moderator, so a second one would be refused. */
+  deletionPending: boolean;
+  /** The reception proof of a funded cause (DB-12, DT-25); null while no proof deadline runs. */
+  proof: StructureCauseProof | null;
+}
+
+export interface StructureCauseProof {
+  /** Target of a delay request (`extensions.request`, kind `proof_deadline`). */
+  deadlineId: Id<"proofDeadlines">;
+  dueAt: number;
+  /** Null until a dossier is sent. */
+  status: ProofStatus | null;
+  /** A delay request is waiting for the moderator. */
+  delayPending: boolean;
+}
+
+/** A structure's own cause with every editable field, to prefill the edit wizard. */
+export interface OwnedCauseView {
+  id: Id<"causes">;
+  title: string;
+  description: string;
+  category: Category;
+  endType: EndType;
+  goalAmount: number;
+  deadline: number;
+  urgency: Urgency;
+  bannerUrl: string | null;
+  status: CauseStatus;
+  refusalReason: string | null;
+}
+
+/** A card of the "Causes similaires" row. */
+export interface SimilarCauseView {
+  id: Id<"causes">;
+  title: string;
+  raised: number;
+  goal: number;
+  percent: number;
+  bannerUrl: string | null;
+}
+
+/** The cause detail page. */
+export interface CauseDetailView {
+  id: Id<"causes">;
+  title: string;
+  description: string;
+  category: Category;
+  urgency: Urgency;
+  organization: { id: Id<"structures">; name: string; verified: boolean; city: string };
+  bannerUrl: string | null;
+  raised: number;
+  goal: number;
+  percent: number;
+  donorCount: number;
+  endCondition: EndCondition;
+  /** The goal minus the estimated fees: what the structure would receive. */
+  estimatedNet: number;
+  featured: boolean;
+  status: CauseStatus;
+  similar: SimilarCauseView[];
+}
+
+// ---------------------------------------------------------------------------
+// Proofs (reception dossier; docs/API_CONTRACT.md "Proofs")
+// ---------------------------------------------------------------------------
+
+/** A flagged item reported back to the structure on submission ({ index, reason }). */
+export interface ProofAutoFlag {
+  index: number;
+  reason: string;
+}
+
+/** One item of a dossier, as shown in the gallery. `flagged`/`flagReason` are moderator-only. */
+export interface ProofItemView {
+  id: Id<"proofItems">;
+  kind: ProofItemKind;
+  url: string | null;
+  caption: string | null;
+  supplier: string | null;
+  ref: string | null;
+  flagged: boolean;
+  flagReason: string | null;
+}
+
+/** The full dossier of a cause (structure, moderator, or a donor once validated). */
+export interface ProofDossierView {
+  proofId: Id<"proofs">;
+  causeId: Id<"causes">;
+  causeTitle: string;
+  organization: string;
+  report: string;
+  spend: SpendLine[];
+  status: ProofStatus;
+  /** Whole-dossier flags; empty for donors (moderator-only). */
+  dossierFlags: string[];
+  items: ProofItemView[];
+  validatedAt: number | null;
+}
+
+/** A card in the donor dashboard / public feed of validated dossiers. */
+export interface ProofFeedCard {
+  proofId: Id<"proofs">;
+  causeId: Id<"causes">;
+  causeTitle: string;
+  organization: string;
+  itemCount: number;
+  coverUrl: string | null;
+  validatedAt: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// Moderation queues (docs/API_CONTRACT.md "Moderation")
+// ---------------------------------------------------------------------------
+
+export interface StructureQueueItem {
+  id: Id<"structures">;
+  name: string;
+  type: StructureType;
+  region: string;
+  submittedAt: number;
+  hasPayout: boolean;
+  /** What the moderator checks before deciding (PARCOURS S09, S10). */
+  commune: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  receiptNo: string | null;
+  /** The récépissé / agrément, as a short-lived URL. */
+  receiptUrl: string | null;
+  /** The payout account given at signup, number masked (DT-5). Absent for hospitals. */
+  payout: { method: Method; accountNumber: string; holderName: string } | null;
+}
+
+export interface CauseQueueItem {
+  id: Id<"causes">;
+  title: string;
+  organization: string;
+  urgent: boolean;
+  /** The content the moderator approves or refuses (PARCOURS S12). */
+  description: string;
+  category: Category;
+  bannerUrl: string | null;
+  goal: number;
+  endCondition: EndCondition;
+}
+
+export interface ProofQueueItem {
+  id: Id<"proofs">;
+  cause: string;
+  flagged: boolean;
+}
+
+export interface DeletionQueueItem {
+  id: Id<"deletionRequests">;
+  causeId: Id<"causes">;
+  cause: string;
+  organization: string;
+  /** Gross raised so far, so the moderator sees what is at stake before choosing the fund fate. */
+  raised: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface RefundQueueItem {
+  id: Id<"refundRequests">;
+  donationId: Id<"donations">;
+  cause: string;
+  donor: string;
+  /** The net amount that would be refunded (DT-7). */
+  amount: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface ExtensionQueueItem {
+  id: Id<"extensionRequests">;
+  kind: ExtensionKind;
+  organization: string;
+  /** The cause title (both kinds resolve to the cause the deadline belongs to). */
+  target: string;
+  /** The deadline today and the one requested, so the moderator sees the added hold (DT-30). */
+  currentUntil: number | null;
+  requestedUntil: number;
+  reason: string;
+  createdAt: number;
+}
+
+export interface PayoutChangeQueueItem {
+  id: Id<"structures">;
+  organization: string;
+  method: Method;
+  /** The new wallet number, masked (last digits only). */
+  accountNumber: string;
+  holderName: string;
+}
+
+/** A structure suspended for a late proof, in the moderator's follow-up (PARCOURS S26). */
+export interface SuspendedStructureItem {
+  id: Id<"structures">;
+  organization: string;
+  suspendedAt: number;
+  /** Proofs still overdue; the suspension can be lifted once this is empty. */
+  lateProofs: { cause: string; dueAt: number; proofStatus: ProofStatus | null }[];
+}
+
+export interface ModerationQueue<T> {
+  count: number;
+  items: T[];
+}
+
+export interface ModerationQueues {
+  structures: ModerationQueue<StructureQueueItem>;
+  causes: ModerationQueue<CauseQueueItem>;
+  proofs: ModerationQueue<ProofQueueItem>;
+  deletions: ModerationQueue<DeletionQueueItem>;
+  refunds: ModerationQueue<RefundQueueItem>;
+  extensions: ModerationQueue<ExtensionQueueItem>;
+  payoutChanges: ModerationQueue<PayoutChangeQueueItem>;
+  featured: { causeId: Id<"causes">; since: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +528,58 @@ export interface PaginatedResponse<T> {
 // ---------------------------------------------------------------------------
 // Derived views
 // ---------------------------------------------------------------------------
+
+/** A donation as its donor sees it on the success page and in the simulator (`donations.status`). */
+export interface DonationStatusView {
+  id: Id<"donations">;
+  status: DonationStatus;
+  amount: number;
+  fee: number;
+  net: number;
+  /** Picked in the donation modal. */
+  method: Method;
+  /** NabooPay `selected_payment_method`, once paid. */
+  paidMethod: Method | null;
+  /** Paid after the cause closed: not counted, refunded automatically (DB-18). */
+  lateRefund: boolean;
+  createdAt: number;
+  cause: {
+    id: Id<"causes">;
+    title: string;
+    raised: number;
+    goal: number;
+    percent: number;
+    status: CauseStatus;
+  } | null;
+}
+
+/** One row of the donor's history (`donations.mine`, docs/API_CONTRACT.md). */
+export interface DonationHistoryView {
+  id: Id<"donations">;
+  causeId: Id<"causes">;
+  cause: string;
+  organization: string;
+  amount: number;
+  net: number;
+  method: Method;
+  date: number;
+  status: DonationStatus;
+  lateRefund: boolean;
+  proof: { available: boolean; proofId: Id<"proofs"> | null; itemCount: number };
+  refund: {
+    eligible: boolean;
+    estimatedAmount: number;
+    request: { status: RefundStatus; refundAmount: number | null } | null;
+  };
+  causeDeleted: { reason: string; outcome: "refunded" | "paidOut" } | null;
+}
+
+/** "Vous avez contribué à N causes pour X FCFA" (`donations.impact`). */
+export interface DonorImpact {
+  total: number;
+  causeCount: number;
+  donationCount: number;
+}
 
 /** Fee breakdown shown in the donation modal and recomputed on the server (DT-6). */
 export interface FeeBreakdown {

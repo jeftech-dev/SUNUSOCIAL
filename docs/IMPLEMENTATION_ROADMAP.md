@@ -37,8 +37,8 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 | 7 | Root layout, fonts (Montserrat/Inter), Convex provider, charte theme with accessible tokens (DT-11) | `feat` | `app/layout.tsx`, `app/globals.css` | ✅ |
 
 **Definition of Done:**
-- [ ] `npx convex dev` and `npm run dev` both run clean. *(`npm run build` + `npm start` verified in a browser; `npx convex dev` needs the team's Convex project, see below.)*
-- [ ] Schema deploys; `geo` seeded; `lint` + `typecheck` pass. *(`lint`, `typecheck` and `test` pass, and the schema and seed are validated with `convex-test`; the first deploy to a real Convex project is still to do.)*
+- [x] `npx convex dev` and `npm run dev` both run clean. *(Verified against the team's Convex dev deployment: MVP exit run, 16–17 Nov 2026, dev deployment.)*
+- [x] Schema deploys; `geo` seeded; `lint` + `typecheck` pass. *(Schema and seed deployed to the dev deployment; `lint`, `typecheck` and `test` pass.)*
 - [x] Brand colors/fonts match the charte (navy #174a7c, orange #de7d28, green #529e3b); white-on-orange buttons use #a9561a.
 - [x] CI runs lint, typecheck, test and `npm audit` on PRs.
 
@@ -79,16 +79,19 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `causes.list` with category + Urgent/Presque atteint/Récent filters | `feat` | `convex/causes.ts` | 📋 |
-| 2 | Feed page + `CauseCard` + `ProgressBar` + `VerifiedBadge` | `feat` | `app/(donor)/causes/page.tsx`, `components/cause/*` | 📋 |
-| 3 | Weekly featured ("Coup de cœur") display + `moderation.setFeatured` | `feat` | `convex/causes.ts`, `convex/moderation.ts`, feed page | 📋 |
-| 4 | `causes.get` + detail page (end condition, similar causes, WhatsApp) | `feat` | `convex/causes.ts`, `app/(donor)/causes/[id]/page.tsx` | 📋 |
-| 5 | Empty/loading states | `feat` | feed + detail pages | 📋 |
+| 1 | `causes.list` with category + Urgent/Presque atteint/Récent filters + title search (DT-34) | `feat` | `convex/causes.ts`, `convex/lib/causeViews.ts`, `convex/schema.ts` (feed indexes) | ✅ |
+| 2 | Feed page + `CauseCard` + `ProgressBar` + `VerifiedBadge` | `feat` | `app/(donor)/causes/page.tsx`, `components/cause/*`, `hooks/useCauses.ts` | ✅ |
+| 3 | Weekly featured ("Coup de cœur") display + `moderation.setFeatured` | `feat` | `convex/causes.ts`, `convex/moderation.ts`, feed page | ✅ |
+| 3b | Coup de cœur picker on the moderation host *(pulled forward from Sprint 5)* | `feat` | `app/moderation/coup-de-coeur`, `components/moderation/FeaturedPicker.tsx` | ✅ |
+| 4 | `causes.get` + detail page (end condition, similar causes, WhatsApp) | `feat` | `convex/causes.ts`, `app/(donor)/causes/[id]/page.tsx` | ✅ |
+| 5 | Empty/loading states | `feat` | feed + detail pages | ✅ |
 
 **Definition of Done:**
-- [ ] Only approved causes from verified structures show.
-- [ ] Filters and categories narrow the list; empty state renders.
-- [ ] Progress and donor count reflect live data.
+- [x] Only approved causes from verified structures show. *(Suspended structures are hidden too: DB-17, DT-34.)*
+- [x] Filters and categories narrow the list; empty state renders.
+- [x] Progress and donor count reflect live data. *(Live Convex queries; donations start moving them in Sprint 4.)*
+
+*Verified with `convex-test` (visibility, filters, order, search, pagination, detail, Coup de cœur, guards and audit), `lint`, `typecheck` and `next build`. Not yet checked in a browser against a running backend: this environment could not download the local Convex backend. "Faire un don" is shown disabled until Sprint 4. The WhatsApp buttons appear once `NEXT_PUBLIC_WHATSAPP_NUMBER` is set.*
 
 ---
 
@@ -98,18 +101,23 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 0 | Spike: NabooPay API (checkout, signature, hold, payout, refund) — confirm against docs | `chore` | notes in `docs/ARCHITECTURE.md` | 📋 |
-| 1 | Payment adapter interface + NabooPay + mock modules | `feat` | `lib/providers/*` | 📋 |
-| 2 | `donations.createCheckout` (server fee math, min donation, provider redirect) | `feat` | `convex/donations.ts` | 📋 |
-| 3 | Webhook `httpAction` + `payments.recordPayment` (signature, idempotent, progress, release at goal) | `feat` | `convex/http.ts`, `convex/payments.ts` | 📋 |
-| 4 | `DonationModal` (presets, custom, live fee line, net, provider note, success) | `feat` | `components/cause/DonationModal.tsx`, `hooks/useDonation.ts` | 📋 |
-| 5 | Donor dashboard: history + cumulative impact | `feat` | `app/(donor)/profil/page.tsx`, `convex/donations.ts` | 📋 |
+| 0 | Spike: NabooPay API (checkout, signature, hold, payout, refund) — confirm against docs | `chore` | notes in `docs/ARCHITECTURE.md` §3.4 | ✅ |
+| 1 | Payment adapter interface + NabooPay + mock modules | `feat` | `lib/providers/*` | ✅ |
+| 2 | `donations.createCheckout` (server fee math, min donation, provider redirect) | `feat` | `convex/donations.ts` | ✅ |
+| 3 | Webhook `httpAction` + `payments.recordPayment` (signature, idempotent, progress, close at goal) + late-payment flag (DB-18) + pending re-check cron | `feat` | `convex/http.ts`, `convex/payments.ts`, `convex/crons.ts` | ✅ |
+| 3b | Mock payment simulator *(the in-app stand-in for NabooPay's checkout page)* | `feat` | `app/(donor)/paiement/simulation/[donationId]`, `components/cause/PaymentSimulator.tsx` | ✅ |
+| 4 | `DonationModal` (presets, custom, live fee line, net, provider note) + success page | `feat` | `components/cause/DonationModal.tsx`, `components/cause/DonationResult.tsx`, `hooks/useDonation.ts`, `app/(donor)/dons/[donationId]` | ✅ |
+| 5 | Donor dashboard: history + cumulative impact | `feat` | `app/(donor)/profil/page.tsx`, `components/donor/DonorProfile.tsx`, `convex/donations.ts` | ✅ |
 
 **Definition of Done:**
-- [ ] Only Orange Money + Wave offered; fee/net recompute live and match the server.
-- [ ] Webhook is idempotent on `providerTxnId`; no double-counting.
-- [ ] Success increments progress and records the donation in history.
-- [ ] Provider note says funds are held until the cause ends.
+- [x] Only Orange Money + Wave offered; fee/net recompute live and match the server. *(The modal shows a preview; `createCheckout` recomputes with `computeFee` and ignores client numbers.)*
+- [x] Webhook is idempotent on `providerTxnId`; no double-counting. *(A duplicate delivery is a no-op; `donorCount` moves only on a donor's first confirmed gift.)*
+- [x] Success increments progress and records the donation in history.
+- [x] Provider note says funds are held until the cause ends.
+- [x] A payment confirmed after the cause closed is flagged and not counted; the donor is told it will be refunded (DB-18). *(The net refund payout itself is Sprint 6.)*
+- [x] A goal cause closes when its goal is reached, accepting the last donation in full.
+
+*Verified with `convex-test` (checkout guards, webhook signature/idempotency/amount-match, first-gift donor count, goal close, late-payment flag, simulator, donor views — `convex/payments.test.ts`) plus `lib/providers` unit tests, and `lint` / `typecheck` / `next build`. Not yet run against a real Convex deployment or in a browser: this environment has no Convex backend. The real NabooPay adapter is unit-tested with `fetch` mocked; the first live call waits on SUNUSOCIAL's keys (`BOARD_QUESTIONS.md` E1). Development uses `PAYMENT_PROVIDER=mock` through the in-app simulator.*
 
 ---
 
@@ -119,17 +127,17 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `causes.create/update/withdraw` + org dashboard + status timeline | `feat` | `convex/causes.ts`, `app/(structure)/structure/*` | 📋 |
-| 2 | Create-cause wizard (banner, end condition w/ mandatory deadline, urgency) | `feat` | `app/(structure)/structure/causes/nouvelle` | 📋 |
-| 3 | `proofs.submit` (≥5 items + report + spend) + auto-flag checks | `feat` | `convex/proofs.ts`, `convex/proofChecks.ts` | 📋 |
-| 4 | Proof submission UI + `ProofGallery` | `feat` | `app/(structure)/structure/preuve/[causeId]`, `components/proof/*` | 📋 |
-| 5 | Moderation queues + decide structure (documents + payout account)/cause/proof (reason on refuse) + audit log + notifications | `feat` | `convex/moderation.ts`, `convex/audit.ts`, `convex/notify.ts`, `app/moderation/*` | 📋 |
-| 6 | Validated proofs → donor dashboard + public feed | `feat` | `convex/proofs.ts`, `app/(donor)/profil`, landing | 📋 |
+| 1 | `causes.create/update/withdraw` + org dashboard + status timeline | `feat` | `convex/causes.ts`, `app/(structure)/structure/*` | ✅ |
+| 2 | Create-cause wizard (banner, end condition w/ mandatory deadline, urgency) | `feat` | `app/(structure)/structure/causes/nouvelle` | ✅ |
+| 3 | `proofs.submit` (≥5 items + report + spend) + auto-flag checks | `feat` | `convex/proofs.ts`, `convex/proofChecks.ts` | ✅ |
+| 4 | Proof submission UI + `ProofGallery` | `feat` | `app/(structure)/structure/preuve/[causeId]`, `components/proof/*` | ✅ |
+| 5 | Moderation queues + decide structure (documents + payout account)/cause/proof (reason on refuse) + audit log + notifications | `feat` | `convex/moderation.ts`, `convex/audit.ts`, `convex/notify.ts`, `app/moderation/*` | ✅ |
+| 6 | Validated proofs → donor dashboard + public feed | `feat` | `convex/proofs.ts`, `app/(donor)/profil`, landing | ✅ |
 
 **Definition of Done:**
-- [ ] Cause lifecycle Soumise→En modération→Approuvée/Refusée→Active→Clôturée works; refusal reason shown.
-- [ ] Proof blocked under 5 items / short report; flagged items routed to moderator.
-- [ ] Moderator sees the exact donor-facing dossier; validated dossiers appear to donors.
+- [x] Cause lifecycle Soumise→En modération→Approuvée/Refusée→Active→Clôturée works; refusal reason shown. *(MVP exit run, 16–17 Nov 2026, dev deployment.)*
+- [x] Proof blocked under 5 items / short report; flagged items routed to moderator. *(Run live: the spend-mismatch flag reaches the moderator. The image and invoice-reuse flags are covered by `convex-test` only.)*
+- [x] Moderator sees the exact donor-facing dossier; validated dossiers appear to donors. *(Run live: donor profile and public proof feed.)*
 
 ---
 
@@ -139,19 +147,19 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `causes.requestDeletion` + `moderation.decideDeletion` (refund/payout, reason) | `feat` | `convex/causes.ts`, `convex/moderation.ts`, `app/moderation/*` | 📋 |
-| 2 | `donations.requestRefund` + `moderation.decideRefund` (while held, final, net amount paid out to the donor) | `feat` | `convex/donations.ts`, `convex/moderation.ts` | 📋 |
-| 2b | Payout worker (single-flight, 409 retry, no auto-resend on timeout, reconciliation, balance check) | `infra` | `convex/payouts.ts` | 📋 |
-| 2c | Extension requests (cause deadline, proof delay) + moderation queue | `feat` | `convex/extensions.ts`, `app/moderation/*` | 📋 |
-| 3 | Payout-account change flow (`requestPayoutChange` → `decidePayoutAccount`, payouts blocked meanwhile) | `feat` | `convex/structures.ts`, `convex/moderation.ts` | 📋 |
-| 4 | Release: `releaseCause` (goal, scheduled) + deadline cron + proof deadlines + suspension cron | `infra` | `convex/crons.ts`, `convex/payments.ts` | 📋 |
-| 5 | Donor dashboard: deleted-cause notice, refund status | `feat` | `app/(donor)/profil` | 📋 |
+| 1 | `causes.requestDeletion` + `moderation.decideDeletion` (refund/payout, reason) | `feat` | `convex/causes.ts`, `convex/moderation.ts`, `app/moderation/*` | ✅ |
+| 2 | `donations.requestRefund` + `moderation.decideRefund` (while held, final, net amount paid out to the donor) | `feat` | `convex/donations.ts`, `convex/moderation.ts` | ✅ |
+| 2b | Payout worker (single-flight, 409 retry, no auto-resend on timeout, reconciliation, balance check) | `infra` | `convex/payouts.ts` | ✅ |
+| 2c | Extension requests (cause deadline, proof delay) + moderation queue | `feat` | `convex/extensions.ts`, `app/moderation/*` | ✅ |
+| 3 | Payout-account change flow (`requestPayoutChange` → `decidePayoutAccount`, payouts blocked meanwhile) | `feat` | `convex/structures.ts`, `convex/moderation.ts` | ✅ |
+| 4 | Release: `releaseCause` (goal, scheduled) + deadline cron + proof deadlines + suspension cron | `infra` | `convex/crons.ts`, `convex/payments.ts` | ✅ |
+| 5 | Donor dashboard: deleted-cause notice, refund status | `feat` | `app/(donor)/profil` | ✅ |
 
 **Definition of Done:**
-- [ ] Deletion arbitration records a reason visible to structure + donors; payout triggers a 7-day proof deadline + auto-suspend.
-- [ ] Refund only while held; decision is final; the net amount is paid out to the donor's verified phone.
-- [ ] Payouts never run in parallel and are never resent automatically after a timeout.
-- [ ] Every cause releases in one payout at goal or deadline, whichever comes first; release is idempotent and blocked while a payout change is pending.
+- [x] Deletion arbitration records a reason visible to structure + donors; payout triggers a 7-day proof deadline + auto-suspend. *(Run live. The structure dashboard shows the moderator's reason and the proof deadline of a deleted cause only once PR #20 (`fix/mvp-exit-findings`) is merged.)*
+- [x] Refund only while held; decision is final; the net amount is paid out to the donor's verified phone. *(Run live: approve, reject, and another number proved by SMS code.)*
+- [ ] Payouts never run in parallel and are never resent automatically after a timeout. *(Covered by `convex-test`; the timeout, 409 and pending-review branches were not exercised on the dev deployment.)*
+- [x] Every cause releases in one payout at goal or deadline, whichever comes first; release is idempotent and blocked while a payout change is pending. *(Run live: one release payout per cause, equal to the sum of the nets; the deadline release waited for the payout-change decision.)*
 
 ---
 
@@ -161,16 +169,18 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | `blood.createAlert` (types, units, communes, estimate) from the hospital dashboard; moderator view/close | `feat` | `convex/blood.ts`, `app/(hospital)/hopital/alerte`, `app/moderation/alertes` | 📋 |
-| 2 | Donor `/sang`: matching alerts, opt-in profile, respond to slot | `feat` | `app/(donor)/sang/page.tsx`, `components/blood/*` | 📋 |
-| 3 | Hospital dashboard + stock edit + confirm attendee (stock +1) | `feat` | `app/(hospital)/hopital/page.tsx`, `convex/blood.ts` | 📋 |
-| 4 | Close alert + thank-you message (P2) | `feat` | `app/(hospital)/hopital/alerte`, `convex/blood.ts` | 📋 |
-| 5 | In-app + SMS fan-out (batched; real SMS once the provider is chosen) | `feat` | `convex/blood.ts`, `convex/notify.ts` | 📋 |
+| 1 | `blood.createAlert` (types, units, communes, estimate) from the hospital dashboard; moderator view/close | `feat` | `convex/blood.ts`, `app/(hospital)/hopital/alerte`, `app/moderation/alertes` | ✅ |
+| 2 | Donor `/sang`: matching alerts, opt-in profile, respond to slot | `feat` | `app/(donor)/sang/page.tsx`, `components/blood/*` | ✅ |
+| 3 | Hospital dashboard + stock edit + confirm attendee (stock +1) | `feat` | `app/(hospital)/hopital/page.tsx`, `convex/blood.ts` | ✅ |
+| 4 | Close alert + thank-you message (P2) | `feat` | `app/(hospital)/hopital/alerte`, `convex/blood.ts` | ✅ |
+| 5 | In-app + SMS fan-out (batched; real SMS once the provider is chosen) | `feat` | `convex/blood.ts`, `convex/notify.ts` | ✅ |
 
 **Definition of Done:**
-- [ ] Alerts reach only compatible, opted-in donors in targeted communes; addresses never shared.
-- [ ] Donor can confirm a slot; hospital confirms attendees and stock updates.
-- [ ] SMS fan-out works with the console provider and is ready for the real one.
+- [x] Alerts reach only compatible, opted-in donors in targeted communes; addresses never shared.
+- [x] Donor can confirm a slot; hospital confirms attendees and stock updates.
+- [x] SMS fan-out works with the console provider and is ready for the real one.
+
+*Verified with `convex-test` (guards, targeting, fan-out batching, responses, slots, reminders, cancellation, attendance and stock, privacy of responders, closing, thanks, expiry, moderator close, notifications — `convex/blood.test.ts`), `lib/bloodSlots` unit tests, and `lint` / `typecheck` / `next build`. The files differ slightly from the table: functions are `blood.*`, `moderation.alerts` / `moderation.closeAlert` and `notifications.*`; SMS fan-out uses `notify.sendSmsBatch`. Interim answers for G13, G14 and G16 are in `DECISIONS.md` §3. Not yet run against a Convex deployment or in a browser.*
 
 ---
 
@@ -180,18 +190,20 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 
 | # | Task | Type | Files Involved | Status |
 |---|------|------|----------------|--------|
-| 1 | Error/loading/empty states across all screens | `feat` | all pages | 📋 |
-| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | 📋 |
-| 3 | Accessibility: focus states, labels, contrast | `chore` | components | 📋 |
-| 4 | Security review (auth, webhook, authz, PII, secrets) | `chore` | `convex/*`, `lib/*` | 📋 |
-| 5 | French copy review with marketing | `chore` | `lib/strings.fr.ts` | 📋 |
-| 6 | Playwright e2e on the donate flow (mock provider) | `chore` | `tests/e2e` | 📋 |
+| 1 | Error/loading/empty states across all screens | `feat` | all pages | ✅ |
+| 2 | Responsive pass (375px → desktop) + bottom nav on mobile | `feat` | all pages | ✅ |
+| 3 | Accessibility: focus states, labels, contrast | `chore` | components | ✅ |
+| 4 | Security review (auth, webhook, authz, PII, secrets) | `chore` | `convex/*`, `lib/*` | ✅ |
+| 5 | French copy review with marketing | `chore` | `lib/strings.fr.ts` | 🔄 |
+| 6 | Playwright e2e on the donate flow (mock provider) | `chore` | `tests/e2e` | ✅ |
 | 7 | Vercel production deploy (app + moderation subdomain) + env config + NabooPay sandbox→live | `infra` | Vercel project, env | 📋 |
 
 **Definition of Done:**
-- [ ] Security review checklist (SECURITY.md) passes.
-- [ ] No horizontal scroll at 375px; all interactive elements have focus states.
+- [x] Security review checklist (SECURITY.md) passes: see `SECURITY.md` §8.
+- [x] No horizontal scroll at 375px; all interactive elements have focus states. *(Every screen of the exit run was checked for sideways scroll at 375px and 1280px; focus states come from task 3.)*
 - [ ] Production deploy live; env vars set; NabooPay live keys configured; `PAYMENT_PROVIDER` is not `mock`.
+
+*Sprint 8, tasks 1–6 (integration phase). Done: route-level loading/error/not-found screens (`loading.tsx`, `error.tsx`, `not-found.tsx`, `global-error.tsx`); mobile bottom navigation for the donor space; `useDialogFocus` (Escape, focus restore, Tab trap) for the two modals, plus an audit of labels, focus ring and WCAG AA colour pairs; the security review (one fix, F1, and two residual risks, in `SECURITY.md` §8); French typography (non-breaking space before `: ? ! ;` and inside « ») and the payout alert strings moved into `fr.notifications`; and `tests/e2e/donate.spec.ts` (`npm run test:e2e`). Verified: lint, format, typecheck, 271 `convex-test`/unit tests, `next build`, and the six account-free Playwright checks (login redirect, not-found, no sideways scroll on the public pages) at 375px and desktop. **Not verified:** the signed-in screens at 375px and the bottom navigation (no test account on a test deployment yet), and the donation Playwright test, which needs `E2E_DONOR_PHONE` / `E2E_DONOR_PASSWORD` for a donor created by hand because signup needs an SMS code. Both were covered by the manual exit run of 16–17 Nov 2026 (task 2 is done). Task 5 stays in progress: the typography pass is done, but marketing has not reviewed the copy yet. Task 7 (deploy) waits for the `dev` → `main` release.*
 
 ---
 
@@ -202,25 +214,25 @@ The feature-by-feature sprint plan: what gets built, in what order, with a visib
 - [x] One-time code for org/hospital/moderator — Sprint 2 (SMS; console provider until the real one is chosen)
 - [x] Password reset (SMS for donors / email for orgs) — Sprint 2
 - [x] Activity log — Sprint 2
-- [ ] Extension requests (cause deadline, proof delay) — Sprint 6
+- [x] Extension requests (cause deadline, proof delay) — Sprint 6
 - [x] Moderator separate-platform login — Sprint 2
-- [ ] Causes feed with categories + filters — Sprint 3
-- [ ] Weekly "Coup de cœur" featured — Sprint 3
-- [ ] Cause detail (end condition, similar, WhatsApp) — Sprint 3
-- [ ] Donation modal with live fee + net (Orange Money/Wave) — Sprint 4
-- [ ] Donor dashboard (history + cumulative impact) — Sprint 4
-- [ ] Create/edit/withdraw cause + status timeline — Sprint 5
-- [ ] Proof dossier (≥5 items + report + spend) + auto-flag — Sprint 5
-- [ ] Moderation queues: structures, causes, proofs — Sprint 5
-- [ ] Validated proofs in donor dashboard + public feed — Sprint 5
-- [ ] Deletion requests + moderator arbitration (fund fate) — Sprint 6
-- [ ] Refund requests + arbitration — Sprint 6
-- [ ] Payout-account verification + change review — Sprints 5–6
-- [ ] Automatic fund release (goal or deadline) — Sprint 6
-- [ ] Proof-deadline auto-suspension — Sprint 6
-- [ ] Blood opt-in profile (type + commune) — Sprint 7
-- [ ] Blood alert creation + targeting — Sprint 7
-- [ ] Donor alert response (visit slot) — Sprint 7
-- [ ] Hospital stock + confirm attendee — Sprint 7
-- [ ] Hospital thank-you message — Sprint 7
-- [ ] WhatsApp contact fallback — Sprint 3 (cause detail + footer)
+- [x] Causes feed with categories + filters — Sprint 3
+- [x] Weekly "Coup de cœur" featured — Sprint 3 (picker included)
+- [x] Cause detail (end condition, similar, WhatsApp) — Sprint 3
+- [x] Donation modal with live fee + net (Orange Money/Wave) — Sprint 4
+- [x] Donor dashboard (history + cumulative impact) — Sprint 4
+- [x] Create/edit/withdraw cause + status timeline — Sprint 5
+- [x] Proof dossier (≥5 items + report + spend) + auto-flag — Sprint 5
+- [x] Moderation queues: structures, causes, proofs — Sprint 5
+- [x] Validated proofs in donor dashboard + public feed — Sprint 5
+- [x] Deletion requests + moderator arbitration (fund fate) — Sprint 6
+- [x] Refund requests + arbitration — Sprint 6
+- [x] Payout-account verification + change review — Sprints 5–6
+- [x] Automatic fund release (goal or deadline) — Sprint 6
+- [x] Proof-deadline auto-suspension — Sprint 6
+- [x] Blood opt-in profile (type + commune) — Sprint 7
+- [x] Blood alert creation + targeting — Sprint 7
+- [x] Donor alert response (visit slot) — Sprint 7
+- [x] Hospital stock + confirm attendee — Sprint 7
+- [x] Hospital thank-you message — Sprint 7
+- [x] WhatsApp contact fallback — Sprint 3 (cause detail + footer; hidden until the board provides the number)

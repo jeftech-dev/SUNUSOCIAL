@@ -5,15 +5,17 @@ import { useAction } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import {
+  BloodProfileFields,
+  DEFAULT_BLOOD_PROFILE,
+  type BloodProfileValue,
+} from "@/components/blood/BloodProfileFields";
 import { Field, FormError } from "@/components/forms/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import { toUiError } from "@/lib/errors";
-import { communesOf, REGIONS } from "@/lib/geo";
 import { fr } from "@/lib/strings.fr";
-import { BLOOD_TYPES, type BloodType } from "@/lib/types";
 import {
   isValidPassword,
   normalizeName,
@@ -35,11 +37,7 @@ export function DonorSignupForm() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [optIn, setOptIn] = useState(false);
-  const [bloodType, setBloodType] = useState<BloodType>("unknown");
-  const [region, setRegion] = useState<string>(REGIONS[0]);
-  const [commune, setCommune] = useState<string>(communesOf(REGIONS[0])[0]);
-  const [smsOptIn, setSmsOptIn] = useState(true);
+  const [blood, setBlood] = useState<BloodProfileValue>(DEFAULT_BLOOD_PROFILE);
 
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -89,11 +87,11 @@ export function DonorSignupForm() {
         password,
         otpCode: code,
         bloodProfile: {
-          optIn,
-          bloodType: optIn ? bloodType : undefined,
-          region,
-          commune,
-          smsOptIn: optIn && smsOptIn,
+          optIn: blood.optIn,
+          bloodType: blood.optIn ? blood.bloodType : undefined,
+          region: blood.region,
+          commune: blood.commune,
+          smsOptIn: blood.optIn && blood.smsOptIn,
         },
       });
     } catch (e) {
@@ -166,84 +164,7 @@ export function DonorSignupForm() {
         )}
       </Field>
 
-      <fieldset className="flex flex-col gap-3 rounded-xl border bg-card p-4">
-        <legend className="px-1 text-sm font-semibold">{fr.auth.blood.title}</legend>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5 size-5 accent-[var(--brand-blue)]"
-            checked={optIn}
-            onChange={(e) => setOptIn(e.target.checked)}
-          />
-          <span>
-            <span className="font-semibold">{fr.auth.blood.optIn}</span>
-            <span className="block text-muted-foreground">{fr.auth.blood.hint}</span>
-          </span>
-        </label>
-        {optIn && (
-          <>
-            <Field label={fr.auth.blood.bloodType}>
-              {(props) => (
-                <NativeSelect
-                  {...props}
-                  value={bloodType}
-                  onChange={(e) => setBloodType(e.target.value as BloodType)}
-                >
-                  {BLOOD_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {fr.bloodTypes[type]}
-                    </option>
-                  ))}
-                </NativeSelect>
-              )}
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={fr.foundations.region}>
-                {(props) => (
-                  <NativeSelect
-                    {...props}
-                    value={region}
-                    onChange={(e) => {
-                      setRegion(e.target.value);
-                      setCommune(communesOf(e.target.value)[0]);
-                    }}
-                  >
-                    {REGIONS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
-              </Field>
-              <Field label={fr.foundations.commune} error={errors.commune}>
-                {(props) => (
-                  <NativeSelect
-                    {...props}
-                    value={commune}
-                    onChange={(e) => setCommune(e.target.value)}
-                  >
-                    {communesOf(region).map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
-              </Field>
-            </div>
-            <label className="flex items-center gap-3 text-sm">
-              <input
-                type="checkbox"
-                className="size-5 accent-[var(--brand-blue)]"
-                checked={smsOptIn}
-                onChange={(e) => setSmsOptIn(e.target.checked)}
-              />
-              {fr.auth.blood.sms}
-            </label>
-          </>
-        )}
-      </fieldset>
+      <BloodProfileFields value={blood} onChange={setBlood} communeError={errors.commune} />
 
       <Button type="submit" variant="cta" size="lg" disabled={pending}>
         {pending ? fr.common.loading : fr.auth.signup.sendCode}

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Last Updated** | 30 October 2026 (rev. 3: Sprint 2 auth hardening: DT-2, DT-9, DT-19, DT-33) |
+| **Last Updated** | 31 October 2026 (rev. 6: Sprint 4 payment details in DT-3, DT-7 and DT-24. Rev. 5: DB-16 NabooPay money circuit, DB-17 suspended structures, DB-18 payments confirmed after a cause closes) |
 | **Status** | Authoritative. If another document disagrees with this log, this log wins and the other document is a bug |
 
 Two kinds of entries:
@@ -32,6 +32,9 @@ Product questions that are still open live in `BOARD_QUESTIONS.md` (French). Eac
 | **DB-12** | **A proof is mandatory for every funded cause**, due 7 days after the payout. The structure can ask for a delay (sursis), which the moderator approves or refuses. A missed deadline auto-suspends the structure | `proofDeadlines` is always enforced. Delay requests use the same extension flow (DT-30) |
 | **DB-13** | **Refunds return the net amount** (the donation minus the NabooPay fee) | Refunds are paid out with NabooPay **payouts**, not its refund endpoint, because that endpoint only does full refunds (DT-7) |
 | **DB-14** | **Minimum donation: 500 FCFA for now**, to be studied with the board | `MIN_DONATION = 500` |
+| **DB-16** | **The money circuit is confirmed** (Q4, 31/10/2026): donations go to **SUNUSOCIAL's NabooPay merchant account**, stay held there until the cause ends, and are then paid out **automatically** to the structure (or refunded) | DT-3 and DT-4 stand as written. SUNUSOCIAL still has to open the account, pass KYB and send the keys (`BOARD_QUESTIONS.md` E1); until then the app runs with `PAYMENT_PROVIDER=mock` |
+| **DB-17** | **A suspended structure's causes are hidden** (G4, 31/10/2026) until the suspension is lifted. *(The PARCOURS proposal, visible with a banner, was not retained.)* | The feed, Coup de cœur, "Causes similaires" and the detail page hide them (DT-34), and they take no new donations: `donations.createCheckout` refuses them |
+| **DB-18** | **A payment confirmed after its cause has closed is refunded, with a clear message** (G15, 31/10/2026) | The donation does not count toward the cause. It is refunded automatically at the **net** amount (DB-13) to the donor's phone, and the donor is told plainly why (notification + SMS: the cause was already closed, how much is refunded, similar causes). Details: DT-7 |
 | **DB-15** | **Payout account:** the responsible person chooses Orange Money or Wave and gives the number and their own name. **The number is verified by an SMS code** (agreed 29/10). **Structure onboarding has 2 phases**: phase 1 at signup, phase 2 later to collect the structure's full information | `structures.payout` holds the responsible's account. A NabooPay payout only needs the method and the number, so phase 1 is enough to pay a structure. `onboardingPhase` is tracked. What phase 2 collects, and what it unlocks, is open (`BOARD_QUESTIONS.md` Q5) |
 
 ### Note: the money flow goes through SUNUSOCIAL's NabooPay account
@@ -92,7 +95,7 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 
 *Creating the payment:*
 - `donations.createCheckout` calls `POST /transactions` with:
-  - `method_of_payment: ["wave", "orange_money"]`;
+  - `method_of_payment: [<the method the donor picked>]`: the donation modal asks for Orange Money or Wave (PARCOURS S18), so the checkout page offers only that one. *(Rev. 6: was both methods, which made the modal's choice meaningless.)* The method actually used is still read from `selected_payment_method`;
   - one product line (the cause title, `price = amount`, `quantity = 1`);
   - `customer` = the donor (name and verified phone);
   - `fees_customer_side: false`, so the fee is deducted from what SUNUSOCIAL receives;
@@ -116,12 +119,19 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 *Holding the funds:*
 - **The hold is implemented in our app**: the money stays in SUNUSOCIAL's main NabooPay account, and the app's ledger records which cause each amount belongs to.
 - NabooPay's `is_escrow` flag is **not** used. It must be enabled per account, and its API documentation has no release endpoint.
-- The Sprint 4 spike asks NabooPay whether escrow plus a documented release would be better. If so, we switch the adapter and nothing else changes.
+- The Sprint 4 spike asks NabooPay whether escrow plus a documented release would be better. If so, we switch the adapter and nothing else changes. *(Rev. 6: the spike notes are in `ARCHITECTURE.md` §3.4; the question is still open with NabooPay.)*
+
+*Details settled in Sprint 4 (rev. 6):*
+- The donation row is inserted (`pending`, server-side fee estimate) **before** `POST /transactions`, because its id builds the return URLs: `success_url = SITE_URL/dons/<donationId>`, `error_url = SITE_URL/causes/<causeId>?paiement=echec`. If NabooPay refuses the checkout, the donation is marked `failed`.
+- `createCheckout` refuses a cause that is not listed (DT-34: closed, deleted, or from a suspended structure, DB-17) or whose deadline has passed, an amount under `MIN_DONATION`, and more than 10 checkouts per donor in 10 minutes.
+- Webhook v1 payloads have no `fees` or `selected_payment_method`: the handler then reads them with `GET /transactions/{order_id}`, and answers `503` (so NabooPay retries) if that call fails. Unknown `order_id`s and non-paid statuses get `200` and are ignored. An `amount` that differs from the donation is audit-logged and nothing is recorded.
+- A paid webhook for a donation already marked `failed` (paid just before our cancellation) is still recorded: the money was received.
+- The `mock` provider sends the donor to an in-app simulator (`/paiement/simulation/<donationId>`) whose "Payer" button signs a v2 payload and runs it through the same webhook handler, signature check included. The simulator is refused unless `PAYMENT_PROVIDER=mock` and `APP_ENV` is not `production`.
 
 **DT-4 — Payouts (release and refunds).**
 
 *How payouts are made:*
-- Every outgoing transfer goes through a `payouts` table processed by a **single worker**, because NabooPay allows one payout at a time per organisation and answers `409` otherwise. The worker uses `@convex-dev/workpool` with `maxParallelism: 1`.
+- Every outgoing transfer goes through a `payouts` table processed by a **single worker**, because NabooPay allows one payout at a time per organisation and answers `409` otherwise. The worker uses `@convex-dev/workpool` with `maxParallelism: 1`. *(Rev. 7, Sprint 6: implemented instead as a **cron-driven single-flight worker** — an interval cron (`internal.payouts.drainNext`) claims one `queued` row at a time from `payouts.by_status_created` and refuses to start while another is `sending`. Same one-at-a-time guarantee, no extra Convex component, and fully testable under `convex-test`. The `@convex-dev/workpool` variant stays a drop-in alternative if the volume ever needs it.)*
 - Each payout row records: `kind` (`release` | `refund`), `amount`, `method`, `phone`, `name`, `status`, NabooPay's `order_id`, and `attempts`.
 
 *What happens on each outcome:*
@@ -166,17 +176,28 @@ Once SUNUSOCIAL has set up the account (`BOARD_QUESTIONS.md` part E1), everythin
 
 **DT-7 — Refunds (DB-13).**
 - An approved refund queues a `refund` payout of **`net`** to the donor's verified phone, on the method they paid with (`selected_payment_method`).
-- The refund form lets the donor confirm the receiving number, which defaults to their verified phone.
+- The refund form lets the donor confirm the receiving number, which defaults to their verified phone. Another number must be proved with an SMS code (`payout_number`, as for a payout account, DT-5), because a mistyped number would pay a stranger.
+- A queued refund marks the donation `refundQueuedAt`; every release sum skips it, and a refund cannot be approved once the cause's release is queued (nor a deletion), so the same money is never both refunded and released. A deletion with refund settles the donor's own pending or rejected request.
 - NabooPay's `GET /refund/{order_id}` is **not** used: it can only refund the full amount, and as a `GET` it is easy to trigger by accident.
+- **Late payments (DB-18, G15).** When `payments.recordPayment` confirms a payment whose cause is no longer `active` (closed, released, deleted), the donation is **not** added to the cause's `raised` or `donorCount`. It is recorded as paid and flagged for an automatic `refund` payout of its `net`, with no moderator decision needed, and the donor gets a clear message (in-app notification and SMS, French copy in `lib/strings.fr.ts`): the cause was already closed, the amount refunded, and similar causes. Sprint 4 records and flags these donations (`donations.lateRefundFlaggedAt`, status stays `held`); the refund payout itself goes out once the payout worker exists (Sprint 6), which looks them up by that flag. A cause counts as closed here when its `status` is not `active`; a suspended structure's still-active cause keeps counting payments started before the suspension.
 
 **DT-24 — When funds are released.**
-- **Goal reached:** `recordPayment` schedules `payments.releaseCause` straight away. The cause closes and stops accepting donations.
+- **Goal reached:** for a cause whose end condition is the goal (`endType = goal`), the payment that reaches it is accepted in full, even above the goal (PARCOURS S21); the cause closes (`status = closed`, `closedAt`) in the same transaction and stops accepting donations, and `recordPayment` schedules `payments.releaseCause` straight away. A `date` cause stays open until its deadline, as its detail page says. *(Rev. 6, Sprint 4: the cause closes, but `releaseCause` and the payout worker only arrive in Sprint 6. `releaseDue` then also releases every closed cause without `fundsReleasedAt`, so nothing is stubbed.)*
 - **Deadline passed:** an hourly cron releases due causes.
 - `releaseCause` queues one `release` payout to the verified account, marks the donations `released`, sets `fundsReleasedAt`, and creates the proof deadline (DB-12). It is idempotent, and it is skipped while a payout-account change is pending.
 
 ### Data model
 
 **DT-8 — Cause statuses:** `pending_review` | `active` | `refused` | `withdrawn` | `closed` | `deleted`, plus the timestamps `submittedAt`, `approvedAt`, `closedAt`, `fundsReleasedAt`.
+
+**DT-34 — The causes feed (donor read path).** *(Rev. 4)*
+- **Who sees a cause.** The feed, the Coup de cœur slot and "Causes similaires" show only **listed** causes: `active`, from a structure that is `approved` **and not suspended**. The detail page also shows a `closed` cause of such a structure. Everything else reads as "not found" (`causes.get` returns `null`).
+- *Suspended structures* (G4, decided: **DB-17**): a suspended structure's causes are **hidden**, everywhere, until the suspension is lifted.
+- **Order and filters.** Default: soonest deadline first. **Récent**: newest approval first. **Urgent**: `urgency = urgent`. **Presque atteint**: at least `ALMOST_REACHED_PERCENT = 75` % of the goal (the prototype's threshold; a UI constant in `lib/causes.ts`, not a board rule). One filter at a time, combinable with a category.
+- **Search** covers cause titles (Convex search index, relevance order). Matching structure names too would need a denormalised field; left for later.
+- **Coup de cœur** (DB-6): `moderation.setFeatured` replaces the previous one in the same transaction, so at most one cause is featured; it is not cleared automatically, and it disappears from the feed as soon as the cause stops being listed. The moderator's picker (`/coup-de-coeur` on the moderation host) shipped in Sprint 3.
+- **Progress** is an integer percentage rounded down (100 % only once the goal is met). The page shows the estimated net of the goal (`computeFee`, DT-6).
+- **WhatsApp** links ("Nous contacter sur WhatsApp", PRD 5.9) use `NEXT_PUBLIC_WHATSAPP_NUMBER` and are hidden while it is unset (§3).
 
 **DT-17 — Notifications.**
 - A `notifications` table holds in-app notifications.
@@ -308,5 +329,19 @@ Flags are advisory; the moderator decides.
 | `PLATFORM_FEE_RATE` | `0` | Waiting on the revenue model |
 | `REQUIRE_PHASE2_BEFORE_PAYOUT` | `false` | Waiting on the phase 2 definition |
 | `SESSION_TOTAL_DAYS` | `7` | Decided (DB-8) |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | *(unset)* | SUNUSOCIAL's official WhatsApp number, waiting on the board (`BOARD_QUESTIONS.md` part E). The WhatsApp buttons are hidden while it is unset |
+
+### Interim blood-module rules (Sprint 7, board pending)
+
+Placeholders until the board answers `PARCOURS.md` G13, G14 and G16; each is tagged `// Interim (Gxx)` or `BLOOD-x` in the code so it can be found and changed.
+
+| ID | Interim rule |
+|---|---|
+| G13 | A moderator who closes an alert must give a reason; the hospital receives it. The moderation page shows each hospital's count of moderator-closed alerts. No automatic review. |
+| G14 | A donor can cancel a visit until its slot ends (unless the donation is confirmed); the hospital is notified and the reminder is cancelled. The donor may answer again later. |
+| G16 | Donors whose group is `unknown` receive only alerts marked "Tous groupes" (`anyType`), which reach every opted-in donor in the targeted communes. When confirming such a donor, the hospital enters the group found on site. |
+| BLOOD-A | An alert expires from its level: vitale 24 h, urgente 72 h, normale 14 days. It stops taking responses at that deadline; the hourly cron marks it closed once the last slot (which may start up to the deadline) is over. |
+| BLOOD-B | When an alert closes, donors who answered, did not give and whose slot has not ended are told they need not come (in-app, plus SMS if `smsOptIn`). |
+| BLOOD-C | Fan-out in pages of 200 profiles; SMS only to `smsOptIn` donors; no daily cap on alert SMS (`SMS_DAILY_CAP` covers sign-in codes only). Visit slots are fixed 2-hour windows (08–18 h) today and tomorrow; the SMS reminder goes 2 h before. |
 
 *Removed since rev. 1:* `OTP_CHANNEL` (codes always go by SMS), `SMS_ENABLED`, `BLOOD_ALERTS_HOSPITAL_SELF_SERVE` (decided: hospitals), `ENFORCE_PROOF_DEADLINE_ON_RELEASE` (decided: always), `REFUND_FEE_POLICY` (decided: net).

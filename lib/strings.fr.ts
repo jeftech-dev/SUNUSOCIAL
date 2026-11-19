@@ -9,6 +9,7 @@ import type {
   CauseStatus,
   DonationStatus,
   Method,
+  ProofItemKind,
   StructureStatus,
   Urgency,
 } from "./types";
@@ -48,6 +49,12 @@ export const fr = {
   },
 
   nav: {
+    main: "Navigation principale",
+    causes: "Causes",
+    profile: "Mon profil",
+    blood: "Don de sang",
+    hospitalDashboard: "Tableau de bord",
+    hospitalAlert: "Émettre une alerte",
     login: "Se connecter",
     signup: "Créer un compte",
     logout: "Se déconnecter",
@@ -66,6 +73,8 @@ export const fr = {
     featured: "Coup de cœur de la semaine",
     cancel: "Annuler",
     confirm: "Confirmer",
+    /** Payout recipient name when the donor's account has none. */
+    donorFallbackName: "Donateur",
     back: "Retour",
   },
 
@@ -125,8 +134,183 @@ export const fr = {
 
   bloodAlertLevels: {
     vitale: "Urgence vitale",
-    urgente: "Urgente",
-    normale: "Normale",
+    urgente: "Urgent",
+    normale: "Préventif",
+  } satisfies Record<BloodAlertLevel, string>,
+
+  blood: {
+    allGroups: "tous groupes",
+    allGroupsToggle: "Tous groupes",
+    unitsLabel: (collected: number, needed: number) =>
+      `${collected} / ${needed} poche${needed > 1 ? "s" : ""}`,
+    donor: {
+      title: "Don de sang",
+      intro:
+        "Les hôpitaux proches de chez vous publient une alerte quand un groupe sanguin vient à manquer. Vous êtes prévenu uniquement si votre groupe est recherché.",
+      profileTitle: "Mon profil donneur",
+      profileGroup: (group: string) => `Groupe ${group}`,
+      profileNotSet: "Alertes désactivées",
+      edit: "Modifier",
+      save: "Enregistrer",
+      cancel: "Annuler",
+      saved: "Profil enregistré.",
+      optInCta: "Activer les alertes don de sang",
+      privacy:
+        "Votre groupe sanguin est une donnée de santé\u00a0: vous seul le voyez. Les hôpitaux ne voient jamais votre adresse.",
+      alertsTitle: "Alertes des hôpitaux",
+      filterMine: (group: string) => `Pour mon groupe (${group})`,
+      filterMineNoGroup: "Pour mon groupe",
+      filterAll: "Toutes",
+      emptyMine: "Aucune alerte pour votre groupe en ce moment. Nous vous préviendrons.",
+      emptyAll: "Aucune alerte en cours.",
+      loading: "Chargement des alertes…",
+      sentTo: (hospitalCommune: string, communes: string) =>
+        `${hospitalCommune} · alerte envoyée à ${communes}`,
+      deadline: (date: string) => `Jusqu'au ${date}`,
+      enRoute: (n: number) => (n === 1 ? "1 donneur en route" : `${n} donneurs en route`),
+      respond: "Je peux donner",
+      confirmed: (slot: string) => `Venue confirmée · ${slot}`,
+      cancelVisit: "Annuler ma venue",
+      cancelling: "Annulation…",
+      notRequested: "Groupe non recherché pour cette alerte",
+      exampleTitle: "Exemple d'alerte reçue",
+      exampleSms:
+        "SUNUSOCIAL\u00a0: l'Hôpital Principal de Dakar recherche du sang O+ (Urgence vitale) à Médina. Confirmez votre venue sur sunusocial.sn/sang",
+      exampleNote:
+        "Envoyé uniquement aux donneurs du groupe recherché, dans les communes de votre région choisies par l'hôpital. Votre adresse n'est jamais partagée.",
+      beforeTitle: "Avant de venir",
+      before: [
+        "Avoir entre 18 et 65 ans et peser plus de 50 kg",
+        "Avoir mangé et bu dans les heures qui précèdent",
+        "Apporter une pièce d'identité",
+        "Le médecin de l'hôpital confirme votre aptitude sur place",
+      ],
+      badge: (n: number) => `${n} alerte${n > 1 ? "s" : ""} à traiter`,
+    },
+    /** Visit-slot labels: "aujourd'hui entre 14 h et 16 h", "le 12/11 entre 8 h et 10 h". */
+    slotTime: {
+      hours: (start: number, end: number) => `entre ${start} h et ${end} h`,
+      today: (hours: string) => `aujourd'hui ${hours}`,
+      tomorrow: (hours: string) => `demain ${hours}`,
+      onDate: (day: number, month: number, hours: string) => `le ${day}/${month} ${hours}`,
+    },
+    slot: {
+      title: "Confirmer ma venue",
+      question: "Quand pouvez-vous venir\u00a0?",
+      none: "Plus de créneau disponible pour cette alerte.",
+      confirm: "Je confirme ma venue",
+      confirming: "Confirmation…",
+      privacy: "L'hôpital voit votre prénom et votre groupe sanguin, pas votre adresse.",
+      doneTitle: "Merci, l'hôpital est prévenu.",
+      doneBody: (slot: string, hospital: string) =>
+        `Rendez-vous ${slot} à ${hospital}. Un SMS de rappel vous sera envoyé 2 heures avant.`,
+      back: "Retour aux alertes",
+      close: "Fermer",
+    },
+    hospital: {
+      stockTitle: "Niveau des réserves",
+      stockUpdated: (date: string) => `Mis à jour le ${date}`,
+      stockNever: "Pas encore renseigné",
+      editStock: "Mettre à jour les stocks",
+      cancel: "Annuler",
+      save: "Enregistrer",
+      saved: "Stocks enregistrés.",
+      critical: "Critique",
+      low: "Bas",
+      ok: "Correct",
+      units: (n: number) => `${n} poche${n > 1 ? "s" : ""}`,
+      decrease: (group: string) => `Retirer une poche ${group}`,
+      increase: (group: string) => `Ajouter une poche ${group}`,
+      stockFootnote:
+        "Les stocks augmentent automatiquement quand vous confirmez qu'un donneur a bien donné. Mettez-les à jour vous-même après une transfusion ou une collecte hors SUNUSOCIAL.",
+      alertsTitle: "Alertes en cours",
+      newAlert: "Émettre une alerte",
+      none: "Aucune alerte pour le moment.",
+      loading: "Chargement…",
+      targeting: (communes: string) => `Ciblage\u00a0: ${communes}`,
+      reached: (reached: number, responses: number) =>
+        `${reached} prévenu${reached > 1 ? "s" : ""} · ${responses} réponse${responses > 1 ? "s" : ""}`,
+      goalReached: "✓ Objectif atteint",
+      closedBadge: "✓ Clôturée",
+      closedByModerator: (reason: string) => `Clôturée par la modération\u00a0: ${reason}`,
+      showDonors: (n: number) => (n > 1 ? `Voir les ${n} donneurs` : "Voir le donneur"),
+      hideDonors: "Masquer les donneurs",
+      waiting: "En attente de réponses…",
+      closeAlert: "Clôturer l'alerte",
+      confirmCloseTitle: "Clôturer cette alerte\u00a0?",
+      confirmClose:
+        "Les donneurs qui n'ont pas encore donné seront prévenus qu'ils n'ont plus besoin de venir.",
+      donorCancelled: "Venue annulée",
+      confirmDonation: "Confirmer le don",
+      donationConfirmed: (group: string) => `✓ Don confirmé · +1 ${group}`,
+      groupOnSite: "Groupe constaté sur place",
+      groupOnSiteChoose: "Choisir le groupe…",
+      donationDone: (name: string, group: string, before: number, after: number) =>
+        `Don de ${name} confirmé · stock ${group}\u00a0: ${before} → ${after}`,
+      thanksTitle: (n: number) => (n > 1 ? `Remercier les ${n} donneurs` : "Remercier le donneur"),
+      thanksDefault: (hospital: string, collected: number, groups: string) =>
+        collected > 1
+          ? `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poches ${groups} ont été collectées. — SUNUSOCIAL`
+          : `Merci pour votre don de sang à ${hospital} ! Grâce à vous, ${collected} poche ${groups} a été collectée. — SUNUSOCIAL`,
+      thanksNote:
+        "Envoyé par SMS et notification, uniquement aux donneurs dont le don est confirmé.",
+      thanksSend: "Envoyer le message",
+      thanksSent: (n: number) =>
+        `Message de remerciement envoyé à ${n} donneur${n > 1 ? "s" : ""}.`,
+      thanksAlready: "Message de remerciement envoyé.",
+      pendingTitle: "Votre hôpital n'est pas encore validé",
+    },
+    composer: {
+      title: "Alertes don de sang",
+      intro:
+        "Signalez un groupe sanguin en pénurie\u00a0: seuls les donneurs compatibles inscrits dans les communes choisies de votre région sont prévenus.",
+      groups: "Groupes recherchés",
+      level: "Niveau d'urgence",
+      units: "Poches nécessaires",
+      communes: (region: string) => `Communes ciblées · région de ${region}`,
+      communesHint:
+        "Seules les communes de votre région sont proposées. Les donneurs sont rattachés à la commune choisie à l'inscription, sans géolocalisation.",
+      channels: "Canal d'envoi",
+      channelSms: "SMS (recommandé)",
+      channelApp: "Notification sur l'application",
+      reach: (n: number) => `donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""}`,
+      reachSuffix: (communes: string, n: number) =>
+        n > 1
+          ? `inscrits à ${communes} recevront l'alerte.`
+          : `inscrit à ${communes} recevra l'alerte.`,
+      reachNoCommune: "Choisissez au moins une commune.",
+      send: "Envoyer l'alerte",
+      sending: "Envoi…",
+      sentTitle: "Alerte envoyée",
+      sentBody: (n: number) =>
+        `${n} donneur${n > 1 ? "s" : ""} compatible${n > 1 ? "s" : ""} ${n > 1 ? "seront prévenus" : "sera prévenu"}. Les réponses apparaissent sur votre tableau de bord.`,
+      another: "Émettre une autre alerte",
+      dashboard: "Retour au tableau de bord",
+    },
+    moderation: {
+      title: "Alertes don de sang",
+      back: "← Retour aux files",
+      tabOpen: "En cours",
+      tabClosed: "Clôturées",
+      empty: "Aucune alerte.",
+      loading: "Chargement…",
+      responders: (n: number) => `${n} réponse${n > 1 ? "s" : ""}`,
+      close: "Clôturer l'alerte",
+      reasonLabel: "Motif de la clôture (envoyé à l'hôpital)",
+      confirmClose: "Confirmer la clôture",
+      cancel: "Annuler",
+      moderatorClosed: (n: number) =>
+        `${n} alerte${n > 1 ? "s" : ""} clôturée${n > 1 ? "s" : ""} par la modération pour cet hôpital`,
+      closedReason: (reason: string) => `Motif\u00a0: ${reason}`,
+      done: "Alerte clôturée.",
+      link: "Alertes don de sang",
+    },
+  },
+
+  bloodAlertLevelHints: {
+    vitale: "Moins de 24 h",
+    urgente: "Sous 72 h",
+    normale: "Sous 2 semaines",
   } satisfies Record<BloodAlertLevel, string>,
 
   auth: {
@@ -231,25 +415,597 @@ export const fr = {
     footer: "Connexion journalisée · double authentification activée",
     queuesTitle: "Files de modération",
     queuesSoon: "Les files (inscriptions, causes, preuves…) arrivent au sprint 5.",
+    featuredLink: "Choisir le Coup de cœur de la semaine →",
+    tabs: {
+      structures: "Inscriptions",
+      causes: "Causes",
+      proofs: "Preuves",
+      deletions: "Suppressions",
+      refunds: "Remboursements",
+      extensions: "Prolongations",
+      payoutChanges: "Comptes de réception",
+    },
+    tabCount: (label: string, count: number) => `${label} (${count})`,
+    loading: "Chargement des files…",
+    emptyStructures: "Aucune inscription à valider.",
+    emptyCauses: "Aucune cause à valider.",
+    emptyProofs: "Aucune preuve à valider.",
+    emptyDeletions: "Aucune demande de suppression.",
+    emptyRefunds: "Aucune demande de remboursement.",
+    emptyExtensions: "Aucune demande de prolongation.",
+    emptyPayoutChanges: "Aucun changement de compte à valider.",
+    extensionKindCause: "Date limite de la cause",
+    extensionKindProof: "Délai de preuve",
+    extensionDates: (current: string, requested: string) => `${current} → ${requested}`,
+    extensionNoCurrent: "Aucune échéance",
+    payoutChangeMeta: (method: string, holder: string) => `${method} · ${holder}`,
+    confirmExtensionApprove: "Accorder",
+    confirmExtensionRefuse: "Refuser",
+    confirmPayoutApprove: "Valider le compte",
+    confirmPayoutRefuse: "Refuser le compte",
+    deletionRaised: (amount: string) => `${amount} collectés`,
+    refundMeta: (donor: string, amount: string) => `${donor} · ${amount}`,
+    reasonFromStructure: (reason: string) => `Motif\u00a0: ${reason}`,
+    decisionReasonLabel: "Motif de la décision (visible par la structure et les donateurs)",
+    structureMeta: (type: string, region: string) => `${type} · ${region}`,
+    hasPayout: "Compte de réception fourni",
+    structureContact: (name: string, phone: string, email: string) =>
+      `Responsable\u00a0: ${name} · ${phone} · ${email}`,
+    structurePlace: (commune: string, region: string) => `${commune}, ${region}`,
+    receiptNo: (no: string) => `Récépissé n°\u00a0${no}`,
+    viewReceipt: "Voir le récépissé ou l'agrément",
+    receiptMissing: "Document introuvable",
+    payoutAccount: (method: string, number: string, holder: string) =>
+      `Compte de réception\u00a0: ${method} ${number} · ${holder}`,
+    noPayoutAccount: "Pas de compte de réception (hôpital)",
+    causeGoal: (goal: string) => `Objectif\u00a0: ${goal}`,
+    causeDeadline: (date: string) => `Date limite\u00a0: ${date}`,
+    approve: "Approuver",
+    refuse: "Refuser",
+    validate: "Valider la preuve",
+    escalate: "Demander des compléments",
+    reviewProof: "Voir le dossier",
+    hideProof: "Masquer le dossier",
+    flaggedBadge: "Éléments signalés",
+    refuseReasonLabel: "Motif du refus (visible par la structure)",
+    refuseReasonRequired: "Indiquez un motif de refus.",
+    decisionReasonRequired: "Indiquez le motif de votre décision.",
+    refuseReasonPlaceholder: "Ex.\u00a0: le devis des travaux est manquant.",
+    confirmRefuse: "Confirmer le refus",
+    confirmEscalate: "Confirmer la demande",
+    escalateReasonLabel: "Ce qui manque (visible par la structure)",
+    cancel: "Annuler",
+    done: "Décision enregistrée.",
+    suspended: {
+      title: "Comptes suspendus",
+      intro:
+        "Structures suspendues pour une preuve de réception en retard. Leurs causes sont masquées jusqu'à la levée de la suspension.",
+      since: (date: string) => `Compte suspendu depuis le ${date}`,
+      lateProof: (cause: string, date: string) =>
+        `«\u00a0${cause}\u00a0» · preuve attendue le ${date}`,
+      proofStatus: {
+        submitted: "dossier envoyé, à valider",
+        escalated: "compléments demandés",
+        validated: "dossier validé",
+      },
+      noProof: "aucun dossier envoyé",
+      noLateProof: "Plus aucune preuve en retard.",
+      remind: "Relancer la structure",
+      lift: "Lever la suspension",
+      reminded: "Rappel envoyé à la structure.",
+      lifted: "Suspension levée.",
+    },
+    decided: {
+      structureApproved: "Structure approuvée — elle a été notifiée.",
+      structureRefused: "Structure refusée — elle a été notifiée.",
+      causeApproved: "Cause approuvée — la structure a été notifiée.",
+      causeRefused: "Cause refusée — la structure a été notifiée.",
+      proofValidated: "Preuve validée et publiée.",
+      proofEscalated: "Compléments demandés — la structure a été notifiée.",
+      deletionApproved: "Suppression approuvée — la structure et les donateurs ont été notifiés.",
+      deletionMaintained: "Cause maintenue — la structure a été notifiée.",
+      refundApproved: "Remboursement approuvé — le donateur a été notifié.",
+      refundRejected: "Remboursement refusé — le donateur a été notifié.",
+      extensionApproved: "Prolongation accordée — la structure a été notifiée.",
+      extensionRefused: "Prolongation refusée — la structure a été notifiée.",
+      payoutApproved: "Compte de réception validé — la structure a été notifiée.",
+      payoutRefused: "Compte de réception refusé — la structure a été notifiée.",
+    },
+    fundOutcomeLabel: "Sort des fonds",
+    fundOutcomeRefund: "Rembourser les donateurs",
+    fundOutcomePayout: "Verser à la structure",
+    confirmDeletionApprove: "Approuver la suppression",
+    confirmDeletionMaintain: "Maintenir la cause",
+    confirmRefundApprove: "Approuver le remboursement",
+    confirmRefundReject: "Refuser le remboursement",
+  },
+
+  /** 03 Accueil donateur. */
+  feed: {
+    hello: (firstName: string) => `Bonjour ${firstName} 👋`,
+    intro: "Voici les besoins vérifiés qui attendent votre soutien aujourd'hui.",
+    all: "Tous",
+    categoriesLabel: "Catégories",
+    refine: "Affiner\u00a0:",
+    searchLabel: "Rechercher une cause",
+    searchPlaceholder: "Rechercher une cause (ex.\u00a0: lait, fauteuils)",
+    editorial: "Sélection éditoriale SUNUSOCIAL",
+    seeCause: "Voir la cause →",
+    loadMore: "Afficher plus de causes",
+    empty: "Aucune cause ne correspond à ces filtres.",
+    resetFilters: "Effacer les filtres",
+    noCauses: "Aucune cause n'est ouverte pour le moment. Revenez bientôt\u00a0!",
+    urgentTag: "URGENT",
+    raisedOf: (raised: string, goal: string) => `${raised} collectés sur ${goal}`,
+  },
+
+  /** 04 Détail de la cause. */
+  causeDetail: {
+    back: "← Toutes les causes",
+    category: (category: string) => `Catégorie\u00a0: ${category}`,
+    urgency: (urgency: string) => `Urgence\u00a0: ${urgency}`,
+    raised: "Collectés",
+    goalOf: "sur un objectif de",
+    reached: (percent: number) => `${percent}\u00a0% atteint`,
+    donors: (count: number) => (count > 1 ? `${count} donateurs` : `${count} donateur`),
+    endDate: (date: string) => `Se termine le ${date}`,
+    endDateSub: (goal: string) =>
+      `Objectif de ${goal} · les dons restent ouverts jusqu'à cette date.`,
+    endGoal: (goal: string) => `Se termine à ${goal}`,
+    endGoalSub: (date: string) => `ou le ${date} au plus tard, au premier des deux.`,
+    daysLeft: (days: number) =>
+      days <= 0 ? "Dernier jour" : days === 1 ? "Plus qu'un jour" : `Plus que ${days} jours`,
+    closed: "Cette cause est clôturée. Merci à tous les donateurs\u00a0!",
+    estimatedNet: (net: string) =>
+      `Si l'objectif est atteint, la structure recevra environ ${net} après les frais de paiement.`,
+    fundsRule: "RÈGLE VALIDÉE",
+    fundsNote:
+      "Les dons sont conservés par NabooPay puis versés à la structure à la fin de la cause\u00a0: à l'objectif ou à la date limite, au premier des deux.",
+    paymentFailed:
+      "Le paiement n'a pas abouti\u00a0: votre don n'a pas été compté. Vous pouvez réessayer.",
+    similar: "Causes similaires",
+    notFound: "Cette cause n'existe plus.",
+    notFoundBack: "Voir les causes ouvertes",
+  },
+
+  /** 05 Modal de don (PARCOURS S18). */
+  donation: {
+    dialogLabel: (title: string) => `Faire un don pour «\u00a0${title}\u00a0»`,
+    support: (organization: string) => `Soutenir · ${organization}`,
+    close: "Fermer",
+    amountLabel: "Montant de votre don",
+    other: "Autre",
+    otherLabel: "Montant libre en FCFA",
+    otherPlaceholder: "Saisissez un montant",
+    minimum: (min: string) => `Don minimum\u00a0: ${min}.`,
+    methodLabel: "Moyen de paiement",
+    yourGift: "Votre don",
+    fee: (rate: string) => `Frais NabooPay (${rate})`,
+    structureReceives: "La structure recevra",
+    holdNote: (rate: string, net: string) =>
+      `NabooPay prélève ${rate} → la structure recevra ${net} · conservé jusqu'à la fin de la cause.`,
+    confirm: (amount: string) => `Confirmer le don · ${amount}`,
+    redirecting: "Redirection vers le paiement…",
+    secure: "Paiement sécurisé par NabooPay",
+  },
+
+  /** 05b Retour de paiement (success_url de NabooPay). */
+  donationResult: {
+    title: "Votre don",
+    pendingTitle: "Confirmation du paiement…",
+    pendingBody:
+      "Nous attendons la confirmation de NabooPay. Cette page se met à jour toute seule, vous pouvez aussi revenir plus tard\u00a0: votre don apparaîtra dans votre profil.",
+    heldTitle: "Merci\u00a0! Votre don est confirmé.",
+    heldBody: (amount: string, method: string, title: string) =>
+      `${amount} via ${method} pour «\u00a0${title}\u00a0». Les fonds restent bloqués jusqu'à la fin de la cause, puis sont versés à la structure. Vous serez prévenu dès qu'elle publiera sa preuve de réception.`,
+    newProgress: "Nouvelle progression",
+    progressOf: (raised: string, goal: string) => `${raised} / ${goal}`,
+    lateTitle: "Cette cause était déjà clôturée",
+    lateBody: (net: string) =>
+      `Votre paiement est arrivé après la clôture de la cause\u00a0: il ne lui est pas compté. ${net} vous seront remboursés automatiquement sur votre numéro (votre don moins les frais NabooPay).`,
+    failedTitle: "Le paiement n'a pas abouti",
+    failedBody: "Rien n'a été compté. Vous pouvez réessayer depuis la page de la cause.",
+    notFound: "Ce don est introuvable.",
+    again: "Faire un autre don",
+    browse: "Parcourir d'autres causes",
+    history: "Voir mes dons",
+    backToCause: "Retour à la cause",
+  },
+
+  /** Simulateur de paiement (PAYMENT_PROVIDER=mock, développement et préproduction). */
+  simulator: {
+    badge: "Simulateur · aucun argent réel",
+    title: "Paiement simulé",
+    intro:
+      "Cette page remplace la page de paiement NabooPay en développement. «\u00a0Payer\u00a0» confirme le paiement comme le ferait NabooPay\u00a0; «\u00a0Annuler\u00a0» simule un abandon.",
+    summary: (amount: string, method: string) => `${amount} via ${method}`,
+    pay: "Payer",
+    cancel: "Annuler",
+    notPending: "Ce don n'attend plus de paiement.",
+    seeDonation: "Voir le don",
+  },
+
+  /** 06 Profil donateur (PARCOURS S19). */
+  profile: {
+    title: "Mon profil",
+    total: "Total donné",
+    causes: "Causes soutenues",
+    impact: (count: number, total: string) =>
+      `Vous avez contribué à ${count} cause${count > 1 ? "s" : ""} pour un total de ${total}.`,
+    history: "Mes donations",
+    empty: "Vous n'avez pas encore fait de don.",
+    emptyCta: "Découvrir les causes",
+    loadMore: "Afficher plus",
+    dateMethod: (date: string, method: string) => `${date} · ${method}`,
+    proofValidated: (count: number) => `Preuve de réception validée · ${count} éléments`,
+    proofPending: "En attente de preuve",
+    lateRefund: (net: string) =>
+      `Cause déjà clôturée à l'arrivée du paiement\u00a0: ${net} vous seront remboursés automatiquement.`,
+    requestRefund: "Demander un remboursement",
+    refundReasonLabel: "Motif de votre demande",
+    refundReasonPlaceholder: "Ex.\u00a0: je me suis trompé de cause.",
+    refundPhoneLabel: "Numéro où recevoir le remboursement",
+    refundPhoneHint: "Par défaut, votre numéro vérifié. Un autre numéro se confirme par SMS.",
+    refundSendCode: "Recevoir un code",
+    refundCodeLabel: "Code reçu par SMS sur ce numéro",
+    refundCodeSent: (to: string) => `Code envoyé au ${to}.`,
+    refundSubmit: "Envoyer la demande",
+    refundHint: (net: string) =>
+      `Tant que les fonds sont bloqués, vous pouvez être remboursé de ${net} (votre don moins les frais NabooPay).`,
+    causeDeletedRefunded: (net: string, reason: string) =>
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Votre don vous est remboursé\u00a0: ${net}.`,
+    causeDeletedPaidOut: (reason: string) =>
+      `Cause supprimée${reason ? ` (${reason})` : ""}. Les fonds ont été versés à la structure, qui doit en justifier l'emploi.`,
+    refundStatusPending: "Remboursement demandé — en cours d'examen.",
+    refundStatusInProgress: (net: string) =>
+      `Remboursement accepté\u00a0: ${net} en cours de versement sur votre numéro.`,
+    refundStatusRefunded: (net: string) => `Remboursé\u00a0: ${net} reversés sur votre numéro.`,
+    refundStatusRejected: "Demande de remboursement refusée.",
+  },
+
+  notifications: {
+    bloodAlertTitle: (groups: string) => `Alerte don de sang\u00a0: ${groups}`,
+    bloodAlertBody: (hospital: string, level: string) =>
+      `${hospital} recherche du sang (${level}). Choisissez un créneau pour confirmer votre venue.`,
+    bloodResponseTitle: "Nouveau donneur attendu",
+    bloodResponseBody: (name: string, group: string, slot: string) =>
+      `${name} (${group}) viendra ${slot}.`,
+    bloodCancelTitle: "Venue annulée",
+    bloodCancelBody: (name: string, group: string, slot: string) =>
+      `${name} (${group}) ne viendra plus ${slot}.`,
+    bloodReminderTitle: "Rappel\u00a0: votre don de sang",
+    bloodReminderBody: (hospital: string, slot: string) =>
+      `Vous êtes attendu ${slot} à ${hospital}.`,
+    bloodClosedTitle: "Alerte terminée",
+    bloodClosedBody: (hospital: string) =>
+      `L'alerte de ${hospital} est terminée. Vous n'avez plus besoin de venir.`,
+    bloodThanksTitle: (hospital: string) => `Merci de la part de ${hospital}`,
+    bloodModeratorClosedTitle: "Alerte clôturée par la modération",
+    bloodModeratorClosedBody: (reason: string) =>
+      `Votre alerte a été clôturée par un modérateur\u00a0: ${reason}`,
+    donationConfirmedTitle: "Don confirmé",
+    donationConfirmedBody: (amount: string, title: string) =>
+      `Votre don de ${amount} pour «\u00a0${title}\u00a0» est confirmé. Les fonds restent bloqués jusqu'à la fin de la cause.`,
+    lateRefundTitle: "Cause déjà clôturée\u00a0: don remboursé",
+    lateRefundBody: (amount: string, net: string, title: string) =>
+      `La cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement de ${amount} est arrivé. Il ne lui est pas compté\u00a0: ${net} (votre don moins les frais NabooPay) vous seront remboursés automatiquement sur votre numéro. Découvrez des causes similaires sur SUNUSOCIAL.`,
+    structureApprovedTitle: "Structure validée",
+    structureApprovedBody:
+      "Votre structure est validée. Vous pouvez maintenant publier des causes.",
+    structureRefusedTitle: "Inscription refusée",
+    structureRefusedBody: (reason: string) => `Votre inscription a été refusée\u00a0: ${reason}`,
+    causeApprovedTitle: "Cause approuvée",
+    causeApprovedBody: (title: string) => `Votre cause «\u00a0${title}\u00a0» est publiée.`,
+    causeRefusedTitle: "Cause refusée",
+    causeRefusedBody: (title: string, reason: string) =>
+      `Votre cause «\u00a0${title}\u00a0» a été refusée\u00a0: ${reason}. Vous pouvez la modifier et la renvoyer.`,
+    proofPublishedTitle: "Preuve de réception disponible",
+    proofPublishedBody: (title: string) =>
+      `La structure a publié la preuve de réception de la cause «\u00a0${title}\u00a0». Vous pouvez la consulter.`,
+    proofValidatedTitle: "Preuve validée",
+    proofValidatedBody: (title: string) =>
+      `La preuve de réception de «\u00a0${title}\u00a0» a été validée. Merci\u00a0!`,
+    proofEscalatedTitle: "Preuve à compléter",
+    proofEscalatedBody: (title: string, reason: string) =>
+      `Le dossier de «\u00a0${title}\u00a0» doit être complété\u00a0: ${reason}`,
+    fundsReleasedTitle: "Fonds versés",
+    fundsReleasedBody: (title: string, amount: string, days: number) =>
+      `Les fonds de «\u00a0${title}\u00a0» (${amount}) ont été versés sur votre compte de réception. Vous avez ${days} jours pour publier la preuve de réception.`,
+    proofReminderTitle: "Preuve de réception en retard",
+    proofReminderBody: (title: string, date: string) =>
+      `La preuve de «\u00a0${title}\u00a0» était attendue le ${date}. Publiez-la depuis votre espace pour que la modération puisse lever la suspension.`,
+    suspensionLiftedTitle: "Suspension levée",
+    suspensionLiftedBody:
+      "Votre structure n'est plus suspendue\u00a0: vos causes sont de nouveau visibles et vous pouvez en publier.",
+    suspendedTitle: "Structure suspendue",
+    suspendedBody: (title: string) =>
+      `Faute de preuve de réception dans le délai, votre structure est suspendue et vos causes sont masquées\u00a0: ${title}. Publiez la preuve puis contactez la modération pour lever la suspension.`,
+    payoutAlertTitle: "Versement à vérifier",
+    payoutAlertBody: (detail: string) => `Un versement nécessite une intervention\u00a0: ${detail}`,
+    deletionApprovedTitle: "Cause supprimée",
+    deletionApprovedBody: (title: string, reason: string) =>
+      `La cause «\u00a0${title}\u00a0» a été supprimée\u00a0: ${reason}`,
+    deletionMaintainedTitle: "Cause maintenue",
+    deletionMaintainedBody: (title: string, reason: string) =>
+      `Votre demande de suppression de «\u00a0${title}\u00a0» a été refusée\u00a0: ${reason}. La cause reste active.`,
+    deletionDonorRefundBody: (title: string, net: string) =>
+      `La cause «\u00a0${title}\u00a0» a été supprimée. Votre don vous est remboursé\u00a0: ${net} (votre don moins les frais NabooPay) sur votre numéro.`,
+    deletionDonorRefundManualBody: (title: string, net: string) =>
+      `La cause «\u00a0${title}\u00a0» a été supprimée. Votre don de ${net} vous sera remboursé\u00a0: la modération vous contactera pour convenir du numéro.`,
+    /** Details of the "Versement à vérifier" alert sent to moderators (payout worker). */
+    payoutBlockedDetail: (payoutId: string, attempts: number) =>
+      `versement ${payoutId} bloqué après ${attempts} tentatives (409)`,
+    /** Detail of the alert sent to moderators when a paid order cannot be recorded (webhook). */
+    paymentUnrecordedDetail: (orderId: string, expected: string, received: string) =>
+      `paiement ${orderId} reçu mais non enregistré (attendu : ${expected}, reçu : ${received})`,
+    payoutFailedDetail: (payoutId: string, error: string) =>
+      `versement ${payoutId} échoué\u00a0: ${error}`,
+    payoutUnresolvedDetail: (payoutId: string) =>
+      `versement ${payoutId} non résolu après réconciliation`,
+    payoutBalanceLowDetail: (balance: string, count: number) =>
+      `solde insuffisant (${balance}) pour ${count} versement(s) en attente`,
+    payoutBalanceDriftDetail: (balance: string) => `solde (${balance}) inférieur aux fonds dus`,
+    refundNoPhoneDetail: (net: string) =>
+      `remboursement de ${net} impossible (cause supprimée)\u00a0: le donateur n'a pas de numéro`,
+    deletionDonorPayoutBody: (title: string) =>
+      `La cause «\u00a0${title}\u00a0» a été supprimée. Les fonds déjà collectés ont été versés à la structure, qui doit en justifier l'emploi.`,
+    refundApprovedTitle: "Remboursement approuvé",
+    refundApprovedBody: (title: string, net: string) =>
+      `Votre demande de remboursement pour «\u00a0${title}\u00a0» est acceptée\u00a0: ${net} vous sont reversés sur votre numéro.`,
+    refundRejectedTitle: "Remboursement refusé",
+    refundRejectedBody: (title: string) =>
+      `Votre demande de remboursement pour «\u00a0${title}\u00a0» n'a pas été retenue. Les fonds restent affectés à la cause.`,
+    extensionApprovedTitle: "Prolongation accordée",
+    extensionApprovedBody: (until: string) => `Votre échéance est repoussée au ${until}.`,
+    extensionRefusedTitle: "Prolongation refusée",
+    extensionRefusedBody: (reason: string) =>
+      `Votre demande de prolongation a été refusée\u00a0: ${reason}`,
+    extensionDonorBody: (title: string, until: string) =>
+      `La date limite de «\u00a0${title}\u00a0» a été prolongée jusqu'au ${until}.`,
+    payoutApprovedTitle: "Compte de réception validé",
+    payoutApprovedBody:
+      "Votre nouveau compte de réception des fonds est validé. Les versements reprennent.",
+    payoutRefusedTitle: "Compte de réception refusé",
+    payoutRefusedBody: (reason: string) =>
+      `Votre nouveau compte de réception a été refusé\u00a0: ${reason}. L'ancien compte reste utilisé.`,
+  },
+
+  whatsapp: {
+    contact: "Nous contacter sur WhatsApp",
+    message: "Bonjour SUNUSOCIAL",
+    aboutCause: (title: string) =>
+      `Bonjour SUNUSOCIAL, je vous contacte au sujet de la cause «\u00a0${title}\u00a0».`,
+    footer: "Un don en nature, une question\u00a0? Écrivez-nous sur WhatsApp.",
+  },
+
+  /** Moderation: S15 Choisir le Coup de cœur de la semaine (DB-6). */
+  featuredPicker: {
+    title: "Coup de cœur de la semaine",
+    intro:
+      "Choisissez une cause active à mettre en avant en tête du fil des donateurs. Une seule cause à la fois\u00a0: votre choix remplace le précédent.",
+    current: "Coup de cœur actuel",
+    none: "Aucun Coup de cœur pour le moment\u00a0: l'encadré est masqué dans le fil.",
+    choose: "Choisir comme Coup de cœur",
+    remove: "Retirer",
+    isFeatured: "Coup de cœur",
+    candidates: "Causes actives",
+    noCandidates: "Aucune cause active pour le moment.",
+    progress: (percent: number) => `${percent}\u00a0% atteint`,
+    setDone: (title: string) => `«\u00a0${title}\u00a0» est le Coup de cœur de la semaine.`,
+    clearDone: "Le Coup de cœur a été retiré.",
+    backToQueues: "← Files de modération",
+  },
+
+  dates: {
+    months: [
+      "janvier",
+      "février",
+      "mars",
+      "avril",
+      "mai",
+      "juin",
+      "juillet",
+      "août",
+      "septembre",
+      "octobre",
+      "novembre",
+      "décembre",
+    ],
   },
 
   spaces: {
     donorTitle: "Fil des causes",
-    donorSoon: "Le fil des causes arrive au sprint 3.",
     structureTitle: "Espace structure",
     hospitalTitle: "Espace hôpital",
     pending:
       "Votre dossier est en cours de vérification par notre équipe. Vous ne pouvez pas encore publier.",
     refused: (reason: string) => `Votre dossier a été refusé\u00a0: ${reason}`,
     approved: "Structure vérifiée.",
+    approvedHospital: "Hôpital vérifié.",
+    suspended:
+      "Compte suspendu\u00a0: une preuve de réception est en retard. Vos causes sont masquées et vous ne pouvez pas en publier de nouvelles jusqu'à la levée de la suspension par la modération.",
     hello: (name: string) => `Bonjour ${name}`,
   },
 
+  /** In-app notifications list (PARCOURS S06). */
+  messages: {
+    title: "Mes messages",
+    empty: "Aucun message pour le moment.",
+    view: "Voir",
+    markAllRead: "Tout marquer comme lu",
+  },
+
+  /** Structure dashboard: the structure's own causes and their status timeline (PARCOURS S11–S14). */
+  structureCauses: {
+    heading: "Mes causes",
+    new: "Publier une cause",
+    newShort: "Nouvelle cause",
+    empty: "Vous n'avez pas encore de cause. Publiez-en une pour commencer à collecter.",
+    emptyApprovedCta: "Publier ma première cause",
+    loading: "Chargement de vos causes…",
+    refusalReason: (reason: string) => `Motif du refus\u00a0: ${reason}`,
+    raisedOf: (raised: string, goal: string) => `${raised} collectés sur ${goal}`,
+    donors: (count: number) => (count > 1 ? `${count} donateurs` : `${count} donateur`),
+    edit: "Modifier",
+    editResend: "Modifier et renvoyer",
+    withdraw: "Retirer",
+    withdrawTitle: "Retirer cette cause\u00a0?",
+    withdrawBody: "Elle ne sera plus visible.",
+    submitProof: "Publier la preuve",
+    actionFailed: "L'action n'a pas abouti. Réessayez.",
+    withdrawn: "Cause retirée.",
+    requestDeletion: "Demander la suppression",
+    deletionBody: "Un modérateur décidera du sort des fonds déjà collectés.",
+    deletionReasonLabel: "Pourquoi supprimer cette cause\u00a0?",
+    deletionSubmit: "Envoyer la demande",
+    deletionRequested: "Demande de suppression envoyée. Un modérateur va l'examiner.",
+    deletionPending: "Demande de suppression en attente de décision.",
+    requestExtension: "Demander une prolongation",
+    extensionDateLabel: "Nouvelle date limite",
+    extensionReasonLabel: "Raison de la prolongation",
+    extensionSubmit: "Envoyer la demande",
+    extensionRequested: "Demande de prolongation envoyée. Un modérateur va l'examiner.",
+    deleted: "Cause supprimée.",
+    deletionReason: (reason: string) => `Cause supprimée par la modération\u00a0: ${reason}`,
+    proofDue: (date: string) => `Preuve de réception à publier avant le ${date}.`,
+    proofSubmitted: "Preuve envoyée, en attente de validation.",
+    proofValidated: "Preuve validée.",
+    proofEscalated: "La modération a demandé des compléments sur votre preuve.",
+    requestProofDelay: "Demander un délai",
+    proofDelayDateLabel: "Nouvelle échéance pour la preuve",
+    proofDelayReasonLabel: "Raison du délai",
+    proofDelayRequested: "Demande de délai envoyée. Un modérateur va l'examiner.",
+    proofDelayPending: "Demande de délai en attente de décision.",
+  },
+
+  /** Payout-account change (S10, DT-5). */
+  payoutChange: {
+    heading: "Compte de réception des fonds",
+    intro:
+      "Pour changer votre numéro Orange Money ou Wave, confirmez le nouveau numéro par SMS. Un modérateur validera le changement\u00a0; les versements sont suspendus en attendant.",
+    methodLabel: "Opérateur",
+    numberLabel: "Nouveau numéro",
+    holderLabel: "Nom du titulaire",
+    sendCode: "Envoyer le code",
+    codeSent: (masked: string) => `Code envoyé au ${masked}.`,
+    codeLabel: "Code reçu par SMS",
+    submit: "Enregistrer le changement",
+    submitted: "Changement envoyé. Un modérateur doit le valider avant qu'il prenne effet.",
+    pending: "Un changement de compte est en attente de validation par la modération.",
+    currentLabel: "Compte actuel",
+    pendingLabel: "Changement demandé",
+    noAccount: "Aucun compte de réception enregistré.",
+    account: (method: string, masked: string, holder: string) =>
+      `${method} · ${masked} · ${holder}`,
+  },
+
+  /** Create-cause wizard (PARCOURS S11). */
+  createCause: {
+    title: "Publier une cause",
+    intro: "Décrivez votre besoin. Votre cause sera vérifiée avant d'être publiée.",
+    steps: ["Description", "Bannière", "Objectif"],
+    next: "Continuer",
+    back: "Retour",
+    submit: "Envoyer en modération",
+    submitting: "Envoi…",
+    fields: {
+      title: "Titre de la cause",
+      titlePlaceholder: "Ex.\u00a0: Réfection de la toiture du dortoir",
+      description: "Description",
+      descriptionPlaceholder:
+        "Expliquez le besoin, à qui il profite et comment les fonds seront utilisés.",
+      category: "Catégorie",
+      banner: "Image de bannière",
+      bannerHint: "JPG, PNG ou WebP · 5 Mo max.",
+      endType: "Condition de fin",
+      endTypeDate: "À une date limite",
+      endTypeGoal: "À l'objectif atteint (ou à la date limite)",
+      goalAmount: "Objectif en FCFA",
+      estimatedNet: (net: string) =>
+        `Si l'objectif est atteint, vous recevrez environ ${net} après les frais de paiement.`,
+      deadline: "Date limite",
+      deadlineHint: (maxDays: number) => `Au plus ${maxDays} jours après aujourd'hui.`,
+      urgency: "Marquer comme urgent",
+    },
+    uploading: "Envoi de l'image…",
+    done: "Cause envoyée en modération. Vous serez prévenu après vérification.",
+  },
+
+  /** Proof dossier (PARCOURS S24): submission by the structure, gallery for all. */
+  proof: {
+    title: "Publier la preuve de réception",
+    intro: (min: number) =>
+      `Ajoutez au moins ${min} fichiers (photos, vidéo, facture, bon de livraison), un compte rendu et le détail des dépenses.`,
+    report: "Compte rendu",
+    reportPlaceholder: "Décrivez ce qui a été reçu et distribué, quand et à qui.",
+    items: "Fichiers",
+    itemCount: (count: number, min: number) => `${count} / ${min} fichiers minimum`,
+    addItem: "Ajouter un fichier",
+    removeItem: "Retirer",
+    itemKind: {
+      photo: "Photo",
+      video: "Vidéo",
+      invoice: "Facture",
+      delivery_note: "Bon de livraison",
+    } satisfies Record<ProofItemKind, string>,
+    caption: "Légende (facultatif)",
+    supplier: "Fournisseur",
+    ref: "Référence du document",
+    spend: "Utilisation des fonds",
+    spendLabel: "Poste de dépense",
+    spendAmount: "Montant (FCFA)",
+    addSpend: "Ajouter une ligne",
+    submit: "Envoyer la preuve",
+    submitting: "Envoi…",
+    sent: "Preuve envoyée, en attente de validation.",
+    flaggedNotice: (count: number) =>
+      `${count} élément${count > 1 ? "s" : ""} signalé${count > 1 ? "s" : ""} automatiquement\u00a0: le modérateur les vérifiera.`,
+    gallery: "Dossier de réception",
+    reportHeading: "Compte rendu",
+    spendHeading: "Utilisation des fonds",
+    flagBadge: "Signalé",
+    viewProof: "Voir la preuve",
+    pending: "La preuve de cette cause n'est pas encore validée.",
+    empty: "Aucune preuve validée pour le moment.",
+  },
+
+  /** French reasons for the automatic proof flags (DT-13). Advisory; the moderator decides. */
+  proofFlags: {
+    duplicateImage: "Image identique à une photo déjà publiée.",
+    exifMissing: "La date de prise de vue de la photo est absente.",
+    exifOld: "La photo a été prise avant la création de la cause.",
+    invoiceReused: "Cette référence de facture a déjà été utilisée.",
+    spendMismatch: (spend: string, net: string) =>
+      `Le total des dépenses (${spend}) s'écarte de plus de 5\u00a0% du montant reçu (${net}).`,
+  },
+
   sms: {
+    bloodAlert: (hospital: string, groups: string, level: string, communes: string) =>
+      `SUNUSOCIAL\u00a0: ${hospital} recherche du sang ${groups} (${level}) à ${communes}. Confirmez votre venue sur sunusocial.sn/sang`,
+    bloodReminder: (hospital: string, slot: string) =>
+      `SUNUSOCIAL\u00a0: rappel, vous êtes attendu ${slot} à ${hospital} pour donner votre sang. Merci\u00a0!`,
+    bloodClosed: (hospital: string) =>
+      `SUNUSOCIAL\u00a0: l'alerte de ${hospital} est terminée, vous n'avez plus besoin de venir. Merci pour votre élan\u00a0!`,
     code: (code: string) =>
       `SUNUSOCIAL\u00a0: votre code est ${code}. Il expire dans 10 minutes. Ne le communiquez à personne.`,
     accountExists:
       "SUNUSOCIAL\u00a0: un compte donateur existe déjà avec ce numéro. Connectez-vous, ou utilisez «\u00a0Mot de passe oublié\u00a0».",
+    structureApproved: (structure: string) =>
+      `SUNUSOCIAL\u00a0: ${structure} est vérifiée. Vous pouvez publier vos causes depuis votre espace.`,
+    fundsReleased: (title: string, amount: string, days: number) =>
+      `SUNUSOCIAL\u00a0: fonds versés pour «\u00a0${title}\u00a0»\u00a0: ${amount} sur votre compte de réception. Preuve de réception à publier sous ${days} jours.`,
+    refundApproved: (title: string, amount: string) =>
+      `SUNUSOCIAL\u00a0: votre don à «\u00a0${title}\u00a0» est remboursé\u00a0: ${amount} vous sont envoyés.`,
+    causeDeletedRefund: (title: string, amount: string) =>
+      `SUNUSOCIAL\u00a0: la cause «\u00a0${title}\u00a0» a été supprimée. ${amount} vous sont remboursés.`,
+    proofPublished: (title: string) =>
+      `SUNUSOCIAL\u00a0: la preuve de réception de «\u00a0${title}\u00a0» est publiée. Consultez-la sur sunusocial.sn/profil`,
+    proofReminder: (title: string, date: string) =>
+      `SUNUSOCIAL\u00a0: la preuve de réception de «\u00a0${title}\u00a0» était attendue le ${date}. Publiez-la depuis votre espace pour lever la suspension de votre compte.`,
+    suspensionLifted: (structure: string) =>
+      `SUNUSOCIAL\u00a0: la suspension de ${structure} est levée. Vos causes sont de nouveau visibles.`,
+    lateRefund: (title: string, net: string) =>
+      `SUNUSOCIAL\u00a0: la cause «\u00a0${title}\u00a0» était déjà clôturée quand votre paiement est arrivé. ${net} vous seront remboursés sur ce numéro. Découvrez d'autres causes sur SUNUSOCIAL.`,
   },
 
   email: {
@@ -259,6 +1015,18 @@ export const fr = {
     welcomeModeratorSubject: "SUNUSOCIAL — Votre accès modérateur",
     welcomeModeratorBody: (link: string) =>
       `Bonjour,\n\nUn accès modérateur SUNUSOCIAL a été créé pour vous. Choisissez votre mot de passe avec ce lien (valable 30 minutes)\u00a0:\n${link}\n\nL'équipe SUNUSOCIAL`,
+  },
+
+  /** Route-level loading, error and not-found screens (Sprint 8). */
+  states: {
+    loading: "Chargement de la page…",
+    errorTitle: "Quelque chose s'est mal passé",
+    errorBody:
+      "Cette page n'a pas pu s'afficher. Vos données ne sont pas perdues\u00a0: réessayez.",
+    retry: "Réessayer",
+    notFoundTitle: "Page introuvable",
+    notFoundBody: "Le lien est peut-être incorrect, ou la page n'existe plus.",
+    backHome: "Retour à l'accueil",
   },
 
   errors: {
@@ -287,10 +1055,94 @@ export const fr = {
     mfaRequired: "Saisissez le code reçu par SMS pour continuer.",
     accountDisabled: "Ce compte est bloqué. Contactez SUNUSOCIAL sur WhatsApp.",
     receiptRequired: "Ajoutez votre récépissé ou agrément.",
+    bannerRequired: "Ajoutez une image de bannière.",
     receiptInvalid: "Le document doit être un PDF, JPG ou PNG de 5 Mo maximum.",
     payoutRequired: "Indiquez le compte de réception des fonds.",
     resetLinkInvalid: "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
     rateLimited: "Trop de demandes. Réessayez dans quelques minutes.",
+    causeNotOpen: "Cette cause n'accepte plus de dons.",
+    causeNotFound: "Cette cause n'existe plus.",
+    donationNotFound: "Ce don est introuvable.",
+    paymentUnavailable:
+      "Le paiement est momentanément indisponible. Réessayez dans quelques minutes.",
+    simulatorOff: "Le simulateur de paiement n'est pas disponible ici.",
+    causeNotEligible:
+      "Cette cause ne peut pas être choisie\u00a0: elle doit être active et publiée par une structure vérifiée.",
+    uploadMissing: "Le fichier n'a pas été reçu. Réessayez l'envoi.",
+    uploadInvalid: "Fichier refusé\u00a0: vérifiez le format et la taille autorisés.",
+    structureNotApproved:
+      "Votre structure doit être validée par notre équipe avant de publier une cause.",
+    hospitalNotApproved:
+      "Votre hôpital doit être validé par notre équipe avant d'émettre une alerte.",
+    alertNotFound: "Alerte introuvable.",
+    alertClosed: "Cette alerte est terminée.",
+    alertRateLimited: "Trop d'alertes en une heure. Réessayez plus tard.",
+    alertGroupsRequired: "Choisissez au moins un groupe sanguin, ou «\u00a0Tous groupes\u00a0».",
+    alertUnitsInvalid: "Indiquez un nombre de poches entre 1 et 500.",
+    alertCommunesRequired: "Choisissez au moins une commune de votre région.",
+    alertChannelRequired: "Choisissez au moins un canal d'envoi.",
+    communeOutsideRegion: "Cette commune n'est pas dans la région de votre hôpital.",
+    bloodNotOptedIn: "Activez les alertes don de sang dans votre profil pour répondre.",
+    notCompatible: "Cette alerte ne recherche pas votre groupe sanguin.",
+    alreadyResponded: "Vous avez déjà confirmé votre venue pour cette alerte.",
+    slotInvalid: "Ce créneau n'est plus disponible. Choisissez-en un autre.",
+    responseNotFound: "Réponse introuvable.",
+    responseNotActive: "Ce donneur n'est plus attendu pour cette alerte.",
+    donationAlreadyConfirmed: "Ce don est déjà confirmé.",
+    donatedTypeRequired: "Indiquez le groupe sanguin constaté sur place.",
+    cancelTooLate: "Il est trop tard pour annuler cette venue.",
+    thanksNotAllowed:
+      "Le remerciement n'est possible qu'après la clôture (ou l'objectif atteint), une seule fois, et s'il y a au moins un don confirmé.",
+    thanksLength: (min: number, max: number) =>
+      `Le message doit comporter entre ${min} et ${max} caractères.`,
+    stockInvalid: "Indiquez un nombre entier de poches entre 0 et 9999.",
+    closeReasonRequired: "Indiquez le motif de la clôture.",
+    structureAlreadyDecided: "Cette structure a déjà été traitée.",
+    causeTitleInvalid: "Le titre doit comporter entre 4 et 120 caractères.",
+    causeDescriptionInvalid: "La description doit comporter au moins 20 caractères.",
+    causeGoalInvalid: "Indiquez un objectif en FCFA (nombre entier supérieur à 0).",
+    causeDeadlineInvalid: (maxDays: number) =>
+      `La date limite doit être dans le futur et au plus dans ${maxDays} jours.`,
+    causeNotEditable:
+      "Seules les causes en modération ou refusées peuvent être modifiées pour le moment.",
+    causeNotWithdrawable:
+      "Cette cause ne peut plus être retirée\u00a0: elle a déjà reçu des dons ou n'est plus en modération.",
+    proofItemsTooFew: (min: number) => `Ajoutez au moins ${min} fichiers.`,
+    proofReportTooShort: "Le compte rendu doit comporter au moins 10 caractères.",
+    proofAmountInvalid: "Chaque montant doit être un entier en FCFA, supérieur ou égal à 0.",
+    proofNotDue: "Une preuve n'est attendue qu'après le versement des fonds à votre structure.",
+    proofAlreadySubmitted: "Une preuve a déjà été envoyée pour cette cause.",
+    deletionReasonRequired: "Expliquez pourquoi cette cause doit être supprimée.",
+    causeNotDeletable:
+      "Seule une cause active ayant reçu des dons passe par une demande de suppression.",
+    deletionAlreadyRequested: "Une demande de suppression est déjà en cours pour cette cause.",
+    deletionAlreadyDecided: "Cette demande de suppression a déjà été traitée.",
+    deletionFundsReleased:
+      "Les fonds de cette cause ont déjà été versés\u00a0: elle ne peut plus être supprimée. Maintenez-la en expliquant pourquoi.",
+    fundOutcomeRequired: "Choisissez le sort des fonds (remboursement ou versement).",
+    payoutChangePending:
+      "Un changement de compte de réception est en cours\u00a0: le versement est bloqué en attendant.",
+    refundReasonRequired: "Indiquez le motif de votre demande de remboursement.",
+    refundNotEligible:
+      "Ce don ne peut plus être remboursé\u00a0: les fonds ont été versés ou la cause est close.",
+    refundPhoneRequired: "Indiquez le numéro sur lequel recevoir le remboursement.",
+    refundCodeRequired: "Confirmez ce numéro avec le code reçu par SMS.",
+    refundAlreadyDecided: "Cette demande de remboursement a déjà été traitée.",
+    extensionReasonRequired: "Expliquez la raison de votre demande de prolongation.",
+    extensionNotAllowed: "Cette échéance ne peut pas être prolongée.",
+    extensionAlreadyPending: "Une demande de prolongation est déjà en cours pour cette échéance.",
+    notSuspended: "Cette structure n'est pas suspendue.",
+    noLateProof: "Aucune preuve n'est en retard pour cette structure.",
+    reminderTooSoon: "Un rappel vient déjà d'être envoyé à cette structure. Réessayez plus tard.",
+    proofStillLate:
+      "Une preuve est encore en retard\u00a0: validez-la ou accordez un délai avant de lever la suspension.",
+    extensionStale:
+      "Cette demande n'est plus applicable\u00a0: l'échéance ou le statut a changé. Demandez une nouvelle prolongation.",
+    extensionDateInvalid: (maxDays: number) =>
+      `La nouvelle date doit être dans le futur, après l'échéance actuelle et au plus ${maxDays} jours après.`,
+    extensionAlreadyDecided: "Cette demande de prolongation a déjà été traitée.",
+    payoutChangeAlreadyPending: "Un changement de compte est déjà en attente de validation.",
+    noPayoutChangePending: "Aucun changement de compte n'est en attente pour cette structure.",
   },
 } as const;
 

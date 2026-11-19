@@ -1,0 +1,598 @@
+// Confirming payments and the money side of a cause (DT-3, DT-6, DT-24, DB-18). The webhook and
+// the status-check fallback both land in `recordPayment`, which is idempotent on the order_id and
+// is the only place a donation becomes `held`. Releases and payouts arrive with the worker (Sprint 6).
+
+import { v } from "convex/values";
+
+import { loadConfig } from "../lib/config";
+import { computeFee, formatFCFA, settle } from "../lib/money";
+import { getMockProvider, getPaymentProvider } from "../lib/providers";
+import { isPaidStatus, parseWebhookPayload } from "../lib/providers/types";
+import { fr } from "../lib/strings.fr";
+import type { Method } from "../lib/types";
+import { errorPath, successPath } from "./donations";
+import { alertModerators, enqueueDonationRefund, enqueuePayout, isReleasable } from "./payouts";
+import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+  type ActionCtx,
+  type MutationCtx,
+} from "./_generated/server";
+import { logAudit } from "./audit";
+import { appError } from "./lib/errors";
+import { requireRole } from "./lib/guards";
+import { notifyUser } from "./notify";
+import { methodV } from "./validators";
+
+/** A pending payment is re-checked against NabooPay after this long (webhooks are success-only). */
+export const RECHECK_AFTER_MS = 5 * 60 * 1000;
+/** An unpaid transaction is cancelled and the donation failed after this long (DT-3). */
+export const CANCEL_AFTER_MS = 2 * 60 * 60 * 1000;
+/** NabooPay allows 100 requests / 60 s per endpoint; stay well under it each cron run. */
+export const RECHECK_BATCH = 50;
+
+type RecordOutcome = "counted" | "late" | "duplicate" | "unknown_order" | "mismatch";
+
+// ---------------------------------------------------------------------------
+// Recording a confirmed payment
+// ---------------------------------------------------------------------------
+
+/** True once this donor has another confirmed gift to the cause (so `donorCount` must not move). */
+async function donorAlreadyGave(ctx: MutationCtx, donation: Doc<"donations">): Promise<boolean> {
+  const siblings = await ctx.db
+    .query("donations")
+    .withIndex("by_cause_donor", (q) =>
+      q.eq("causeId", donation.causeId).eq("donorId", donation.donorId),
+    )
+    .collect();
+  return siblings.some(
+    (d) => d._id !== donation._id && (d.status === "held" || d.status === "released"),
+  );
+}
+
+/**
+ * Records a confirmed NabooPay payment. Idempotent on the order_id: a second delivery of an
+ * already-paid donation is a no-op. Stores NabooPay's actual fee; counts the donation toward its
+ * cause only while the cause is still `active`, otherwise flags it for an automatic refund (DB-18).
+ */
+export const recordPayment = internalMutation({
+  args: {
+    orderId: v.string(),
+    amount: v.number(),
+    fees: v.number(),
+    method: v.optional(methodV),
+  },
+  handler: async (ctx, { orderId, amount, fees, method }): Promise<{ outcome: RecordOutcome }> => {
+    const donation = await ctx.db
+      .query("donations")
+      .withIndex("by_txn", (q) => q.eq("providerTxnId", orderId))
+      .unique();
+    if (!donation) {
+      console.warn(`webhook for unknown order_id ${orderId}`);
+      return { outcome: "unknown_order" };
+    }
+    // Already recorded (duplicate delivery). `pending` and `failed` are both recordable: a payment
+    // can arrive after we cancelled an abandoned transaction — the money was still received.
+    if (
+      donation.status === "held" ||
+      donation.status === "released" ||
+      donation.status === "refunded"
+    ) {
+      return { outcome: "duplicate" };
+    }
+    if (amount !== donation.amount) {
+      await logAudit(ctx, {
+        action: "donation.amount_mismatch",
+        targetTable: "donations",
+        targetId: donation._id,
+        details: { orderId, expected: donation.amount, received: amount },
+      });
+      console.error(`amount mismatch for ${orderId}: expected ${donation.amount}, got ${amount}`);
+      // The donor paid but nothing is recorded or refunded: a moderator must resolve it by hand.
+      await alertModerators(
+        ctx,
+        fr.notifications.paymentUnrecordedDetail(
+          orderId,
+          formatFCFA(donation.amount),
+          formatFCFA(amount),
+        ),
+      );
+      return { outcome: "mismatch" };
+    }
+
+    const platformFeeRate = loadConfig(process.env).platformFeeRate;
+    let settled;
+    try {
+      settled = settle(amount, fees, platformFeeRate);
+    } catch (error) {
+      // Fees larger than the amount: answer 200 (no endless webhook retries) and flag it.
+      await logAudit(ctx, {
+        action: "donation.amount_mismatch",
+        targetTable: "donations",
+        targetId: donation._id,
+        details: { orderId, amount, fees, error: String(error) },
+      });
+      await alertModerators(
+        ctx,
+        fr.notifications.paymentUnrecordedDetail(
+          orderId,
+          formatFCFA(donation.amount),
+          formatFCFA(amount),
+        ),
+      );
+      return { outcome: "mismatch" };
+    }
+    if (settled.fee !== donation.fee) {
+      // The 3% was an estimate; NabooPay's actual fee is authoritative (DT-6).
+      await logAudit(ctx, {
+        action: "donation.fee_adjusted",
+        targetTable: "donations",
+        targetId: donation._id,
+        details: { orderId, estimated: donation.fee, actual: settled.fee },
+      });
+    }
+    await ctx.db.patch(donation._id, {
+      fee: settled.fee,
+      platformFee: settled.platformFee,
+      net: settled.net,
+      paidMethod: method ?? donation.method,
+      status: "held",
+    });
+    await logAudit(ctx, {
+      actorId: donation.donorId,
+      action: "donation.paid",
+      targetTable: "donations",
+      targetId: donation._id,
+      details: { orderId, amount, fee: settled.fee, net: settled.net },
+    });
+
+    const cause = await ctx.db.get(donation.causeId);
+    const now = Date.now();
+
+    // Late payment (DB-18): the cause is no longer active. Keep it `held`; the payout worker
+    // (Sprint 6) refunds its net automatically. Do not count it toward the cause.
+    if (!cause || cause.status !== "active") {
+      await ctx.db.patch(donation._id, { lateRefundFlaggedAt: now });
+      await logAudit(ctx, {
+        action: "donation.late_refund_flagged",
+        targetTable: "donations",
+        targetId: donation._id,
+        details: { orderId, causeStatus: cause?.status ?? "missing" },
+      });
+      const title = cause?.title ?? "";
+      await notifyUser(ctx, {
+        userId: donation.donorId,
+        kind: "donation_late_refund",
+        title: fr.notifications.lateRefundTitle,
+        body: fr.notifications.lateRefundBody(
+          formatFCFA(donation.amount),
+          formatFCFA(settled.net),
+          title,
+        ),
+        link: "/profil",
+        sms: fr.sms.lateRefund(title, formatFCFA(settled.net)),
+      });
+      return { outcome: "late" };
+    }
+
+    // Counted toward the cause.
+    const firstGift = !(await donorAlreadyGave(ctx, donation));
+    const raised = cause.raised + amount;
+    const patch: Partial<Doc<"causes">> = {
+      raised,
+      donorCount: cause.donorCount + (firstGift ? 1 : 0),
+    };
+    // A goal cause that reaches its goal closes in full, even over the goal (PARCOURS S21, DT-24).
+    // The release payout itself is queued by the worker in Sprint 6.
+    if (cause.endType === "goal" && raised >= cause.goalAmount) {
+      patch.status = "closed";
+      patch.closedAt = now;
+    }
+    await ctx.db.patch(cause._id, patch);
+    if (patch.status === "closed") {
+      await logAudit(ctx, {
+        action: "cause.closed_goal",
+        targetTable: "causes",
+        targetId: cause._id,
+        details: { raised, goal: cause.goalAmount },
+      });
+      // Goal reached: release straight away (DT-24). The cron also catches it if this does not run.
+      await ctx.scheduler.runAfter(0, internal.payments.releaseCause, { causeId: cause._id });
+    }
+    await notifyUser(ctx, {
+      userId: donation.donorId,
+      kind: "donation_confirmed",
+      title: fr.notifications.donationConfirmedTitle,
+      body: fr.notifications.donationConfirmedBody(formatFCFA(donation.amount), cause.title),
+      link: "/profil",
+    });
+    return { outcome: "counted" };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Webhook (shared by the HTTP endpoint and the mock simulator)
+// ---------------------------------------------------------------------------
+
+/**
+ * Verifies and records a webhook body. Shared so the mock simulator exercises the exact same
+ * signature check and recording path as a real NabooPay call. Returns the HTTP status to answer.
+ */
+export async function handleWebhook(
+  ctx: ActionCtx,
+  rawBody: string,
+  signature: string | null,
+): Promise<number> {
+  const provider = getPaymentProvider();
+  if (!(await provider.verifyWebhook(rawBody, signature))) return 401;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawBody);
+  } catch {
+    return 400;
+  }
+  const payload = parseWebhookPayload(parsed);
+  if (!payload) return 400;
+  // Only paid events matter; acknowledge the rest so NabooPay stops retrying them.
+  if (!isPaidStatus(payload.status)) return 200;
+
+  let fees = payload.fees;
+  let method: Method | undefined = payload.method;
+  if (fees === undefined) {
+    // Legacy v1 payload: the fee isn't in the body. Read it from NabooPay.
+    try {
+      const transaction = await provider.getTransaction(payload.orderId);
+      fees = transaction.fees;
+      method = method ?? transaction.method;
+    } catch (error) {
+      console.error(`could not fetch fees for ${payload.orderId}: ${String(error)}`);
+      return 503; // NabooPay retries; the cron also catches it.
+    }
+    if (fees === undefined) return 503;
+  }
+  await ctx.runMutation(internal.payments.recordPayment, {
+    orderId: payload.orderId,
+    amount: payload.amount,
+    fees,
+    method,
+  });
+  return 200;
+}
+
+// ---------------------------------------------------------------------------
+// Pending re-check and cancellation (cron, DT-3)
+// ---------------------------------------------------------------------------
+
+export const pendingToCheck = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<Array<{ orderId: string | null; createdAt: number }>> => {
+    const now = Date.now();
+    const pending = await ctx.db
+      .query("donations")
+      .withIndex("by_status_created", (q) =>
+        q.eq("status", "pending").lt("createdAt", now - RECHECK_AFTER_MS),
+      )
+      .take(RECHECK_BATCH);
+    return pending.map((d) => ({ orderId: d.providerTxnId ?? null, createdAt: d.createdAt }));
+  },
+});
+
+/** Marks a still-pending donation `failed` (abandoned, or NabooPay cancelled). */
+export const cancelPending = internalMutation({
+  args: { orderId: v.string(), reason: v.string() },
+  handler: async (ctx, { orderId, reason }) => {
+    const donation = await ctx.db
+      .query("donations")
+      .withIndex("by_txn", (q) => q.eq("providerTxnId", orderId))
+      .unique();
+    if (!donation || donation.status !== "pending") return;
+    await ctx.db.patch(donation._id, { status: "failed" });
+    await logAudit(ctx, {
+      actorId: donation.donorId,
+      action: "donation.cancelled",
+      targetTable: "donations",
+      targetId: donation._id,
+      details: { orderId, reason },
+    });
+  },
+});
+
+/** Re-checks pending payments against NabooPay and cancels those abandoned for over 2 hours. */
+export const recheckPending = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ checked: number; paid: number; failed: number }> => {
+    const pending = await ctx.runQuery(internal.payments.pendingToCheck, {});
+    const provider = getPaymentProvider();
+    const now = Date.now();
+    let paid = 0;
+    let failed = 0;
+    for (const { orderId, createdAt } of pending) {
+      const old = now - createdAt >= CANCEL_AFTER_MS;
+      if (!orderId) {
+        // Checkout never returned an order_id; nothing to cancel at NabooPay.
+        if (old) failed += 1;
+        continue;
+      }
+      try {
+        const transaction = await provider.getTransaction(orderId);
+        if (isPaidStatus(transaction.status) && transaction.fees !== undefined) {
+          await ctx.runMutation(internal.payments.recordPayment, {
+            orderId,
+            amount: transaction.amount,
+            fees: transaction.fees,
+            method: transaction.method,
+          });
+          paid += 1;
+          continue;
+        }
+        if (old) {
+          await provider.cancelTransaction(orderId);
+          await ctx.runMutation(internal.payments.cancelPending, { orderId, reason: "abandoned" });
+          failed += 1;
+        }
+      } catch (error) {
+        console.warn(`recheck failed for ${orderId}: ${String(error)}`);
+      }
+    }
+    return { checked: pending.length, paid, failed };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Fund release (DT-24) — one lump-sum payout per cause, at goal or deadline
+// ---------------------------------------------------------------------------
+
+/**
+ * Releases a cause's held funds in a single payout to its structure's verified account. Idempotent
+ * (guarded by `fundsReleasedAt`) and skipped while a payout-account change is pending (DT-24). Marks
+ * the cause closed if it was still active; the donations flip to `released` and the proof deadline
+ * opens only once the payout actually completes (in the worker).
+ */
+export const releaseCause = internalMutation({
+  args: { causeId: v.id("causes") },
+  handler: async (ctx, { causeId }): Promise<{ released: boolean }> => {
+    const cause = await ctx.db.get(causeId);
+    if (!cause) return { released: false };
+    if (cause.fundsReleasedAt !== undefined) return { released: false }; // already released
+    if (cause.status === "deleted" || cause.status === "refused" || cause.status === "withdrawn") {
+      return { released: false };
+    }
+    const structure = await ctx.db.get(cause.structureId);
+    if (!structure || !structure.payout) {
+      console.error(`releaseCause ${causeId}: structure has no verified payout account`);
+      return { released: false };
+    }
+    if (structure.payoutPending !== undefined) return { released: false }; // blocked during change
+
+    const donations = await ctx.db
+      .query("donations")
+      .withIndex("by_cause", (q) => q.eq("causeId", causeId))
+      .collect();
+    // Late-flagged and refund-queued donations go back to the donor, never to the structure, so
+    // they must not be summed into the release payout even while still `held`.
+    const total = donations.filter(isReleasable).reduce((sum, d) => sum + d.net, 0);
+
+    const now = Date.now();
+    const patch: Partial<Doc<"causes">> = { fundsReleasedAt: now };
+    if (cause.status === "active") {
+      patch.status = "closed";
+      patch.closedAt = now;
+    }
+    if (total <= 0) {
+      // No confirmed donations: nothing reaches the structure, so no payout and no proof is due.
+      await ctx.db.patch(causeId, patch);
+      await logAudit(ctx, {
+        action: "funds.release_empty",
+        targetTable: "causes",
+        targetId: causeId,
+        details: { total: 0 },
+      });
+      return { released: true };
+    }
+    const payoutId = await enqueuePayout(ctx, {
+      kind: "release",
+      targetId: causeId,
+      amount: total,
+      method: structure.payout.method,
+      phone: structure.payout.accountNumber,
+      name: structure.payout.holderName,
+    });
+    patch.releasePayoutId = payoutId;
+    await ctx.db.patch(causeId, patch);
+    return { released: true };
+  },
+});
+
+/** Hourly cron: schedule a release for every due cause (past deadline, or closed-but-not-released). */
+export const releaseDue = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ scheduled: number }> => {
+    const now = Date.now();
+    const pastDeadline = await ctx.db
+      .query("causes")
+      .withIndex("by_status_deadline", (q) => q.eq("status", "active").lte("deadline", now))
+      .take(RECHECK_BATCH);
+    // Only closed causes still awaiting release — not every closed cause ever, which keeps status
+    // "closed" after release and would make this scan grow without bound.
+    const closed = await ctx.db
+      .query("causes")
+      .withIndex("by_status_released", (q) =>
+        q.eq("status", "closed").eq("fundsReleasedAt", undefined),
+      )
+      .take(RECHECK_BATCH);
+    let scheduled = 0;
+    for (const cause of [...pastDeadline, ...closed]) {
+      if (cause.fundsReleasedAt === undefined) {
+        await ctx.scheduler.runAfter(0, internal.payments.releaseCause, { causeId: cause._id });
+        scheduled += 1;
+      }
+    }
+    return { scheduled };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Late-payment refunds (DB-18, DT-7) — flagged by recordPayment, paid out here
+// ---------------------------------------------------------------------------
+
+/**
+ * Cron: for each donation flagged late (its cause was already closed when the money arrived), record
+ * an automatic refund request and queue a `refund` payout of its net — no moderator decision (DB-18).
+ * The refund request doubles as the idempotency guard: a flagged donation that already has one is
+ * skipped, and once the payout completes the donation becomes `refunded` and leaves this scan.
+ */
+export const lateRefundDue = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ queued: number }> => {
+    const flagged = await ctx.db
+      .query("donations")
+      .withIndex("by_late_refund", (q) => q.gt("lateRefundFlaggedAt", 0))
+      .take(RECHECK_BATCH);
+    let queued = 0;
+    for (const donation of flagged) {
+      if (donation.status !== "held") continue; // already refunded / failed
+      const existing = await ctx.db
+        .query("refundRequests")
+        .withIndex("by_donation", (q) => q.eq("donationId", donation._id))
+        .unique();
+      if (existing) continue; // already being refunded
+      const donor = await ctx.db.get(donation.donorId);
+      if (!donor?.phone) {
+        console.error(`late refund for ${donation._id}: donor has no phone`);
+        continue;
+      }
+      // An automatic refund (DB-18): no moderator decision. Enqueue the payout and record the
+      // request as refunded (not pending), so it never surfaces in the moderation queue as
+      // actionable; completeRefund confirms it when the payout lands.
+      const payoutId = await enqueueDonationRefund(ctx, donation, {
+        phone: donor.phone,
+        name: donor.name,
+      });
+      await ctx.db.insert("refundRequests", {
+        donationId: donation._id,
+        donorId: donation.donorId,
+        reason: "late_payment",
+        status: "refunded",
+        receivingPhone: donor.phone,
+        refundAmount: donation.net,
+        payoutId,
+        createdAt: Date.now(),
+      });
+      queued += 1;
+    }
+    return { queued };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Proof-deadline enforcement (DB-12, DT-25) — auto-suspend on a missed deadline
+// ---------------------------------------------------------------------------
+
+/** Cron: suspend the structure of any proof deadline that passed without a validated proof. */
+export const enforceProofDeadlines = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ suspended: number }> => {
+    const now = Date.now();
+    const overdue = await ctx.db
+      .query("proofDeadlines")
+      .withIndex("by_met_due", (q) => q.eq("metAt", undefined).lt("dueAt", now))
+      .take(RECHECK_BATCH);
+    let suspended = 0;
+    for (const deadline of overdue) {
+      if (!deadline.enforced) continue;
+      const structure = await ctx.db.get(deadline.structureId);
+      if (!structure || structure.suspendedAt !== undefined) continue;
+      await ctx.db.patch(structure._id, { suspendedAt: now });
+      await logAudit(ctx, {
+        action: "structure.suspend",
+        targetTable: "structures",
+        targetId: structure._id,
+        details: { reason: "proof_deadline_missed", causeId: deadline.causeId },
+      });
+      const cause = await ctx.db.get(deadline.causeId);
+      const responsible = await ctx.db
+        .query("users")
+        .withIndex("by_structure", (q) => q.eq("structureId", structure._id))
+        .first();
+      if (responsible) {
+        await notifyUser(ctx, {
+          userId: responsible._id,
+          kind: "account_suspended",
+          title: fr.notifications.suspendedTitle,
+          body: fr.notifications.suspendedBody(cause?.title ?? structure.name),
+          link: "/structure",
+        });
+      }
+      suspended += 1;
+    }
+    return { suspended };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Mock simulator (development / preview only)
+// ---------------------------------------------------------------------------
+
+export const simTarget = internalQuery({
+  args: { donationId: v.string() },
+  handler: async (
+    ctx,
+    { donationId },
+  ): Promise<
+    { ok: true; orderId: string; amount: number; method: Method; causeId: string } | { ok: false }
+  > => {
+    const { user } = await requireRole(ctx, "donor");
+    const id = ctx.db.normalizeId("donations", donationId);
+    const donation = id && (await ctx.db.get(id));
+    if (!donation || donation.donorId !== user._id) return { ok: false };
+    if (donation.status !== "pending" || !donation.providerTxnId) return { ok: false };
+    return {
+      ok: true,
+      orderId: donation.providerTxnId,
+      amount: donation.amount,
+      method: donation.method,
+      causeId: donation.causeId,
+    };
+  },
+});
+
+/**
+ * Drives the mock checkout page's buttons. Refused unless `PAYMENT_PROVIDER=mock` outside
+ * production, and only on the donor's own pending donation. `paid` signs a webhook body with the
+ * mock secret and runs it through `handleWebhook`, so the real recording path is exercised.
+ */
+export const simulatePayment = action({
+  args: { donationId: v.string(), outcome: v.union(v.literal("paid"), v.literal("cancelled")) },
+  handler: async (ctx, { donationId, outcome }): Promise<{ redirectTo: string }> => {
+    const mock = getMockProvider();
+    if (!mock) throw appError("FORBIDDEN", fr.errors.simulatorOff);
+    const target = await ctx.runQuery(internal.payments.simTarget, { donationId });
+    if (!target.ok) throw appError("NOT_FOUND", fr.errors.donationNotFound);
+
+    if (outcome === "cancelled") {
+      await ctx.runMutation(internal.payments.cancelPending, {
+        orderId: target.orderId,
+        reason: "simulator_cancelled",
+      });
+      return { redirectTo: errorPath(target.causeId) };
+    }
+
+    const fee = computeFee(target.amount, "mock").fee;
+    const body = JSON.stringify({
+      order_id: target.orderId,
+      amount: target.amount,
+      fees: fee,
+      transaction_status: "paid",
+      selected_payment_method: target.method,
+      currency: "XOF",
+    });
+    const status = await handleWebhook(ctx, body, await mock.sign(body));
+    if (status !== 200) throw appError("PAYMENT_FAILED", fr.errors.paymentUnavailable);
+    return { redirectTo: successPath(donationId) };
+  },
+});
